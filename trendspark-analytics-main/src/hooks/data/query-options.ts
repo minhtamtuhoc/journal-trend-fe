@@ -1,7 +1,7 @@
 import { apiConfig } from "@/api/config";
 import type { AnalyticsSnapshot } from "@/services/interfaces/analytics.service";
 import type { AdminOverview } from "@/services/interfaces/admin.service";
-import type { NotificationItem, Paper } from "@/types/domain";
+import type { Collection, NotificationItem, Paper } from "@/types/domain";
 import {
   MOCK_AUDIT_LOGS,
   MOCK_HEATMAP,
@@ -11,6 +11,7 @@ import {
   MOCK_PUBLICATION_VELOCITY,
   MOCK_RADAR_FIELDS,
   MOCK_CATEGORY_DISTRIBUTION,
+  MOCK_COLLECTIONS,
 } from "@/mocks";
 import { MOCK_PAPERS } from "@/mocks/data/papers";
 import { MOCK_TRENDING_AUTHORS } from "@/mocks/data/authors";
@@ -44,4 +45,8 @@ export function papersInitialData(): Paper[] | undefined {
 
 export function notificationsInitialData(): NotificationItem[] | undefined {
   return apiConfig.useMock ? MOCK_NOTIFICATIONS : undefined;
+}
+
+export function collectionsInitialData(): Collection[] | undefined {
+  return apiConfig.useMock ? MOCK_COLLECTIONS : undefined;
 }

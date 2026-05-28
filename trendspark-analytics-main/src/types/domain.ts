@@ -78,6 +78,15 @@ export type NotificationItem = {
   unread: boolean;
 };
 
+export type Collection = {
+  id: string;
+  name: string;
+  /** IDs of papers saved into this collection (backend-ready shape). */
+  paperIds: string[];
+  /** ISO timestamp. */
+  updatedAt: string;
+};
+
 export type AuditLogEntry = {
   id: string;
   actor: string;

@@ -1,4 +1,8 @@
 export const queryKeys = {
+  collections: {
+    all: ["collections", "list"] as const,
+    detail: (id: string) => ["collections", "detail", id] as const,
+  },
   analytics: {
     snapshot: ["analytics", "snapshot"] as const,
   },
