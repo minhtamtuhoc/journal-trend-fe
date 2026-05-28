@@ -2,14 +2,15 @@ import type {
   CollectionsService,
   CreateCollectionInput,
   SavePaperToCollectionsInput,
+  RemovePaperFromCollectionInput,
   UpdateCollectionInput,
 } from "@/services/interfaces/collections.service";
 import { MOCK_COLLECTIONS } from "@/mocks/data/collections";
 import type { Collection } from "@/types/domain";
 import { mockDelay } from "@/services/utils";
+import { hashSeed } from "@/mocks/deterministic";
 
 let db: Collection[] = [...MOCK_COLLECTIONS];
-let nextId = db.length + 1;
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -39,7 +40,7 @@ export class MockCollectionsService implements CollectionsService {
     }
 
     const created: Collection = {
-      id: `col_${nextId++}`,
+      id: `col_${hashSeed(name)}`,
       name,
       paperIds: [],
       updatedAt: nowIso(),
@@ -89,6 +90,25 @@ export class MockCollectionsService implements CollectionsService {
     });
 
     return this.list();
+  }
+
+  async removePaperFromCollection(input: RemovePaperFromCollectionInput) {
+    await mockDelay(180);
+    const { paperId, collectionId } = input;
+    const idx = db.findIndex((c) => c.id === collectionId);
+    if (idx === -1) throw new Error("Collection not found");
+
+    const c = db[idx];
+    if (!c.paperIds.includes(paperId)) return c;
+
+    const updated: Collection = {
+      ...c,
+      paperIds: c.paperIds.filter((id) => id !== paperId),
+      updatedAt: nowIso(),
+    };
+
+    db = db.map((x) => (x.id === collectionId ? updated : x));
+    return updated;
   }
 }
 
