@@ -12,6 +12,20 @@ export function useCollections() {
   });
 }
 
+export function useCollection(collectionId: string) {
+  const qc = useQueryClient();
+  return useQuery({
+    queryKey: queryKeys.collections.detail(collectionId),
+    queryFn: () => getServices().collections.getById(collectionId),
+    enabled: Boolean(collectionId),
+    initialData: () => {
+      const all = qc.getQueryData<Collection[]>(queryKeys.collections.all);
+      return all?.find((c) => c.id === collectionId) ?? undefined;
+    },
+    ...mockQueryDefaults,
+  });
+}
+
 export function useCreateCollection() {
   const qc = useQueryClient();
   return useMutation({
@@ -71,6 +85,48 @@ export function useSavePaperToCollections() {
     },
     onSettled: () => {
       qc.invalidateQueries({ queryKey: queryKeys.collections.all });
+    },
+  });
+}
+
+export function useRemovePaperFromCollection() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ collectionId, paperId }: { collectionId: string; paperId: string }) =>
+      getServices().collections.removePaperFromCollection({ collectionId, paperId }),
+    onMutate: async ({ collectionId, paperId }) => {
+      await qc.cancelQueries({ queryKey: queryKeys.collections.all });
+      await qc.cancelQueries({ queryKey: queryKeys.collections.detail(collectionId) });
+
+      const previousAll = qc.getQueryData<Collection[]>(queryKeys.collections.all);
+      const previousDetail = qc.getQueryData<Collection | null>(queryKeys.collections.detail(collectionId));
+
+      const now = new Date().toISOString();
+
+      qc.setQueryData<Collection[]>(queryKeys.collections.all, (old) => {
+        if (!old) return old;
+        return old.map((c) => {
+          if (c.id !== collectionId) return c;
+          if (!c.paperIds.includes(paperId)) return c;
+          return { ...c, paperIds: c.paperIds.filter((id) => id !== paperId), updatedAt: now };
+        });
+      });
+
+      qc.setQueryData<Collection | null>(queryKeys.collections.detail(collectionId), (old) => {
+        if (!old) return old;
+        if (!old.paperIds.includes(paperId)) return old;
+        return { ...old, paperIds: old.paperIds.filter((id) => id !== paperId), updatedAt: now };
+      });
+
+      return { previousAll, previousDetail };
+    },
+    onError: (_err, vars, ctx) => {
+      if (ctx?.previousAll) qc.setQueryData(queryKeys.collections.all, ctx.previousAll);
+      if (ctx?.previousDetail !== undefined) qc.setQueryData(queryKeys.collections.detail(vars.collectionId), ctx.previousDetail);
+    },
+    onSettled: (_data, _err, vars) => {
+      qc.invalidateQueries({ queryKey: queryKeys.collections.all });
+      qc.invalidateQueries({ queryKey: queryKeys.collections.detail(vars.collectionId) });
     },
   });
 }

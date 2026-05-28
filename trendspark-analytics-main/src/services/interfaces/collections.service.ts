@@ -13,6 +13,11 @@ export type SavePaperToCollectionsInput = {
   collectionIds: string[];
 };
 
+export type RemovePaperFromCollectionInput = {
+  paperId: string;
+  collectionId: string;
+};
+
 export interface CollectionsService {
   list(): Promise<Collection[]>;
   getById(id: string): Promise<Collection | null>;
@@ -22,5 +27,8 @@ export interface CollectionsService {
 
   /** Adds a paper to one or more collections (idempotent per collection). */
   savePaperToCollections(input: SavePaperToCollectionsInput): Promise<Collection[]>;
+
+  /** Removes a paper from a single collection (idempotent). */
+  removePaperFromCollection(input: RemovePaperFromCollectionInput): Promise<Collection>;
 }
 

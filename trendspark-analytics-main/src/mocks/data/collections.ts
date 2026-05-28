@@ -1,5 +1,5 @@
 import type { Collection } from "@/types/domain";
-import { seededInt } from "@/mocks/deterministic";
+import { seededInt, hashSeed } from "@/mocks/deterministic";
 import { MOCK_PAPERS } from "@/mocks/data/papers";
 
 function isoNowMinus(minutesAgo: number): string {
@@ -24,7 +24,7 @@ export const MOCK_COLLECTIONS: Collection[] = BASE_NAMES.map((name, idx) => {
   const minutesAgo = seededInt(`${seed}:updated`, 10, 9 * 24 * 60);
 
   return {
-    id: `col_${idx + 1}`,
+    id: `col_${hashSeed(name)}`,
     name,
     paperIds,
     updatedAt: isoNowMinus(minutesAgo),

@@ -3,6 +3,7 @@ import type { Collection } from "@/types/domain";
 import type {
   CollectionsService,
   CreateCollectionInput,
+  RemovePaperFromCollectionInput,
   SavePaperToCollectionsInput,
   UpdateCollectionInput,
 } from "@/services/interfaces/collections.service";
@@ -30,6 +31,10 @@ export class HttpCollectionsService implements CollectionsService {
 
   savePaperToCollections(input: SavePaperToCollectionsInput) {
     return apiClient.post<Collection[]>("/collections/save", input);
+  }
+
+  removePaperFromCollection(input: RemovePaperFromCollectionInput) {
+    return apiClient.post<Collection>("/collections/remove", input);
   }
 }
 
