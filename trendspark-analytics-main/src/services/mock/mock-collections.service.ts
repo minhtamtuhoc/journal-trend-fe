@@ -1,4 +1,9 @@
-import type { CollectionsService, CreateCollectionInput, UpdateCollectionInput } from "@/services/interfaces/collections.service";
+import type {
+  CollectionsService,
+  CreateCollectionInput,
+  SavePaperToCollectionsInput,
+  UpdateCollectionInput,
+} from "@/services/interfaces/collections.service";
 import { MOCK_COLLECTIONS } from "@/mocks/data/collections";
 import type { Collection } from "@/types/domain";
 import { mockDelay } from "@/services/utils";
@@ -66,6 +71,24 @@ export class MockCollectionsService implements CollectionsService {
     if (!exists) throw new Error("Collection not found");
     db = db.filter((c) => c.id !== id);
     return { id };
+  }
+
+  async savePaperToCollections(input: SavePaperToCollectionsInput) {
+    await mockDelay(200);
+    const { paperId, collectionIds } = input;
+    if (!paperId) throw new Error("paperId is required");
+    if (!Array.isArray(collectionIds) || collectionIds.length === 0) return this.list();
+
+    const now = nowIso();
+    const targetSet = new Set(collectionIds);
+
+    db = db.map((c) => {
+      if (!targetSet.has(c.id)) return c;
+      if (c.paperIds.includes(paperId)) return c;
+      return { ...c, paperIds: [...c.paperIds, paperId], updatedAt: now };
+    });
+
+    return this.list();
   }
 }
 

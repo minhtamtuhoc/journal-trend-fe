@@ -26,6 +26,7 @@ import { useAnalyticsSnapshot } from "@/hooks/data/use-analytics";
 import { usePapers } from "@/hooks/data/use-papers";
 import { Download, ArrowUpRight, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
+import { SaveToCollectionButton } from "@/components/SaveToCollectionButton";
 
 export const Route = createFileRoute("/dashboard")({ component: DashboardPage });
 
@@ -173,14 +174,24 @@ function DashboardPage() {
         <Card title="Signal Feed" action={<span className="inline-flex items-center gap-1 text-[10px] font-mono text-success uppercase tracking-widest"><span className="size-1.5 rounded-full bg-success animate-pulse" /> LIVE</span>}>
           <div className="space-y-4">
             {papers.slice(0, 4).map((p) => (
-              <Link key={p.id} to="/papers/$id" params={{ id: p.id }} className="block group">
-                <div className="text-[10px] font-mono text-muted-foreground mb-1 flex items-center justify-between">
-                  <span>{p.journal}</span>
-                  <span className="flex items-center gap-1 text-success"><TrendingUp className="size-2.5" /> {p.trendScore.toFixed(1)}</span>
+              <div key={p.id} className="group rounded-lg hover:bg-secondary/40 transition-colors p-2 -m-2">
+                <div className="flex items-start justify-between gap-3">
+                  <Link to="/papers/$id" params={{ id: p.id }} className="block min-w-0 flex-1">
+                    <div className="text-[10px] font-mono text-muted-foreground mb-1 flex items-center justify-between">
+                      <span>{p.journal}</span>
+                      <span className="flex items-center gap-1 text-success"><TrendingUp className="size-2.5" /> {p.trendScore.toFixed(1)}</span>
+                    </div>
+                    <div className="text-xs font-medium leading-snug text-foreground group-hover:text-brand transition-colors">{p.title}</div>
+                    <div className="text-[10px] text-muted-foreground mt-1 font-mono truncate">DOI: {p.doi}</div>
+                  </Link>
+                  <div className="shrink-0 flex items-center gap-2 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                    <SaveToCollectionButton paperId={p.id} paperTitle={p.title} />
+                    <Link to="/papers/$id" params={{ id: p.id }} className="p-1.5 rounded-md border border-border hover:border-brand/40 hover:text-brand transition-colors">
+                      <ArrowUpRight className="size-3.5" />
+                    </Link>
+                  </div>
                 </div>
-                <div className="text-xs font-medium leading-snug text-foreground group-hover:text-brand transition-colors">{p.title}</div>
-                <div className="text-[10px] text-muted-foreground mt-1 font-mono truncate">DOI: {p.doi}</div>
-              </Link>
+              </div>
             ))}
           </div>
         </Card>

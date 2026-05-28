@@ -8,6 +8,7 @@ import { useMemo, useState } from "react";
 import { Search as SearchIcon, Download, SlidersHorizontal, ArrowUpRight } from "lucide-react";
 import { z } from "zod";
 import { toast } from "sonner";
+import { SaveToCollectionButton } from "@/components/SaveToCollectionButton";
 
 const searchSchema = z.object({ q: z.string().optional() });
 
@@ -165,6 +166,7 @@ function SearchPage() {
                       <div className="text-[10px] text-muted-foreground uppercase tracking-widest mt-1">{p.citations} cites</div>
                       <div className="text-[10px] text-muted-foreground uppercase tracking-widest">IF {p.impactFactor}</div>
                       <div className="flex gap-1 mt-3 justify-end">
+                        <SaveToCollectionButton paperId={p.id} paperTitle={p.title} />
                         <Link to="/papers/$id" params={{ id: p.id }} className="p-1.5 rounded-md border border-border hover:border-brand/40 hover:text-brand transition-colors">
                           <ArrowUpRight className="size-3.5" />
                         </Link>

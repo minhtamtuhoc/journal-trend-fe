@@ -1,6 +1,11 @@
 import { apiClient } from "@/api/client";
 import type { Collection } from "@/types/domain";
-import type { CollectionsService, CreateCollectionInput, UpdateCollectionInput } from "@/services/interfaces/collections.service";
+import type {
+  CollectionsService,
+  CreateCollectionInput,
+  SavePaperToCollectionsInput,
+  UpdateCollectionInput,
+} from "@/services/interfaces/collections.service";
 
 export class HttpCollectionsService implements CollectionsService {
   list() {
@@ -21,6 +26,10 @@ export class HttpCollectionsService implements CollectionsService {
 
   delete(id: string) {
     return apiClient.delete<{ id: string }>(`/collections/${id}`);
+  }
+
+  savePaperToCollections(input: SavePaperToCollectionsInput) {
+    return apiClient.post<Collection[]>("/collections/save", input);
   }
 }
 

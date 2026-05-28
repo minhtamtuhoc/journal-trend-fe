@@ -9,6 +9,7 @@ import { buildPaperCitationSeries } from "@/utils/paper-series";
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis } from "recharts";
 import { UserPlus, ArrowUpRight, ExternalLink, UserCheck } from "lucide-react";
 import { toast } from "sonner";
+import { SaveToCollectionButton } from "@/components/SaveToCollectionButton";
 
 export const Route = createFileRoute("/papers/$id")({
   component: PaperDetailPage,
@@ -41,6 +42,7 @@ function PaperDetailPage() {
         subtitle={`${paper.journal} · ${paper.year} · ${paper.source}`}
         action={
           <div className="flex gap-2">
+            <SaveToCollectionButton paperId={paper.id} paperTitle={paper.title} size="md" />
             <button
               onClick={() => {
                 const added = toggleAuthorFollow(mainAuthor);
@@ -120,7 +122,10 @@ function PaperDetailPage() {
                     <div className="text-sm font-medium text-foreground group-hover:text-brand transition-colors">{p.title}</div>
                     <div className="text-[10px] text-muted-foreground mt-1 font-mono">{p.journal} · {p.year}</div>
                   </div>
-                  <ArrowUpRight className="size-4 text-muted-foreground shrink-0" />
+                  <div className="flex items-center gap-2 shrink-0">
+                    <SaveToCollectionButton paperId={p.id} paperTitle={p.title} />
+                    <ArrowUpRight className="size-4 text-muted-foreground" />
+                  </div>
                 </Link>
               ))}
             </div>
