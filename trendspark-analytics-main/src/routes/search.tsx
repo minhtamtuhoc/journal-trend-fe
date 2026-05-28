@@ -5,7 +5,7 @@ import { usePapers } from "@/hooks/data/use-papers";
 import { useSavedItems } from "@/hooks/use-saved-items";
 import type { Paper } from "@/types/domain";
 import { useMemo, useState } from "react";
-import { Search as SearchIcon, Download, SlidersHorizontal, ArrowUpRight, BookmarkPlus, Bookmark } from "lucide-react";
+import { Search as SearchIcon, Download, SlidersHorizontal, ArrowUpRight } from "lucide-react";
 import { z } from "zod";
 import { toast } from "sonner";
 
@@ -27,7 +27,7 @@ function SearchPage() {
   const [category, setCategory] = useState("all");
   const [minCitations, setMinCitations] = useState(0);
 
-  const { isPaperBookmarked, togglePaperBookmark, isKeywordFollowed, toggleKeywordFollow } = useSavedItems();
+  const { isKeywordFollowed, toggleKeywordFollow } = useSavedItems();
 
   const results = useMemo(() => {
     let r: Paper[] = PAPERS;
@@ -118,7 +118,6 @@ function SearchPage() {
 
           <div className="space-y-3">
             {results.map((p) => {
-              const bookmarked = isPaperBookmarked(p.id);
               return (
                 <Card key={p.id} className="hover:border-brand/40 transition-colors">
                   <div className="flex items-start justify-between gap-4">
@@ -166,23 +165,6 @@ function SearchPage() {
                       <div className="text-[10px] text-muted-foreground uppercase tracking-widest mt-1">{p.citations} cites</div>
                       <div className="text-[10px] text-muted-foreground uppercase tracking-widest">IF {p.impactFactor}</div>
                       <div className="flex gap-1 mt-3 justify-end">
-                        <button
-                          onClick={() => {
-                            const added = togglePaperBookmark(p.id);
-                            if (added) {
-                              toast.success("Added to bookmarks");
-                            } else {
-                              toast.info("Removed from bookmarks");
-                            }
-                          }}
-                          className={`p-1.5 rounded-md border transition-all ${
-                            bookmarked
-                              ? "border-brand/50 bg-brand/15 text-brand hover:bg-brand/20"
-                              : "border-border hover:border-brand/40 hover:text-brand"
-                          }`}
-                        >
-                          {bookmarked ? <Bookmark className="size-3.5 fill-current" /> : <BookmarkPlus className="size-3.5" />}
-                        </button>
                         <Link to="/papers/$id" params={{ id: p.id }} className="p-1.5 rounded-md border border-border hover:border-brand/40 hover:text-brand transition-colors">
                           <ArrowUpRight className="size-3.5" />
                         </Link>

@@ -3,16 +3,6 @@ import { useState, useEffect } from "react";
 const EVENT_NAME = "helix-saved-items-changed";
 
 export function useSavedItems() {
-  const [bookmarkedPaperIds, setBookmarkedPaperIds] = useState<string[]>(() => {
-    if (typeof window === "undefined") return [];
-    try {
-      const data = localStorage.getItem("helix_bookmarks_papers");
-      return data ? JSON.parse(data) : [];
-    } catch {
-      return [];
-    }
-  });
-
   const [followedAuthors, setFollowedAuthors] = useState<string[]>(() => {
     if (typeof window === "undefined") return [];
     try {
@@ -36,7 +26,6 @@ export function useSavedItems() {
   useEffect(() => {
     const handleStorageChange = () => {
       try {
-        setBookmarkedPaperIds(JSON.parse(localStorage.getItem("helix_bookmarks_papers") || "[]"));
         setFollowedAuthors(JSON.parse(localStorage.getItem("helix_followed_authors") || "[]"));
         setFollowedKeywords(JSON.parse(localStorage.getItem("helix_followed_keywords") || "[]"));
       } catch (e) {
@@ -54,19 +43,6 @@ export function useSavedItems() {
 
   const notifyChange = () => {
     window.dispatchEvent(new Event(EVENT_NAME));
-  };
-
-  // Paper Bookmarking
-  const isPaperBookmarked = (id: string) => bookmarkedPaperIds.includes(id);
-
-  const togglePaperBookmark = (id: string) => {
-    const updated = bookmarkedPaperIds.includes(id)
-      ? bookmarkedPaperIds.filter((item) => item !== id)
-      : [...bookmarkedPaperIds, id];
-    localStorage.setItem("helix_bookmarks_papers", JSON.stringify(updated));
-    setBookmarkedPaperIds(updated);
-    notifyChange();
-    return !bookmarkedPaperIds.includes(id); // Returns true if added, false if removed
   };
 
   // Author Following
@@ -96,11 +72,8 @@ export function useSavedItems() {
   };
 
   return {
-    bookmarkedPaperIds,
     followedAuthors,
     followedKeywords,
-    isPaperBookmarked,
-    togglePaperBookmark,
     isAuthorFollowed,
     toggleAuthorFollow,
     isKeywordFollowed,

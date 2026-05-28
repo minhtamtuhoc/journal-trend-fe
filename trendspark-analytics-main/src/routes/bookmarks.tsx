@@ -2,35 +2,26 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppLayout, PageHeader } from "@/components/AppLayout";
 import { Card } from "@/components/Card";
 import { useAnalyticsSnapshot } from "@/hooks/data/use-analytics";
-import { usePapers } from "@/hooks/data/use-papers";
 import { useSavedItems } from "@/hooks/use-saved-items";
 import { useState } from "react";
-import { Bookmark, Download, Trash2, Users, Hash, Search, Flame, ArrowRight } from "lucide-react";
+import { Download, Trash2, Users, Hash, Flame, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/bookmarks")({ component: BookmarksPage });
 
 function BookmarksPage() {
-  const { data: papers = [] } = usePapers();
   const { data: analytics } = useAnalyticsSnapshot();
   const {
-    bookmarkedPaperIds,
     followedAuthors,
     followedKeywords,
-    togglePaperBookmark,
     toggleAuthorFollow,
     toggleKeywordFollow,
   } = useSavedItems();
 
   const TRENDING_AUTHORS = analytics.trendingAuthors;
   const TRENDING_KEYWORDS = analytics.trendingKeywords;
-  const PAPERS = papers;
-
-  const [tab, setTab] = useState<"papers" | "authors" | "keywords">("papers");
 
   // Filter based on actual followed states
-  const savedPapers = PAPERS.filter((p) => bookmarkedPaperIds.includes(p.id));
-  
   const savedAuthors = followedAuthors.map((name) => {
     const found = TRENDING_AUTHORS.find((a) => a.name.toLowerCase() === name.toLowerCase());
     return found || {
@@ -56,28 +47,14 @@ function BookmarksPage() {
   });
 
   const tabs = [
-    { id: "papers", label: "Papers", count: savedPapers.length },
     { id: "authors", label: "Authors", count: savedAuthors.length },
     { id: "keywords", label: "Keywords", count: savedKeywords.length },
   ] as const;
 
+  const [tab, setTab] = useState<(typeof tabs)[number]["id"]>("authors");
+
   const exportCsv = () => {
-    if (tab === "papers") {
-      if (savedPapers.length === 0) {
-        toast.error("No bookmarked papers to export");
-        return;
-      }
-      const header = "title,journal,year,doi";
-      const rows = savedPapers.map((p) => [p.title, p.journal, p.year, p.doi].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","));
-      const blob = new Blob([[header, ...rows].join("\n")], { type: "text/csv" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "bookmarked_papers.csv";
-      a.click();
-      URL.revokeObjectURL(url);
-      toast.success(`${savedPapers.length} bookmarked papers exported`);
-    } else if (tab === "authors") {
+    if (tab === "authors") {
       if (savedAuthors.length === 0) {
         toast.error("No followed authors to export");
         return;
@@ -113,8 +90,8 @@ function BookmarksPage() {
   return (
     <AppLayout>
       <PageHeader
-        title="Bookmarks"
-        subtitle="Your saved papers, followed authors, and followed keywords"
+        title="Follow Center"
+        subtitle="Your followed authors and followed keywords"
         action={
           <button onClick={exportCsv} className="inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-medium border border-border bg-surface/50 hover:bg-surface transition-colors cursor-pointer">
             <Download className="size-4" /> Export
@@ -129,42 +106,6 @@ function BookmarksPage() {
           </button>
         ))}
       </div>
-
-      {tab === "papers" && (
-        <div className="space-y-3">
-          {savedPapers.map((p) => (
-            <Card key={p.id} className="flex items-center justify-between gap-4 hover:border-brand/35 transition-colors">
-              <div className="flex-1 min-w-0">
-                <div className="text-[10px] font-mono text-muted-foreground uppercase mb-1">{p.journal} · {p.year}</div>
-                <Link to="/papers/$id" params={{ id: p.id }} className="text-sm font-semibold text-foreground hover:text-brand transition-colors">{p.title}</Link>
-              </div>
-              <button
-                onClick={() => {
-                  togglePaperBookmark(p.id);
-                  toast.info("Removed bookmark");
-                }}
-                className="p-2 rounded-md border border-border hover:border-destructive/40 hover:text-destructive transition-colors cursor-pointer"
-              >
-                <Trash2 className="size-3.5" />
-              </button>
-            </Card>
-          ))}
-          {savedPapers.length === 0 && (
-            <div className="text-center py-16 glass rounded-2xl border border-border max-w-md mx-auto">
-              <div className="size-12 rounded-full bg-brand/10 border border-brand/20 flex items-center justify-center text-brand mx-auto mb-4">
-                <Bookmark className="size-5" />
-              </div>
-              <h3 className="font-semibold text-sm text-foreground">No bookmarked papers</h3>
-              <p className="text-xs text-muted-foreground mt-1 max-w-xs mx-auto px-4">
-                Observe papers in the search explorer and click the bookmark icon to save them here.
-              </p>
-              <Link to="/search" className="mt-6 inline-flex items-center gap-1.5 h-9 px-4 rounded-lg text-xs font-semibold text-brand-foreground glow-brand" style={{ background: "var(--gradient-brand)" }}>
-                <Search className="size-3.5" /> Search Papers <ArrowRight className="size-3" />
-              </Link>
-            </div>
-          )}
-        </div>
-      )}
 
       {tab === "authors" && (
         <div>
