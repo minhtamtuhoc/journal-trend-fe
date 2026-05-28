@@ -7,8 +7,9 @@ import { useRelatedPapers } from "@/hooks/data/use-papers";
 import { useSavedItems } from "@/hooks/use-saved-items";
 import { buildPaperCitationSeries } from "@/utils/paper-series";
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis } from "recharts";
-import { Bookmark, UserPlus, ArrowUpRight, ExternalLink, UserCheck } from "lucide-react";
+import { UserPlus, ArrowUpRight, ExternalLink, UserCheck } from "lucide-react";
 import { toast } from "sonner";
+import { SaveToCollectionButton } from "@/components/SaveToCollectionButton";
 
 export const Route = createFileRoute("/papers/$id")({
   component: PaperDetailPage,
@@ -25,15 +26,12 @@ function PaperDetailPage() {
   const series = buildPaperCitationSeries(paper.id, paper.citations);
 
   const {
-    isPaperBookmarked,
-    togglePaperBookmark,
     isAuthorFollowed,
     toggleAuthorFollow,
     isKeywordFollowed,
     toggleKeywordFollow,
   } = useSavedItems();
 
-  const bookmarked = isPaperBookmarked(paper.id);
   const mainAuthor = paper.authors[0];
   const mainAuthorFollowed = isAuthorFollowed(mainAuthor);
 
@@ -44,23 +42,7 @@ function PaperDetailPage() {
         subtitle={`${paper.journal} · ${paper.year} · ${paper.source}`}
         action={
           <div className="flex gap-2">
-            <button
-              onClick={() => {
-                const added = togglePaperBookmark(paper.id);
-                if (added) {
-                  toast.success("Added to bookmarks");
-                } else {
-                  toast.info("Removed from bookmarks");
-                }
-              }}
-              className={`inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-medium border transition-colors ${
-                bookmarked
-                  ? "border-brand/40 bg-brand/15 text-brand"
-                  : "border-border bg-surface/50 hover:bg-surface"
-              }`}
-            >
-              <Bookmark className={`size-4 ${bookmarked ? "fill-current" : ""}`} /> {bookmarked ? "Bookmarked" : "Bookmark"}
-            </button>
+            <SaveToCollectionButton paperId={paper.id} paperTitle={paper.title} size="md" />
             <button
               onClick={() => {
                 const added = toggleAuthorFollow(mainAuthor);
@@ -140,7 +122,10 @@ function PaperDetailPage() {
                     <div className="text-sm font-medium text-foreground group-hover:text-brand transition-colors">{p.title}</div>
                     <div className="text-[10px] text-muted-foreground mt-1 font-mono">{p.journal} · {p.year}</div>
                   </div>
-                  <ArrowUpRight className="size-4 text-muted-foreground shrink-0" />
+                  <div className="flex items-center gap-2 shrink-0">
+                    <SaveToCollectionButton paperId={p.id} paperTitle={p.title} />
+                    <ArrowUpRight className="size-4 text-muted-foreground" />
+                  </div>
                 </Link>
               ))}
             </div>

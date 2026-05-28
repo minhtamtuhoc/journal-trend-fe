@@ -25,7 +25,7 @@ const tickerItems = [
 const features = [
   { icon: TrendingUp, title: "Trend Analytics", body: "Detect emerging research before it reaches the horizon." },
   { icon: Search, title: "Smart Search", body: "Filter across journals, authors, citations, impact factor & trend score." },
-  { icon: Bookmark, title: "Collections", body: "Bookmark papers, follow authors, keywords and journals." },
+  { icon: Bookmark, title: "Follow Center", body: "Follow authors and keywords to keep signals on your radar." },
   { icon: Bell, title: "Signal Alerts", body: "Gmail-style notifications when followed signals move." },
   { icon: BarChart3, title: "Live Dashboards", body: "Line, area, pie, radar, and heatmap visualizations." },
   { icon: ShieldCheck, title: "Verified Sources", body: "Synced from Scopus, CrossRef, and IEEE Xplore with DOI dedup." },
