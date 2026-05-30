@@ -15,7 +15,7 @@ export const MOCK_PAPERS: Paper[] = [
     doi: "10.1038/s41467-024-50112-3",
     abstract:
       "We demonstrate a scalable lipid-nanoparticle delivery system enabling efficient CRISPR-Cas9 editing in primary human T cells with minimal off-target effects, opening new pathways for adoptive cell therapy.",
-    source: "Scopus",
+    source: "OpenAlex",
   },
   {
     id: "p2",
@@ -31,7 +31,7 @@ export const MOCK_PAPERS: Paper[] = [
     doi: "10.1109/TNNLS.2024.3399127",
     abstract:
       "A novel quantized transformer family that runs sub-50ms inference on commodity micro-controllers while maintaining 92% of full-precision accuracy on multi-sensor fusion tasks.",
-    source: "IEEE Xplore",
+    source: "Semantic Scholar",
   },
   {
     id: "p3",
@@ -79,7 +79,7 @@ export const MOCK_PAPERS: Paper[] = [
     doi: "10.1038/s41560-024-01588-w",
     abstract:
       "Sulfide-based solid electrolytes paired with engineered lithium-metal anodes yield 1200 Wh/kg cells with >2000 stable cycles.",
-    source: "Scopus",
+    source: "OpenAlex",
   },
   {
     id: "p6",
@@ -95,7 +95,7 @@ export const MOCK_PAPERS: Paper[] = [
     doi: "10.1126/science.adn4421",
     abstract:
       "A reinforcement learning policy operating over folded conformations generates de novo binders for 14 previously intractable targets.",
-    source: "Scopus",
+    source: "OpenAlex",
   },
   {
     id: "p7",
@@ -127,6 +127,6 @@ export const MOCK_PAPERS: Paper[] = [
     doi: "10.1109/TVCG.2024.3411210",
     abstract:
       "Real-time NeRF reconstruction at 60fps from 8-camera arrays enables practical volumetric surgical replay and remote mentoring.",
-    source: "IEEE Xplore",
+    source: "Semantic Scholar",
   },
 ];

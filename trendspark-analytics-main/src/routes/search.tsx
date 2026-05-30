@@ -68,7 +68,7 @@ function SearchPage() {
     <AppLayout>
       <PageHeader
         title="Search Explorer"
-        subtitle="Smart search across Scopus, CrossRef, and IEEE Xplore"
+        subtitle="Search papers synced from OpenAlex, Crossref, and Semantic Scholar"
         action={
           <button onClick={exportCsv} className="inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-medium border border-border bg-surface/50 hover:bg-surface transition-colors">
             <Download className="size-4" /> Export CSV
@@ -131,7 +131,23 @@ function SearchPage() {
                       <Link to="/papers/$id" params={{ id: p.id }} className="text-base font-semibold text-foreground hover:text-brand transition-colors">
                         {p.title}
                       </Link>
-                      <div className="text-xs text-muted-foreground mt-1">{p.authors.join(", ")}</div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {p.authorRefs?.length
+                          ? p.authorRefs.map((ref, i) => (
+                              <span key={ref.id}>
+                                {i > 0 ? ", " : ""}
+                                <Link
+                                  to="/authors/$authorId"
+                                  params={{ authorId: ref.id }}
+                                  className="hover:text-brand"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  {ref.name}
+                                </Link>
+                              </span>
+                            ))
+                          : p.authors.join(", ")}
+                      </div>
                       <div className="flex flex-wrap gap-1.5 mt-3">
                         {p.keywords.map((k) => {
                           const followed = isKeywordFollowed(k);

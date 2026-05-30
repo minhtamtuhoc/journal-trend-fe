@@ -16,4 +16,8 @@ export class HttpPapersService implements PapersService {
       params: { category, excludeId, limit },
     });
   }
+
+  listByTopic(topicId: string, limit = 50) {
+    return apiClient.get<Paper[]>(`/topics/${topicId}/papers`, { params: { limit } });
+  }
 }

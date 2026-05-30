@@ -32,6 +32,43 @@ export const mockAnalyticsSnapshot: AnalyticsSnapshot = {
   heatmap: MOCK_HEATMAP,
   trendingKeywords: MOCK_TRENDING_KEYWORDS,
   trendingAuthors: MOCK_TRENDING_AUTHORS,
+  trendingTopics: MOCK_TRENDING_KEYWORDS.slice(0, 10).map((k, i) => ({
+    id: k.id,
+    name: k.term,
+    paperCount: k.count,
+    trendScore: k.trendScore,
+    rank: i + 1,
+  })),
+  highlights: {
+    topKeyword: {
+      id: MOCK_TRENDING_KEYWORDS[0]?.id ?? "1",
+      title: MOCK_TRENDING_KEYWORDS[0]?.term ?? "—",
+      subtitle: "Top trending keyword",
+      metric: MOCK_TRENDING_KEYWORDS[0]?.trendScore ?? 0,
+      metricLabel: "trend %",
+    },
+    topAuthor: {
+      id: MOCK_TRENDING_AUTHORS[0]?.id ?? "1",
+      title: MOCK_TRENDING_AUTHORS[0]?.name ?? "—",
+      subtitle: MOCK_TRENDING_AUTHORS[0]?.affiliation ?? "",
+      metric: MOCK_TRENDING_AUTHORS[0]?.citations ?? 0,
+      metricLabel: "citations",
+    },
+    topPaper: {
+      id: MOCK_PAPERS[0]?.id ?? "1",
+      title: MOCK_PAPERS[0]?.title ?? "—",
+      subtitle: MOCK_PAPERS[0]?.journal ?? "",
+      metric: MOCK_PAPERS[0]?.citations ?? 0,
+      metricLabel: "citations",
+    },
+    topFollowedTopic: {
+      id: MOCK_TRENDING_KEYWORDS[1]?.id ?? "2",
+      title: MOCK_TRENDING_KEYWORDS[1]?.term ?? "—",
+      subtitle: "Most followed topic",
+      metric: 12,
+      metricLabel: "followers",
+    },
+  },
 };
 
 export const mockAdminOverview: AdminOverview = {

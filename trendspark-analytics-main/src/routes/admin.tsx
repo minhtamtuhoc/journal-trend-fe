@@ -1,23 +1,39 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppLayout, PageHeader } from "@/components/AppLayout";
 import { Card } from "@/components/Card";
-import { useAdminOverview } from "@/hooks/data/use-admin";
+import { useAdminOverview, useAdminSources, useUpdateAdminSource } from "@/hooks/data/use-admin";
 import { useState } from "react";
 import { RefreshCw, CheckCircle2, XCircle, AlertTriangle, Activity } from "lucide-react";
 import { toast } from "sonner";
-import { useAuth } from "@/lib/auth";
+import { useAuth, isAdminUser } from "@/auth";
+import { useQueryClient } from "@tanstack/react-query";
+import { getServices, queryKeys } from "@/services";
+import { ApiError } from "@/api/errors";
 
 export const Route = createFileRoute("/admin")({ component: AdminPage });
 
 function AdminPage() {
-  const { user } = useAuth();
-  const { data: admin } = useAdminOverview();
-  //const { auditLogs: AUDIT_LOGS, pendingReview: PENDING_REVIEW } = admin;
-  const { auditLogs: AUDIT_LOGS = [], pendingReview: PENDING_REVIEW = [] } = admin ?? {};
-  const [syncing, setSyncing] = useState(false);
+const { user } = useAuth();
+
+const queryClient = useQueryClient();
+
+const {
+  data: admin,
+  isLoading: isLoadingAdmin,
+  isError: isAdminError,
+  refetch: refetchAdmin,
+} = useAdminOverview();
+
+const { data: sources = [] } = useAdminSources();
+const updateSource = useUpdateAdminSource();
+
+const AUDIT_LOGS = admin?.auditLogs ?? [];
+const PENDING_REVIEW = admin?.pendingReview ?? [];
+
+const [syncing, setSyncing] = useState(false);
 
   if (!user) return null;
-  if (user.role !== "Admin") {
+  if (!isAdminUser(user)) {
     return (
       <AppLayout>
         <Card>
@@ -33,19 +49,115 @@ function AdminPage() {
     );
   }
 
+  const invalidateAfterSync = () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.overview }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.papers.all }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.analytics.snapshot }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.collections.all }),
+    ]);
+
+  const pollSyncUntilDone = async () => {
+    const admin = getServices().admin;
+    for (let i = 0; i < 90; i++) {
+      await new Promise((r) => setTimeout(r, 4000));
+      const status = await admin.getSyncStatus();
+      if (status.status === "RUNNING") {
+        continue;
+      }
+      await invalidateAfterSync();
+      if (status.status === "SUCCESS") {
+        toast.success(status.message || `Đồng bộ xong · ${status.papersFetched} bài báo`);
+      } else {
+        toast.error(status.message || "Đồng bộ thất bại — xem Audit Logs");
+      }
+      return;
+    }
+    toast.warning("Sync vẫn đang chạy. Xem tiến độ trong Audit Logs.");
+    await invalidateAfterSync();
+  };
+
+  const resetStaleSync = async () => {
+    try {
+      const result = await getServices().admin.resetStaleSync();
+      await invalidateAfterSync();
+      toast.success(result.message || "Đã reset sync kẹt — bạn có thể chạy sync lại");
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.message : "Không reset được sync";
+      toast.error(msg);
+    }
+  };
+
   const runSync = async () => {
     setSyncing(true);
-    await new Promise((r) => setTimeout(r, 1200));
-    setSyncing(false);
-    toast.success("Manual sync complete · 12,482 records");
+    try {
+      const result = await getServices().admin.triggerSync();
+      if (result.status === "RUNNING") {
+        toast.info(result.message || "Đang đồng bộ metadata từ OpenAlex…");
+        await pollSyncUntilDone();
+      } else if (result.status === "FAILED") {
+        await invalidateAfterSync();
+        toast.error(result.message || "Đồng bộ thất bại — thử Reset sync kẹt rồi chạy lại");
+      } else {
+        await invalidateAfterSync();
+        if (result.status === "SUCCESS") {
+          toast.success(result.message || `Đồng bộ xong · ${result.papersFetched} bài báo`);
+        } else {
+          toast.info(result.message || "Trạng thái sync đã cập nhật");
+        }
+      }
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.message : "Đồng bộ thất bại";
+      toast.error(msg);
+    } finally {
+      setSyncing(false);
+    }
   };
+
+  if (isLoadingAdmin) {
+    return (
+      <AppLayout>
+        <div className="p-8 text-sm text-muted-foreground">Loading admin data…</div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>
+      {isAdminError && (
+        <div className="mb-4 rounded-lg border border-warning/40 bg-warning/10 px-4 py-3 text-sm flex items-center justify-between gap-4">
+          <span>Không tải được audit logs. Backend có đang chạy trên port 8080? Hãy đăng nhập lại bằng admin@helix.io.</span>
+          <button type="button" onClick={() => refetchAdmin()} className="text-xs font-semibold text-brand hover:underline shrink-0">
+            Thử lại
+          </button>
+        </div>
+      )}
       <PageHeader
         title="Admin Panel"
         subtitle="Synchronization, moderation, and system monitoring"
         action={
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={resetStaleSync}
+              disabled={syncing}
+              className="inline-flex items-center gap-2 h-9 px-3 rounded-lg text-sm font-medium border border-border hover:bg-secondary/50 disabled:opacity-60"
+            >
+              Reset sync kẹt
+            </button>
+            <button
+              type="button"
+              onClick={runSync}
+              disabled={syncing}
+              className="inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-semibold text-brand-foreground glow-brand disabled:opacity-60"
+              style={{ background: "var(--gradient-brand)" }}
+            >
+              <RefreshCw className={`size-4 ${syncing ? "animate-spin" : ""}`} /> {syncing ? "Syncing..." : "Run Manual Sync"}
+            </button>
+          </div>
+
           <button
             onClick={runSync}
             disabled={syncing}
@@ -55,6 +167,7 @@ function AdminPage() {
             <RefreshCw className={`size-4 ${syncing ? "animate-spin" : ""}`} />{" "}
             {syncing ? "Syncing..." : "Run Manual Sync"}
           </button>
+
         }
       />
 
@@ -81,66 +194,95 @@ function AdminPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         <Card className="lg:col-span-2" title="Pending Review">
-          <div className="space-y-3">
-            {PENDING_REVIEW.map((p) => (
-              <div
-                key={p.id}
-                className="flex items-start justify-between gap-4 p-3 rounded-lg border border-border bg-secondary/30"
-              >
-                <div className="min-w-0">
-                  <div className="text-[10px] font-mono text-muted-foreground uppercase mb-1 flex items-center gap-2">
-                    <span className="px-2 py-0.5 rounded bg-brand/10 text-brand">{p.source}</span>
-                    {p.journal}
-                    {p.status === "flagged" && (
-                      <span className="text-warning flex items-center gap-1">
-                        <AlertTriangle className="size-3" /> Flagged
-                      </span>
-                    )}
+
+          {PENDING_REVIEW.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Không có bài chờ duyệt. Chạy <strong>Manual Sync</strong> để nạp bài từ OpenAlex.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {PENDING_REVIEW.map((p) => (
+                <div key={p.id} className="flex items-start justify-between gap-4 p-3 rounded-lg border border-border bg-secondary/30">
+                  <Link to="/papers/$id" params={{ id: p.id }} className="min-w-0 flex-1 hover:opacity-90">
+                    <div className="text-[10px] font-mono text-muted-foreground uppercase mb-1 flex flex-wrap items-center gap-2">
+                      <span className="px-2 py-0.5 rounded bg-brand/10 text-brand">{p.source}</span>
+                      <span>{p.journal}</span>
+                      {p.status === "flagged" && (
+                        <span className="text-warning flex items-center gap-1">
+                          <AlertTriangle className="size-3" /> Thiếu metadata
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-sm font-semibold text-foreground">{p.title}</div>
+                    <div className="text-xs text-muted-foreground mt-1">{(p.authors ?? []).join(", ") || "—"}</div>
+                    {p.doi ? (
+                      <div className="text-[10px] font-mono text-muted-foreground mt-1">DOI: {p.doi}</div>
+                    ) : null}
+                  </Link>
+                  <div className="flex gap-1 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => toast.success("Đã duyệt (demo)")}
+                      className="p-1.5 rounded-md border border-border hover:border-success/40 hover:text-success transition-colors"
+                    >
+                      <CheckCircle2 className="size-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => toast.info("Đã ẩn (demo)")}
+                      className="p-1.5 rounded-md border border-border hover:border-destructive/40 hover:text-destructive transition-colors"
+                    >
+                      <XCircle className="size-3.5" />
+                    </button>
                   </div>
-                  <div className="text-sm font-semibold text-foreground">{p.title}</div>
-                  <div className="text-[10px] font-mono text-muted-foreground mt-1">
-                    DOI: {p.doi}
-                  </div>
+
                 </div>
-                <div className="flex gap-1 shrink-0">
-                  <button
-                    onClick={() => toast.success("Approved")}
-                    className="p-1.5 rounded-md border border-border hover:border-success/40 hover:text-success transition-colors"
-                  >
-                    <CheckCircle2 className="size-3.5" />
-                  </button>
-                  <button
-                    onClick={() => toast.success("Rejected")}
-                    className="p-1.5 rounded-md border border-border hover:border-destructive/40 hover:text-destructive transition-colors"
-                  >
-                    <XCircle className="size-3.5" />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </Card>
 
-        <Card title="API Status">
-          <div className="space-y-3">
-            {[
-              ["Scopus", "ok"],
-              ["CrossRef", "ok"],
-              ["IEEE Xplore", "warn"],
-            ].map(([src, st]) => (
-              <div key={src} className="flex items-center justify-between text-sm">
-                <span>{src}</span>
-                <span
-                  className={`flex items-center gap-2 text-xs font-mono ${st === "ok" ? "text-success" : "text-warning"}`}
-                >
-                  <span
-                    className={`size-1.5 rounded-full ${st === "ok" ? "bg-success" : "bg-warning"} animate-pulse`}
-                  />
-                  {st === "ok" ? "Online" : "Degraded"}
-                </span>
-              </div>
-            ))}
-          </div>
+        <Card title="Metadata APIs (OpenAlex · Crossref · S2)">
+          {sources.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Đang tải cấu hình nguồn…</p>
+          ) : (
+            <div className="space-y-4">
+              {sources.map((src) => (
+                <div key={src.name} className="flex items-start justify-between gap-3 text-sm border-b border-border/60 pb-3 last:border-0 last:pb-0">
+                  <div className="min-w-0">
+                    <div className="font-medium text-foreground">{src.name}</div>
+                    <div className="text-[10px] font-mono text-muted-foreground truncate">{src.baseUrl}</div>
+                    <div className="text-[10px] text-muted-foreground mt-1">
+                      Cron: {src.syncSchedule ?? "—"}
+                      {src.successRate != null ? ` · ${src.successRate.toFixed(1)}% OK` : ""}
+                    </div>
+                  </div>
+                  <label className="flex items-center gap-2 shrink-0 cursor-pointer">
+                    <span className="text-[10px] font-mono text-muted-foreground">{src.enabled ? "ON" : "OFF"}</span>
+                    <input
+                      type="checkbox"
+                      checked={src.enabled}
+                      disabled={updateSource.isPending}
+                      onChange={(e) => {
+                        updateSource.mutate(
+                          { name: src.name, enabled: e.target.checked },
+                          {
+                            onSuccess: () => toast.success(`${src.name}: ${e.target.checked ? "bật" : "tắt"}`),
+                            onError: (err) => {
+                              const msg = err instanceof ApiError ? err.message : "Không cập nhật được nguồn";
+                              toast.error(msg);
+                            },
+                          },
+                        );
+                      }}
+                      className="size-4 accent-[var(--brand)]"
+                    />
+                  </label>
+                </div>
+              ))}
+            </div>
+          )}
+
         </Card>
       </div>
 
