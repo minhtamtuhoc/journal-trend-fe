@@ -1,8 +1,8 @@
 import js from "@eslint/js";
-import prettier from "eslint-config-prettier"; // Import thư viện này
+import eslintConfigPrettier from "eslint-config-prettier";
+import globals from "globals";
 import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
-import globals from "globals";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
@@ -11,7 +11,7 @@ export default tseslint.config(
     extends: [
       js.configs.recommended,
       ...tseslint.configs.recommended,
-      prettier, // <--- THÊM DÒNG NÀY VÀO CUỐI MẢNG EXTENDS
+      eslintConfigPrettier,
     ],
     files: ["**/*.{ts,tsx}"],
     languageOptions: {
@@ -24,8 +24,26 @@ export default tseslint.config(
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
-      "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
-      // Các rule tùy chỉnh của bạn ở đây
+
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "server-only",
+              message:
+                "TanStack Start does not use the Next.js `server-only` package.",
+            },
+          ],
+        },
+      ],
+
+      "react-refresh/only-export-components": [
+        "warn",
+        { allowConstantExport: true },
+      ],
+
+      "@typescript-eslint/no-unused-vars": "off",
     },
   },
 );

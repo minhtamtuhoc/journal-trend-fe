@@ -13,14 +13,24 @@ import { ApiError } from "@/api/errors";
 export const Route = createFileRoute("/admin")({ component: AdminPage });
 
 function AdminPage() {
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
-  const { data: admin, isLoading: isLoadingAdmin, isError: isAdminError, refetch: refetchAdmin } = useAdminOverview();
-  const { data: sources = [] } = useAdminSources();
-  const updateSource = useUpdateAdminSource();
-  const AUDIT_LOGS = admin?.auditLogs ?? [];
-  const PENDING_REVIEW = admin?.pendingReview ?? [];
-  const [syncing, setSyncing] = useState(false);
+const { user } = useAuth();
+
+const queryClient = useQueryClient();
+
+const {
+  data: admin,
+  isLoading: isLoadingAdmin,
+  isError: isAdminError,
+  refetch: refetchAdmin,
+} = useAdminOverview();
+
+const { data: sources = [] } = useAdminSources();
+const updateSource = useUpdateAdminSource();
+
+const AUDIT_LOGS = admin?.auditLogs ?? [];
+const PENDING_REVIEW = admin?.pendingReview ?? [];
+
+const [syncing, setSyncing] = useState(false);
 
   if (!user) return null;
   if (!isAdminUser(user)) {
@@ -30,7 +40,9 @@ function AdminPage() {
           <div className="text-center py-12">
             <AlertTriangle className="size-8 mx-auto text-warning mb-2" />
             <h2 className="font-semibold text-lg">Admin access required</h2>
-            <p className="text-muted-foreground text-sm mt-1">Sign in with admin@helix.io to view this page.</p>
+            <p className="text-muted-foreground text-sm mt-1">
+              Sign in with admin@helix.io to view this page.
+            </p>
           </div>
         </Card>
       </AppLayout>
@@ -125,6 +137,7 @@ function AdminPage() {
         title="Admin Panel"
         subtitle="Synchronization, moderation, and system monitoring"
         action={
+
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
@@ -144,6 +157,17 @@ function AdminPage() {
               <RefreshCw className={`size-4 ${syncing ? "animate-spin" : ""}`} /> {syncing ? "Syncing..." : "Run Manual Sync"}
             </button>
           </div>
+
+          <button
+            onClick={runSync}
+            disabled={syncing}
+            className="inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-semibold text-brand-foreground glow-brand disabled:opacity-60"
+            style={{ background: "var(--gradient-brand)" }}
+          >
+            <RefreshCw className={`size-4 ${syncing ? "animate-spin" : ""}`} />{" "}
+            {syncing ? "Syncing..." : "Run Manual Sync"}
+          </button>
+
         }
       />
 
@@ -155,10 +179,14 @@ function AdminPage() {
           ["Cron Failures (7d)", "1", "warn"],
         ].map(([l, v, s]) => (
           <div key={l} className="glass rounded-2xl p-5">
-            <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">{l}</div>
+            <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">
+              {l}
+            </div>
             <div className="flex items-end justify-between">
               <span className="text-2xl font-bold font-mono">{v}</span>
-              <span className={`size-2 rounded-full ${s === "ok" ? "bg-success" : "bg-warning"} animate-pulse`} />
+              <span
+                className={`size-2 rounded-full ${s === "ok" ? "bg-success" : "bg-warning"} animate-pulse`}
+              />
             </div>
           </div>
         ))}
@@ -166,6 +194,7 @@ function AdminPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         <Card className="lg:col-span-2" title="Pending Review">
+
           {PENDING_REVIEW.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               Không có bài chờ duyệt. Chạy <strong>Manual Sync</strong> để nạp bài từ OpenAlex.
@@ -206,6 +235,7 @@ function AdminPage() {
                       <XCircle className="size-3.5" />
                     </button>
                   </div>
+
                 </div>
               ))}
             </div>
@@ -252,16 +282,30 @@ function AdminPage() {
               ))}
             </div>
           )}
+
         </Card>
       </div>
 
-      <Card title="Audit Logs" action={<span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest flex items-center gap-1"><Activity className="size-3" /> LIVE</span>}>
+      <Card
+        title="Audit Logs"
+        action={
+          <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest flex items-center gap-1">
+            <Activity className="size-3" /> LIVE
+          </span>
+        }
+      >
         <div className="divide-y divide-border -mx-6">
           {AUDIT_LOGS.map((l) => (
             <div key={l.id} className="px-6 py-3 flex items-center gap-4 text-sm">
-              <span className={`size-1.5 rounded-full ${l.status === "ok" ? "bg-success" : "bg-warning"}`} />
-              <span className="font-mono text-[11px] text-muted-foreground w-24 shrink-0">{l.time}</span>
-              <span className="font-mono text-[11px] text-brand w-40 shrink-0 truncate">{l.actor}</span>
+              <span
+                className={`size-1.5 rounded-full ${l.status === "ok" ? "bg-success" : "bg-warning"}`}
+              />
+              <span className="font-mono text-[11px] text-muted-foreground w-24 shrink-0">
+                {l.time}
+              </span>
+              <span className="font-mono text-[11px] text-brand w-40 shrink-0 truncate">
+                {l.actor}
+              </span>
               <span className="flex-1 text-foreground truncate">{l.action}</span>
               <span className="text-xs text-muted-foreground truncate">{l.target}</span>
             </div>
