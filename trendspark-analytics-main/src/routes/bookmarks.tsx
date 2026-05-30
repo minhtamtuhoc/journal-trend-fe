@@ -4,13 +4,19 @@ import { Card } from "@/components/Card";
 import { useAnalyticsSnapshot } from "@/hooks/data/use-analytics";
 import { useSavedItems } from "@/hooks/use-saved-items";
 import { useState } from "react";
-import { Download, Trash2, Users, Hash, Flame, ArrowRight } from "lucide-react";
+import { Download, Trash2, Users, Hash, Flame, ArrowRight, BookOpen } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/auth";
+import { useFollowedJournals, useUnfollowJournal } from "@/hooks/data/use-follows";
+import { ApiError } from "@/api/errors";
 
 export const Route = createFileRoute("/bookmarks")({ component: BookmarksPage });
 
 function BookmarksPage() {
+  const { user } = useAuth();
   const { data: analytics } = useAnalyticsSnapshot();
+  const { data: followedJournals = [], isLoading: loadingJournals } = useFollowedJournals();
+  const unfollowJournal = useUnfollowJournal();
   const {
     followedAuthors,
     followedKeywords,
@@ -49,6 +55,7 @@ function BookmarksPage() {
   const tabs = [
     { id: "authors", label: "Authors", count: savedAuthors.length },
     { id: "keywords", label: "Keywords", count: savedKeywords.length },
+    { id: "journals", label: "Journals", count: followedJournals.length },
   ] as const;
 
   const [tab, setTab] = useState<(typeof tabs)[number]["id"]>("authors");
@@ -69,7 +76,7 @@ function BookmarksPage() {
       a.click();
       URL.revokeObjectURL(url);
       toast.success(`${savedAuthors.length} followed authors exported`);
-    } else {
+    } else if (tab === "keywords") {
       if (savedKeywords.length === 0) {
         toast.error("No followed keywords to export");
         return;
@@ -84,6 +91,23 @@ function BookmarksPage() {
       a.click();
       URL.revokeObjectURL(url);
       toast.success(`${savedKeywords.length} followed keywords exported`);
+    } else if (tab === "journals") {
+      if (followedJournals.length === 0) {
+        toast.error("No followed journals to export");
+        return;
+      }
+      const header = "name,publisher,issn,domain";
+      const rows = followedJournals.map((j) =>
+        [j.name, j.publisher ?? "", j.issn ?? "", j.domain ?? ""].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","),
+      );
+      const blob = new Blob([[header, ...rows].join("\n")], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "followed_journals.csv";
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success(`${followedJournals.length} followed journals exported`);
     }
   };
 
@@ -91,7 +115,7 @@ function BookmarksPage() {
     <AppLayout>
       <PageHeader
         title="Follow Center"
-        subtitle="Your followed authors and followed keywords"
+        subtitle="Authors & keywords (local) · Journals (synced with backend when signed in)"
         action={
           <button onClick={exportCsv} className="inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-medium border border-border bg-surface/50 hover:bg-surface transition-colors cursor-pointer">
             <Download className="size-4" /> Export
@@ -151,6 +175,63 @@ function BookmarksPage() {
               <Link to="/trends" className="mt-6 inline-flex items-center gap-1.5 h-9 px-4 rounded-lg text-xs font-semibold text-brand-foreground glow-brand" style={{ background: "var(--gradient-brand)" }}>
                 <Flame className="size-3.5" /> View Trending Authors <ArrowRight className="size-3" />
               </Link>
+            </div>
+          )}
+        </div>
+      )}
+
+      {tab === "journals" && (
+        <div>
+          {!user ? (
+            <div className="text-center py-16 glass rounded-2xl border border-border max-w-md mx-auto">
+              <p className="text-sm text-muted-foreground px-4">Đăng nhập để theo dõi journal và nhận thông báo bài mới sau sync.</p>
+              <Link to="/login" className="mt-4 inline-block text-sm text-brand hover:underline">
+                Sign in
+              </Link>
+            </div>
+          ) : loadingJournals ? (
+            <p className="text-sm text-muted-foreground">Loading journals…</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {followedJournals.map((j) => (
+                <Card key={j.id} className="flex items-center justify-between hover:border-brand/35 transition-colors group">
+                  <div className="min-w-0">
+                    <div className="font-semibold text-sm flex items-center gap-1.5 text-foreground">
+                      <BookOpen className="size-3.5 text-brand shrink-0" /> {j.name}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground mt-1 truncate">
+                      {[j.publisher, j.domain].filter(Boolean).join(" · ") || "Academic journal"}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      unfollowJournal.mutate(j.id, {
+                        onSuccess: () => toast.info(`Unfollowed journal: ${j.name}`),
+                        onError: (err) => {
+                          const msg = err instanceof ApiError ? err.message : "Unfollow failed";
+                          toast.error(msg);
+                        },
+                      });
+                    }}
+                    className="p-1.5 rounded-md border border-border hover:border-destructive/40 hover:text-destructive transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 cursor-pointer shrink-0"
+                    title="Unfollow journal"
+                  >
+                    <Trash2 className="size-3" />
+                  </button>
+                </Card>
+              ))}
+            </div>
+          )}
+          {user && !loadingJournals && followedJournals.length === 0 && (
+            <div className="text-center py-16 glass rounded-2xl border border-border max-w-md mx-auto">
+              <div className="size-12 rounded-full bg-brand/10 border border-brand/20 flex items-center justify-center text-brand mx-auto mb-4">
+                <BookOpen className="size-5" />
+              </div>
+              <h3 className="font-semibold text-sm text-foreground">No followed journals</h3>
+              <p className="text-xs text-muted-foreground mt-1 max-w-xs mx-auto px-4">
+                Mở chi tiết bài báo và bấm <strong>Follow journal</strong> để nhận thông báo khi sync có bài mới.
+              </p>
             </div>
           )}
         </div>

@@ -5,4 +5,5 @@ export interface AuthService {
   register(credentials: RegisterCredentials): Promise<AuthSession>;
   logout(): Promise<void>;
   getSession(): Promise<AuthSession | null>;
+  updateProfile(fullName: string): Promise<AuthSession>;
 }

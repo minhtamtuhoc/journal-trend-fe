@@ -1,3 +1,4 @@
+import type { ApiSource } from "@/types/brief";
 import type { AuditLogEntry, PendingReviewPaper } from "@/types/domain";
 
 export type AdminOverview = {
@@ -5,6 +6,17 @@ export type AdminOverview = {
   pendingReview: PendingReviewPaper[];
 };
 
+export type AdminSyncResult = {
+  papersFetched: number;
+  status: string;
+  message: string;
+};
+
 export interface AdminService {
   getOverview(): Promise<AdminOverview>;
+  triggerSync(): Promise<AdminSyncResult>;
+  getSyncStatus(): Promise<AdminSyncResult>;
+  resetStaleSync(): Promise<AdminSyncResult>;
+  listSources(): Promise<ApiSource[]>;
+  updateSource(name: string, body: { enabled?: boolean; syncSchedule?: string }): Promise<ApiSource>;
 }

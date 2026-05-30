@@ -5,12 +5,26 @@ import { authStorage } from "@/auth/storage";
 type RequestOptions = Omit<RequestInit, "body"> & {
   body?: unknown;
   params?: Record<string, string | number | boolean | undefined>;
+  timeoutMs?: number;
 };
+
+const DEFAULT_TIMEOUT_MS = 15_000;
+
+function isPublicAuthPath(path: string): boolean {
+  const normalized = path.startsWith("/") ? path : `/${path}`;
+  return normalized === "/auth/login" || normalized === "/auth/register";
+}
 
 function buildUrl(path: string, params?: RequestOptions["params"]): string {
   const base = apiConfig.baseUrl.replace(/\/$/, "");
   const normalized = path.startsWith("/") ? path : `/${path}`;
-  const url = new URL(`${base}${normalized}`, typeof window !== "undefined" ? window.location.origin : "http://localhost");
+  const isAbsoluteBase = /^https?:\/\//i.test(base);
+  const url = isAbsoluteBase
+    ? new URL(`${base}${normalized}`)
+    : new URL(
+        `${base}${normalized}`,
+        typeof window !== "undefined" ? window.location.origin : "http://localhost",
+      );
 
   if (params) {
     for (const [key, value] of Object.entries(params)) {
@@ -18,29 +32,48 @@ function buildUrl(path: string, params?: RequestOptions["params"]): string {
     }
   }
 
-  return url.pathname + url.search;
+  // TanStack Start dev server intercepts /api before Vite proxy — use absolute base in .env.
+  return isAbsoluteBase ? url.toString() : url.pathname + url.search;
 }
 
 export class ApiClient {
   constructor(private readonly baseUrl = apiConfig.baseUrl) {}
 
   private async request<T>(path: string, options: RequestOptions = {}): Promise<T> {
-    const { body, params, headers, ...init } = options;
+    const { body, params, headers, timeoutMs = DEFAULT_TIMEOUT_MS, ...init } = options;
     const token = authStorage.getAccessToken();
+    const sendAuth = Boolean(token) && !isPublicAuthPath(path);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
-    const res = await fetch(buildUrl(path, params), {
-      ...init,
-      headers: {
-        "Content-Type": "application/json",
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...headers,
-      },
-      body: body !== undefined ? JSON.stringify(body) : undefined,
-    });
+    try {
+      const res = await fetch(buildUrl(path, params), {
+        ...init,
+        signal: controller.signal,
+        headers: {
+          "Content-Type": "application/json",
+          ...(sendAuth ? { Authorization: `Bearer ${token}` } : {}),
+          ...headers,
+        },
+        body: body !== undefined ? JSON.stringify(body) : undefined,
+      });
 
-    if (!res.ok) throw await ApiError.fromResponse(res);
-    if (res.status === 204) return undefined as T;
-    return res.json() as Promise<T>;
+      if (!res.ok) {
+        if ((res.status === 401 || res.status === 403) && !isPublicAuthPath(path)) {
+          authStorage.setSession(null);
+        }
+        throw await ApiError.fromResponse(res);
+      }
+      if (res.status === 204) return undefined as T;
+      return res.json() as Promise<T>;
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        throw new ApiError("Request timed out. Backend có đang chạy trên port 8080 không?", 0);
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 
   get<T>(path: string, options?: Omit<RequestOptions, "body" | "method">) {
