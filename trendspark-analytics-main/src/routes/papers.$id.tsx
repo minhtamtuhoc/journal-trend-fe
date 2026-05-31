@@ -1,39 +1,57 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { AppLayout, PageHeader } from "@/components/AppLayout";
 import { Card } from "@/components/Card";
-import type { Paper } from "@/types/domain";
-import { getServices } from "@/services";
-import { useRelatedPapers } from "@/hooks/data/use-papers";
+import { usePaper, useRelatedPapers } from "@/hooks/data/use-papers";
 import { useSavedItems } from "@/hooks/use-saved-items";
 import { buildPaperCitationSeries } from "@/utils/paper-series";
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis } from "recharts";
-import { UserPlus, ArrowUpRight, ExternalLink, UserCheck } from "lucide-react";
+import { UserPlus, ArrowUpRight, ExternalLink, UserCheck, BookMarked } from "lucide-react";
 import { toast } from "sonner";
 import { SaveToCollectionButton } from "@/components/SaveToCollectionButton";
+import { useAuth } from "@/auth";
+import { useFollowedJournals, useFollowJournal, useUnfollowJournal } from "@/hooks/data/use-follows";
+import { ApiError } from "@/api/errors";
 
 export const Route = createFileRoute("/papers/$id")({
   component: PaperDetailPage,
-  loader: async ({ params }): Promise<{ paper: Paper }> => {
-    const paper = await getServices().papers.getById(params.id);
-    if (!paper) throw notFound();
-    return { paper };
-  },
 });
 
 function PaperDetailPage() {
-  const { paper } = Route.useLoaderData();
-  const { data: related = [] } = useRelatedPapers(paper.id, paper.category);
-  const series = buildPaperCitationSeries(paper.id, paper.citations);
+  const { id } = Route.useParams();
+  const { data: paper, isLoading, isError } = usePaper(id);
+  const category = paper?.category ?? "General";
+  const { data: related = [] } = useRelatedPapers(id, category);
 
+  const { user } = useAuth();
   const {
     isAuthorFollowed,
     toggleAuthorFollow,
     isKeywordFollowed,
     toggleKeywordFollow,
   } = useSavedItems();
+  const { data: followedJournals = [] } = useFollowedJournals();
+  const followJournal = useFollowJournal();
+  const unfollowJournal = useUnfollowJournal();
 
-  const mainAuthor = paper.authors[0];
-  const mainAuthorFollowed = isAuthorFollowed(mainAuthor);
+  if (isLoading) {
+    return (
+      <AppLayout>
+        <div className="p-8 text-sm text-muted-foreground">Loading paper…</div>
+      </AppLayout>
+    );
+  }
+
+  if (isError || !paper) throw notFound();
+
+  const authors = paper.authors?.length ? paper.authors : ["Unknown author"];
+  const keywords = paper.keywords ?? [];
+  const series = buildPaperCitationSeries(paper.id, paper.citations ?? 0);
+  const primaryAuthorRef = paper.authorRefs?.[0];
+  const mainAuthorName = primaryAuthorRef?.name ?? authors[0];
+  const mainAuthorId = primaryAuthorRef?.id ?? null;
+  const mainAuthorFollowed = isAuthorFollowed(mainAuthorName);
+  const journalId = paper?.journalId ?? null;
+  const journalFollowed = journalId ? followedJournals.some((j) => j.id === journalId) : false;
 
   return (
     <AppLayout>
@@ -43,13 +61,36 @@ function PaperDetailPage() {
         action={
           <div className="flex gap-2">
             <SaveToCollectionButton paperId={paper.id} paperTitle={paper.title} size="md" />
+            {user && journalId ? (
+              <button
+                type="button"
+                disabled={followJournal.isPending || unfollowJournal.isPending}
+                onClick={() => {
+                  const mutate = journalFollowed ? unfollowJournal : followJournal;
+                  mutate.mutate(journalId, {
+                    onSuccess: () =>
+                      toast.success(journalFollowed ? `Đã bỏ theo dõi journal: ${paper.journal}` : `Đang theo dõi journal: ${paper.journal}`),
+                    onError: (err) => {
+                      const msg = err instanceof ApiError ? err.message : "Không cập nhật follow journal";
+                      toast.error(msg);
+                    },
+                  });
+                }}
+                className={`inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-semibold border transition-all ${
+                  journalFollowed ? "bg-brand/10 border-brand/45 text-brand" : "border-border hover:border-brand/40"
+                }`}
+              >
+                <BookMarked className="size-4" />
+                {journalFollowed ? "Following journal" : "Follow journal"}
+              </button>
+            ) : null}
             <button
               onClick={() => {
-                const added = toggleAuthorFollow(mainAuthor);
+                const added = toggleAuthorFollow({ id: mainAuthorId, name: mainAuthorName });
                 if (added) {
-                  toast.success(`Following ${mainAuthor}`);
+                  toast.success(`Following ${mainAuthorName}`);
                 } else {
-                  toast.info(`Unfollowed ${mainAuthor}`);
+                  toast.info(`Unfollowed ${mainAuthorName}`);
                 }
               }}
               className={`inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-semibold transition-all ${
@@ -69,9 +110,9 @@ function PaperDetailPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
           <Card title="Abstract">
-            <p className="text-sm text-muted-foreground leading-relaxed">{paper.abstract}</p>
+            <p className="text-sm text-muted-foreground leading-relaxed">{paper.abstract || "No abstract available."}</p>
             <div className="mt-6 flex flex-wrap gap-2">
-              {paper.keywords.map((k: string) => {
+              {keywords.map((k: string) => {
                 const followed = isKeywordFollowed(k);
                 return (
                   <button
@@ -135,26 +176,38 @@ function PaperDetailPage() {
         <div className="space-y-6">
           <Card title="Metrics">
             <div className="grid grid-cols-2 gap-4">
-              <Metric label="Trend Score" value={`+${paper.trendScore.toFixed(1)}%`} accent />
-              <Metric label="Citations" value={paper.citations.toLocaleString()} />
-              <Metric label="Impact Factor" value={paper.impactFactor.toString()} />
+              <Metric label="Trend Score" value={`+${(paper.trendScore ?? 0).toFixed(1)}%`} accent />
+              <Metric label="Citations" value={(paper.citations ?? 0).toLocaleString()} />
+              <Metric label="Impact Factor" value={(paper.impactFactor ?? 0).toString()} />
               <Metric label="Year" value={paper.year.toString()} />
             </div>
           </Card>
 
           <Card title="Authors">
             <div className="space-y-3">
-              {paper.authors.map((a: string) => {
+              {(paper.authorRefs?.length
+                ? paper.authorRefs.map((ref) => ({ id: ref.id, name: ref.name }))
+                : paper.authors.map((name) => ({ id: null as string | null, name }))
+              ).map((author) => {
+                const a = author.name;
                 const followed = isAuthorFollowed(a);
                 return (
-                  <div key={a} className="flex items-center gap-3">
+                  <div key={author.id ?? a} className="flex items-center gap-3">
                     <div className="size-8 rounded-full flex items-center justify-center text-[10px] font-bold text-brand-foreground" style={{ background: "var(--gradient-brand)" }}>
                       {a.split(",")[0].slice(0, 2).toUpperCase()}
                     </div>
-                    <div className="flex-1 text-sm text-foreground">{a}</div>
+                    <div className="flex-1 text-sm text-foreground">
+                      {author.id ? (
+                        <Link to="/authors/$authorId" params={{ authorId: author.id }} className="hover:text-brand font-medium">
+                          {a}
+                        </Link>
+                      ) : (
+                        a
+                      )}
+                    </div>
                     <button
                       onClick={() => {
-                        const added = toggleAuthorFollow(a);
+                        const added = toggleAuthorFollow({ id: author.id, name: a });
                         if (added) {
                           toast.success(`Following ${a}`);
                         } else {
@@ -184,9 +237,11 @@ function PaperDetailPage() {
               <div className="flex justify-between"><dt className="text-muted-foreground">Source</dt><dd className="font-mono">{paper.source}</dd></div>
               <div className="flex justify-between"><dt className="text-muted-foreground">Category</dt><dd>{paper.category}</dd></div>
             </dl>
-            <a href={`https://doi.org/${paper.doi}`} target="_blank" rel="noreferrer" className="mt-4 inline-flex items-center gap-1 text-xs text-brand hover:underline">
-              View at publisher <ExternalLink className="size-3" />
-            </a>
+            {paper.doi ? (
+              <a href={`https://doi.org/${paper.doi}`} target="_blank" rel="noreferrer" className="mt-4 inline-flex items-center gap-1 text-xs text-brand hover:underline">
+                View at publisher <ExternalLink className="size-3" />
+              </a>
+            ) : null}
           </Card>
         </div>
       </div>

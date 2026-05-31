@@ -8,7 +8,7 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "Helix Analytics — Observe the galaxy of human knowledge" },
-      { name: "description", content: "Track trending scientific research, citations, authors, and emerging keywords across Scopus, CrossRef, and IEEE Xplore." },
+      { name: "description", content: "Track trending scientific research, citations, authors, and topics from OpenAlex, Crossref, and Semantic Scholar." },
     ],
   }),
 });
@@ -28,7 +28,7 @@ const features = [
   { icon: Bookmark, title: "Follow Center", body: "Follow authors and keywords to keep signals on your radar." },
   { icon: Bell, title: "Signal Alerts", body: "Gmail-style notifications when followed signals move." },
   { icon: BarChart3, title: "Live Dashboards", body: "Line, area, pie, radar, and heatmap visualizations." },
-  { icon: ShieldCheck, title: "Verified Sources", body: "Synced from Scopus, CrossRef, and IEEE Xplore with DOI dedup." },
+  { icon: ShieldCheck, title: "Open metadata APIs", body: "Synced from OpenAlex, Crossref, and Semantic Scholar with DOI dedup." },
 ];
 
 function Index() {
@@ -74,7 +74,7 @@ function Index() {
             Observe the galaxy of <span className="bg-clip-text text-transparent" style={{ backgroundImage: "var(--gradient-brand)" }}>human knowledge</span>
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl mb-10 leading-relaxed">
-            A precision instrument for tracking the trajectory of scientific thought. Map citations, quantify impact, and detect emerging constellations of research across Scopus, CrossRef, and IEEE Xplore.
+            A precision instrument for tracking the trajectory of scientific thought. Map citations, quantify impact, and detect emerging topics from OpenAlex, Crossref, and Semantic Scholar.
           </p>
           <div className="flex flex-wrap items-center gap-4">
             <Link to="/register" className="inline-flex items-center gap-2 h-12 px-6 rounded-lg font-semibold text-sm text-brand-foreground glow-brand transition-transform hover:scale-[1.02]" style={{ background: "var(--gradient-brand)" }}>
@@ -125,7 +125,7 @@ function Index() {
       <footer className="border-t border-border py-8">
         <div className="max-w-7xl mx-auto px-6 flex flex-wrap items-center justify-between gap-4 text-xs text-muted-foreground">
           <div>© 2024 Helix Analytics. Simulated data for demonstration.</div>
-          <div className="font-mono">SCOPUS · CROSSREF · IEEE XPLORE</div>
+          <div className="font-mono">OPENALEX · CROSSREF · SEMANTIC SCHOLAR</div>
         </div>
       </footer>
     </div>

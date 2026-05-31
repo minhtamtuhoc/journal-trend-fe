@@ -2,15 +2,39 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppLayout, PageHeader } from "@/components/AppLayout";
 import { Card } from "@/components/Card";
 import { useAnalyticsSnapshot } from "@/hooks/data/use-analytics";
+import { useFeaturedAuthors } from "@/hooks/data/use-authors";
 import { useSavedItems } from "@/hooks/use-saved-items";
-import { useState } from "react";
-import { Download, Trash2, Users, Hash, Flame, ArrowRight } from "lucide-react";
+import type { Author, FollowedAuthor } from "@/types/domain";
+import { useMemo, useState } from "react";
+import { Download, Trash2, Users, Hash, Flame, ArrowRight, BookOpen } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/auth";
+import { useFollowedJournals, useUnfollowJournal } from "@/hooks/data/use-follows";
+import { ApiError } from "@/api/errors";
 
 export const Route = createFileRoute("/bookmarks")({ component: BookmarksPage });
 
+type SavedAuthorCard = Author & { profileId: string | null };
+
+function resolveStoredAuthorId(
+  author: FollowedAuthor,
+  trendingAuthors: Author[],
+  featuredAuthors: Author[],
+): string | null {
+  if (author.id) return author.id;
+  const needle = author.name.toLowerCase();
+  const fromFeatured = featuredAuthors.find((a) => a.name.toLowerCase() === needle);
+  if (fromFeatured) return fromFeatured.id;
+  const fromTrending = trendingAuthors.find((a) => a.name.toLowerCase() === needle);
+  return fromTrending?.id ?? null;
+}
+
 function BookmarksPage() {
+  const { user } = useAuth();
   const { data: analytics } = useAnalyticsSnapshot();
+  const { data: featuredAuthors = [] } = useFeaturedAuthors();
+  const { data: followedJournals = [], isLoading: loadingJournals } = useFollowedJournals();
+  const unfollowJournal = useUnfollowJournal();
   const {
     followedAuthors,
     followedKeywords,
@@ -21,19 +45,26 @@ function BookmarksPage() {
   const TRENDING_AUTHORS = analytics.trendingAuthors;
   const TRENDING_KEYWORDS = analytics.trendingKeywords;
 
-  // Filter based on actual followed states
-  const savedAuthors = followedAuthors.map((name) => {
-    const found = TRENDING_AUTHORS.find((a) => a.name.toLowerCase() === name.toLowerCase());
-    return found || {
-      id: name,
-      name,
-      affiliation: "Academic Institute",
-      papers: 3,
-      citations: 245,
-      hIndex: 8,
-      trendScore: 12.4,
-    };
-  });
+  const savedAuthors = useMemo((): SavedAuthorCard[] => {
+    return followedAuthors.map((author) => {
+      const profileId = resolveStoredAuthorId(author, TRENDING_AUTHORS, featuredAuthors);
+      const needle = author.name.toLowerCase();
+      const stats =
+        featuredAuthors.find((a) => a.name.toLowerCase() === needle) ??
+        TRENDING_AUTHORS.find((a) => a.name.toLowerCase() === needle);
+
+      return {
+        id: profileId ?? author.name,
+        name: author.name,
+        profileId,
+        affiliation: stats?.affiliation ?? "Academic Institute",
+        papers: stats?.papers ?? 3,
+        citations: stats?.citations ?? 245,
+        hIndex: stats?.hIndex ?? 8,
+        trendScore: stats?.trendScore ?? 12.4,
+      };
+    });
+  }, [followedAuthors, TRENDING_AUTHORS, featuredAuthors]);
 
   const savedKeywords = followedKeywords.map((term) => {
     const found = TRENDING_KEYWORDS.find((k) => k.term.toLowerCase() === term.toLowerCase());
@@ -49,6 +80,7 @@ function BookmarksPage() {
   const tabs = [
     { id: "authors", label: "Authors", count: savedAuthors.length },
     { id: "keywords", label: "Keywords", count: savedKeywords.length },
+    { id: "journals", label: "Journals", count: followedJournals.length },
   ] as const;
 
   const [tab, setTab] = useState<(typeof tabs)[number]["id"]>("authors");
@@ -69,7 +101,7 @@ function BookmarksPage() {
       a.click();
       URL.revokeObjectURL(url);
       toast.success(`${savedAuthors.length} followed authors exported`);
-    } else {
+    } else if (tab === "keywords") {
       if (savedKeywords.length === 0) {
         toast.error("No followed keywords to export");
         return;
@@ -84,6 +116,23 @@ function BookmarksPage() {
       a.click();
       URL.revokeObjectURL(url);
       toast.success(`${savedKeywords.length} followed keywords exported`);
+    } else if (tab === "journals") {
+      if (followedJournals.length === 0) {
+        toast.error("No followed journals to export");
+        return;
+      }
+      const header = "name,publisher,issn,domain";
+      const rows = followedJournals.map((j) =>
+        [j.name, j.publisher ?? "", j.issn ?? "", j.domain ?? ""].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","),
+      );
+      const blob = new Blob([[header, ...rows].join("\n")], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "followed_journals.csv";
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success(`${followedJournals.length} followed journals exported`);
     }
   };
 
@@ -91,7 +140,7 @@ function BookmarksPage() {
     <AppLayout>
       <PageHeader
         title="Follow Center"
-        subtitle="Your followed authors and followed keywords"
+        subtitle="Authors & keywords (local) · Journals (synced with backend when signed in)"
         action={
           <button onClick={exportCsv} className="inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-medium border border-border bg-surface/50 hover:bg-surface transition-colors cursor-pointer">
             <Download className="size-4" /> Export
@@ -110,34 +159,59 @@ function BookmarksPage() {
       {tab === "authors" && (
         <div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {savedAuthors.map((a) => (
-              <Card key={a.id} className="hover:border-brand/35 transition-colors relative group">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="size-10 rounded-full flex items-center justify-center text-xs font-bold text-brand-foreground" style={{ background: "var(--gradient-brand)" }}>
-                    {a.name.split(" ")[1]?.[0] ?? a.name[0] ?? "A"}
+            {savedAuthors.map((a) => {
+              const cardBody = (
+                <>
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="size-10 rounded-full flex items-center justify-center text-xs font-bold text-brand-foreground" style={{ background: "var(--gradient-brand)" }}>
+                      {a.name.split(" ")[1]?.[0] ?? a.name[0] ?? "A"}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold text-sm truncate">{a.name}</div>
+                      <div className="text-[10px] text-muted-foreground truncate">{a.affiliation}</div>
+                    </div>
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="font-semibold text-sm truncate">{a.name}</div>
-                    <div className="text-[10px] text-muted-foreground truncate">{a.affiliation}</div>
+                  <div className="grid grid-cols-3 gap-2 text-[10px] font-mono text-muted-foreground mb-1">
+                    <div><div className="text-foreground text-sm font-semibold">{a.papers}</div>papers</div>
+                    <div><div className="text-foreground text-sm font-semibold">{a.citations.toLocaleString()}</div>cites</div>
+                    <div><div className="text-foreground text-sm font-semibold">{a.hIndex}</div>h-idx</div>
                   </div>
+                </>
+              );
+
+              return (
+                <div key={`${a.profileId ?? "noid"}-${a.name}`} className="relative group">
+                  {a.profileId ? (
+                    <Link
+                      to="/authors/$authorId"
+                      params={{ authorId: a.profileId }}
+                      className="block"
+                    >
+                      <Card className="hover:border-brand/35 transition-colors cursor-pointer">
+                        {cardBody}
+                      </Card>
+                    </Link>
+                  ) : (
+                    <Card className="hover:border-brand/35 transition-colors relative">
+                      {cardBody}
+                    </Card>
+                  )}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      toggleAuthorFollow({ id: a.profileId, name: a.name });
+                      toast.info(`Unfollowed ${a.name}`);
+                    }}
+                    className="absolute top-4 right-4 z-10 p-1.5 rounded-md border border-border hover:border-destructive/40 hover:text-destructive transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 cursor-pointer"
+                    title="Unfollow Author"
+                  >
+                    <Trash2 className="size-3" />
+                  </button>
                 </div>
-                <div className="grid grid-cols-3 gap-2 text-[10px] font-mono text-muted-foreground mb-1">
-                  <div><div className="text-foreground text-sm font-semibold">{a.papers}</div>papers</div>
-                  <div><div className="text-foreground text-sm font-semibold">{a.citations.toLocaleString()}</div>cites</div>
-                  <div><div className="text-foreground text-sm font-semibold">{a.hIndex}</div>h-idx</div>
-                </div>
-                <button
-                  onClick={() => {
-                    toggleAuthorFollow(a.name);
-                    toast.info(`Unfollowed ${a.name}`);
-                  }}
-                  className="absolute top-4 right-4 p-1.5 rounded-md border border-border hover:border-destructive/40 hover:text-destructive transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 cursor-pointer"
-                  title="Unfollow Author"
-                >
-                  <Trash2 className="size-3" />
-                </button>
-              </Card>
-            ))}
+              );
+            })}
           </div>
           {savedAuthors.length === 0 && (
             <div className="text-center py-16 glass rounded-2xl border border-border max-w-md mx-auto">
@@ -151,6 +225,63 @@ function BookmarksPage() {
               <Link to="/trends" className="mt-6 inline-flex items-center gap-1.5 h-9 px-4 rounded-lg text-xs font-semibold text-brand-foreground glow-brand" style={{ background: "var(--gradient-brand)" }}>
                 <Flame className="size-3.5" /> View Trending Authors <ArrowRight className="size-3" />
               </Link>
+            </div>
+          )}
+        </div>
+      )}
+
+      {tab === "journals" && (
+        <div>
+          {!user ? (
+            <div className="text-center py-16 glass rounded-2xl border border-border max-w-md mx-auto">
+              <p className="text-sm text-muted-foreground px-4">Đăng nhập để theo dõi journal và nhận thông báo bài mới sau sync.</p>
+              <Link to="/login" className="mt-4 inline-block text-sm text-brand hover:underline">
+                Sign in
+              </Link>
+            </div>
+          ) : loadingJournals ? (
+            <p className="text-sm text-muted-foreground">Loading journals…</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {followedJournals.map((j) => (
+                <Card key={j.id} className="flex items-center justify-between hover:border-brand/35 transition-colors group">
+                  <div className="min-w-0">
+                    <div className="font-semibold text-sm flex items-center gap-1.5 text-foreground">
+                      <BookOpen className="size-3.5 text-brand shrink-0" /> {j.name}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground mt-1 truncate">
+                      {[j.publisher, j.domain].filter(Boolean).join(" · ") || "Academic journal"}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      unfollowJournal.mutate(j.id, {
+                        onSuccess: () => toast.info(`Unfollowed journal: ${j.name}`),
+                        onError: (err) => {
+                          const msg = err instanceof ApiError ? err.message : "Unfollow failed";
+                          toast.error(msg);
+                        },
+                      });
+                    }}
+                    className="p-1.5 rounded-md border border-border hover:border-destructive/40 hover:text-destructive transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 cursor-pointer shrink-0"
+                    title="Unfollow journal"
+                  >
+                    <Trash2 className="size-3" />
+                  </button>
+                </Card>
+              ))}
+            </div>
+          )}
+          {user && !loadingJournals && followedJournals.length === 0 && (
+            <div className="text-center py-16 glass rounded-2xl border border-border max-w-md mx-auto">
+              <div className="size-12 rounded-full bg-brand/10 border border-brand/20 flex items-center justify-center text-brand mx-auto mb-4">
+                <BookOpen className="size-5" />
+              </div>
+              <h3 className="font-semibold text-sm text-foreground">No followed journals</h3>
+              <p className="text-xs text-muted-foreground mt-1 max-w-xs mx-auto px-4">
+                Mở chi tiết bài báo và bấm <strong>Follow journal</strong> để nhận thông báo khi sync có bài mới.
+              </p>
             </div>
           )}
         </div>

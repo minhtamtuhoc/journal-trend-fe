@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { getServices } from "@/services";
 import { authStorage } from "@/auth/storage";
 import type { LoginCredentials, RegisterCredentials, User } from "@/auth/types";
+import { normalizeUser } from "@/auth/roles";
 
 type AuthContextValue = {
   user: User | null;
@@ -9,6 +10,7 @@ type AuthContextValue = {
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
   logout: () => void;
+  updateProfile: (fullName: string) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -20,10 +22,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const session = await getServices().auth.getSession();
-      if (!cancelled) {
-        setUser(session?.user ?? authStorage.getUser());
+      if (!authStorage.getAccessToken()) {
         setIsLoading(false);
+        return;
+      }
+      try {
+        const session = await getServices().auth.getSession();
+        if (!cancelled) {
+          const raw = session?.user ?? authStorage.getUser();
+          setUser(raw ? normalizeUser(raw) : null);
+        }
+      } catch {
+        if (!cancelled) {
+          authStorage.setSession(null);
+          setUser(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false);
+        }
       }
     })();
     return () => {
@@ -34,13 +51,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = useCallback(async (email: string, password: string) => {
     const credentials: LoginCredentials = { email, password };
     const session = await getServices().auth.login(credentials);
-    setUser(session.user);
+    setUser(normalizeUser(session.user));
   }, []);
 
   const register = useCallback(async (name: string, email: string, password: string) => {
     const credentials: RegisterCredentials = { name, email, password };
     const session = await getServices().auth.register(credentials);
-    setUser(session.user);
+    setUser(normalizeUser(session.user));
   }, []);
 
   const logout = useCallback(() => {
@@ -48,9 +65,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
   }, []);
 
+  const updateProfile = useCallback(async (fullName: string) => {
+    const session = await getServices().auth.updateProfile(fullName);
+    setUser(normalizeUser(session.user));
+  }, []);
+
   const value = useMemo(
-    () => ({ user, isLoading, login, register, logout }),
-    [user, isLoading, login, register, logout],
+    () => ({ user, isLoading, login, register, logout, updateProfile }),
+    [user, isLoading, login, register, logout, updateProfile],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

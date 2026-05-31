@@ -1,8 +1,9 @@
 import { apiConfig } from "@/api/config";
 import type { AdminService } from "@/services/interfaces/admin.service";
+import type { AuthorsService } from "@/services/interfaces/authors.service";
 import type { AnalyticsService } from "@/services/interfaces/analytics.service";
 import type { AuthService } from "@/services/interfaces/auth.service";
-import type { CollectionsService } from "@/services/interfaces/collections.service";
+import type { FollowService } from "@/services/interfaces/follow.service";
 import type { NotificationsService } from "@/services/interfaces/notifications.service";
 import type { PapersService } from "@/services/interfaces/papers.service";
 import { MockAdminService } from "@/services/mock/mock-admin.service";
@@ -12,15 +13,22 @@ import { MockCollectionsService } from "@/services/mock/mock-collections.service
 import { MockNotificationsService } from "@/services/mock/mock-notifications.service";
 import { MockPapersService } from "@/services/mock/mock-papers.service";
 import { HttpAdminService } from "@/services/http/http-admin.service";
+import { HttpAuthorsService } from "@/services/http/http-authors.service";
+import { MockAuthorsService } from "@/services/mock/mock-authors.service";
 import { HttpAnalyticsService } from "@/services/http/http-analytics.service";
 import { HttpAuthService } from "@/services/http/http-auth.service";
 import { HttpCollectionsService } from "@/services/http/http-collections.service";
 import { HttpNotificationsService } from "@/services/http/http-notifications.service";
+import type { CollectionsService } from "@/services/interfaces/collections.service";
+import { HttpFollowService } from "@/services/http/http-follow.service";
 import { HttpPapersService } from "@/services/http/http-papers.service";
+import { MockFollowService } from "@/services/mock/mock-follow.service";
 
 export type AppServices = {
   analytics: AnalyticsService;
   papers: PapersService;
+  authors: AuthorsService;
+  follow: FollowService;
   notifications: NotificationsService;
   admin: AdminService;
   auth: AuthService;
@@ -31,6 +39,8 @@ function createMockServices(): AppServices {
   return {
     analytics: new MockAnalyticsService(),
     papers: new MockPapersService(),
+    authors: new MockAuthorsService(),
+    follow: new MockFollowService(),
     notifications: new MockNotificationsService(),
     admin: new MockAdminService(),
     auth: new MockAuthService(),
@@ -42,6 +52,8 @@ function createHttpServices(): AppServices {
   return {
     analytics: new HttpAnalyticsService(),
     papers: new HttpPapersService(),
+    authors: new HttpAuthorsService(),
+    follow: new HttpFollowService(),
     notifications: new HttpNotificationsService(),
     admin: new HttpAdminService(),
     auth: new HttpAuthService(),

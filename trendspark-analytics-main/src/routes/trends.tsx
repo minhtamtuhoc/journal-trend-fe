@@ -135,7 +135,7 @@ function TrendsPage() {
                     <span className="text-xs font-mono text-success">+{a.trendScore.toFixed(1)}%</span>
                     <button
                       onClick={() => {
-                        const added = toggleAuthorFollow(a.name);
+                        const added = toggleAuthorFollow({ id: a.id, name: a.name });
                         if (added) {
                           toast.success(`Following ${a.name}`);
                         } else {

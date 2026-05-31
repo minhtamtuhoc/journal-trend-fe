@@ -17,4 +17,9 @@ export class MockPapersService implements PapersService {
     await mockDelay();
     return MOCK_PAPERS.filter((p) => p.category === category && p.id !== excludeId).slice(0, limit);
   }
+
+  async listByTopic(_topicId: string, limit = 50) {
+    await mockDelay();
+    return MOCK_PAPERS.slice(0, limit);
+  }
 }

@@ -23,8 +23,11 @@ import { Route as BookmarksRouteImport } from './routes/bookmarks'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CollectionsIndexRouteImport } from './routes/collections.index'
+import { Route as AuthorsIndexRouteImport } from './routes/authors.index'
+import { Route as TopicsTopicIdRouteImport } from './routes/topics.$topicId'
 import { Route as PapersIdRouteImport } from './routes/papers.$id'
 import { Route as CollectionsCollectionIdRouteImport } from './routes/collections.$collectionId'
+import { Route as AuthorsAuthorIdRouteImport } from './routes/authors.$authorId'
 
 const TrendsRoute = TrendsRouteImport.update({
   id: '/trends',
@@ -96,6 +99,16 @@ const CollectionsIndexRoute = CollectionsIndexRouteImport.update({
   path: '/',
   getParentRoute: () => CollectionsRoute,
 } as any)
+const AuthorsIndexRoute = AuthorsIndexRouteImport.update({
+  id: '/authors/',
+  path: '/authors/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TopicsTopicIdRoute = TopicsTopicIdRouteImport.update({
+  id: '/topics/$topicId',
+  path: '/topics/$topicId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PapersIdRoute = PapersIdRouteImport.update({
   id: '/papers/$id',
   path: '/papers/$id',
@@ -105,6 +118,11 @@ const CollectionsCollectionIdRoute = CollectionsCollectionIdRouteImport.update({
   id: '/$collectionId',
   path: '/$collectionId',
   getParentRoute: () => CollectionsRoute,
+} as any)
+const AuthorsAuthorIdRoute = AuthorsAuthorIdRouteImport.update({
+  id: '/authors/$authorId',
+  path: '/authors/$authorId',
+  getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -121,8 +139,11 @@ export interface FileRoutesByFullPath {
   '/reports': typeof ReportsRoute
   '/search': typeof SearchRoute
   '/trends': typeof TrendsRoute
+  '/authors/$authorId': typeof AuthorsAuthorIdRoute
   '/collections/$collectionId': typeof CollectionsCollectionIdRoute
   '/papers/$id': typeof PapersIdRoute
+  '/topics/$topicId': typeof TopicsTopicIdRoute
+  '/authors/': typeof AuthorsIndexRoute
   '/collections/': typeof CollectionsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -138,8 +159,11 @@ export interface FileRoutesByTo {
   '/reports': typeof ReportsRoute
   '/search': typeof SearchRoute
   '/trends': typeof TrendsRoute
+  '/authors/$authorId': typeof AuthorsAuthorIdRoute
   '/collections/$collectionId': typeof CollectionsCollectionIdRoute
   '/papers/$id': typeof PapersIdRoute
+  '/topics/$topicId': typeof TopicsTopicIdRoute
+  '/authors': typeof AuthorsIndexRoute
   '/collections': typeof CollectionsIndexRoute
 }
 export interface FileRoutesById {
@@ -157,8 +181,11 @@ export interface FileRoutesById {
   '/reports': typeof ReportsRoute
   '/search': typeof SearchRoute
   '/trends': typeof TrendsRoute
+  '/authors/$authorId': typeof AuthorsAuthorIdRoute
   '/collections/$collectionId': typeof CollectionsCollectionIdRoute
   '/papers/$id': typeof PapersIdRoute
+  '/topics/$topicId': typeof TopicsTopicIdRoute
+  '/authors/': typeof AuthorsIndexRoute
   '/collections/': typeof CollectionsIndexRoute
 }
 export interface FileRouteTypes {
@@ -177,8 +204,11 @@ export interface FileRouteTypes {
     | '/reports'
     | '/search'
     | '/trends'
+    | '/authors/$authorId'
     | '/collections/$collectionId'
     | '/papers/$id'
+    | '/topics/$topicId'
+    | '/authors/'
     | '/collections/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -194,8 +224,11 @@ export interface FileRouteTypes {
     | '/reports'
     | '/search'
     | '/trends'
+    | '/authors/$authorId'
     | '/collections/$collectionId'
     | '/papers/$id'
+    | '/topics/$topicId'
+    | '/authors'
     | '/collections'
   id:
     | '__root__'
@@ -212,8 +245,11 @@ export interface FileRouteTypes {
     | '/reports'
     | '/search'
     | '/trends'
+    | '/authors/$authorId'
     | '/collections/$collectionId'
     | '/papers/$id'
+    | '/topics/$topicId'
+    | '/authors/'
     | '/collections/'
   fileRoutesById: FileRoutesById
 }
@@ -231,7 +267,10 @@ export interface RootRouteChildren {
   ReportsRoute: typeof ReportsRoute
   SearchRoute: typeof SearchRoute
   TrendsRoute: typeof TrendsRoute
+  AuthorsAuthorIdRoute: typeof AuthorsAuthorIdRoute
   PapersIdRoute: typeof PapersIdRoute
+  TopicsTopicIdRoute: typeof TopicsTopicIdRoute
+  AuthorsIndexRoute: typeof AuthorsIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -334,6 +373,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CollectionsIndexRouteImport
       parentRoute: typeof CollectionsRoute
     }
+    '/authors/': {
+      id: '/authors/'
+      path: '/authors'
+      fullPath: '/authors/'
+      preLoaderRoute: typeof AuthorsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/topics/$topicId': {
+      id: '/topics/$topicId'
+      path: '/topics/$topicId'
+      fullPath: '/topics/$topicId'
+      preLoaderRoute: typeof TopicsTopicIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/papers/$id': {
       id: '/papers/$id'
       path: '/papers/$id'
@@ -347,6 +400,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/collections/$collectionId'
       preLoaderRoute: typeof CollectionsCollectionIdRouteImport
       parentRoute: typeof CollectionsRoute
+    }
+    '/authors/$authorId': {
+      id: '/authors/$authorId'
+      path: '/authors/$authorId'
+      fullPath: '/authors/$authorId'
+      preLoaderRoute: typeof AuthorsAuthorIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
   }
 }
@@ -379,7 +439,10 @@ const rootRouteChildren: RootRouteChildren = {
   ReportsRoute: ReportsRoute,
   SearchRoute: SearchRoute,
   TrendsRoute: TrendsRoute,
+  AuthorsAuthorIdRoute: AuthorsAuthorIdRoute,
   PapersIdRoute: PapersIdRoute,
+  TopicsTopicIdRoute: TopicsTopicIdRoute,
+  AuthorsIndexRoute: AuthorsIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

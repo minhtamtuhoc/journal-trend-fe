@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { z } from "zod";
+import { ApiError } from "@/api/errors";
 import { AuthShell } from "@/components/AuthShell";
 import { useAuth } from "@/auth";
 import { toast } from "sonner";
@@ -10,7 +11,11 @@ export const Route = createFileRoute("/register")({ component: RegisterPage });
 const schema = z.object({
   name: z.string().min(2, "Name too short"),
   email: z.string().email("Enter a valid email"),
-  password: z.string().min(8, "Min 8 characters"),
+  password: z
+    .string()
+    .min(8, "Min 8 characters")
+    .regex(/[A-Z]/, "Include at least one uppercase letter")
+    .regex(/\d/, "Include at least one digit"),
 });
 
 const TAKEN = ["taken@helix.io"];
@@ -40,9 +45,22 @@ function RegisterPage() {
     if (TAKEN.includes(email)) return setErr("Email already in use");
     setErr(null);
     setLoading(true);
-    await register(name, email, password);
-    toast.success("Account created");
-    navigate({ to: "/dashboard" });
+    try {
+      await register(name, email, password);
+      toast.success("Account created");
+      navigate({ to: "/dashboard" });
+    } catch (error) {
+      const message =
+        error instanceof ApiError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : "Registration failed";
+      setErr(message);
+      toast.error(message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

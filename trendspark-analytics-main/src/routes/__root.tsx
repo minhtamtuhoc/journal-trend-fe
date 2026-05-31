@@ -78,7 +78,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "description", content: "AI-powered analytics for scientific publication trends, citations, and emerging research." },
       { name: "author", content: "Helix Analytics" },
       { property: "og:title", content: "Helix Analytics — Scientific Publication Trends" },
-      { property: "og:description", content: "Track trending research, authors, and keywords across Scopus, CrossRef, and IEEE Xplore." },
+      { property: "og:description", content: "Track trending research, authors, and topics from OpenAlex, Crossref, and Semantic Scholar." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },

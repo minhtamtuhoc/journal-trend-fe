@@ -1,10 +1,17 @@
-export type PaperSource = "Scopus" | "CrossRef" | "IEEE Xplore";
+export type PaperSource = "OpenAlex" | "CrossRef" | "Semantic Scholar";
+
+export type AuthorRef = {
+  id: string;
+  name: string;
+};
 
 export type Paper = {
   id: string;
   title: string;
   authors: string[];
+  authorRefs?: AuthorRef[];
   journal: string;
+  journalId?: string | null;
   year: number;
   citations: number;
   trendScore: number;
@@ -26,6 +33,16 @@ export type Author = {
   trendScore: number;
 };
 
+export type FollowedAuthor = {
+  id: string | null;
+  name: string;
+};
+
+export type AuthorProfile = Author & {
+  openAlexId?: string | null;
+  source?: string;
+};
+
 export type Keyword = {
   id: string;
   term: string;
@@ -33,6 +50,37 @@ export type Keyword = {
   trendScore: number;
   monthsTrending: number;
   category: string;
+};
+
+export type TopicTrend = {
+  id: string;
+  name: string;
+  paperCount: number;
+  trendScore: number;
+  rank: number;
+};
+
+export type HighlightCard = {
+  id: string;
+  title: string;
+  subtitle: string;
+  metric: number;
+  metricLabel: string;
+};
+
+export type DashboardHighlights = {
+  topKeyword: HighlightCard;
+  topAuthor: HighlightCard;
+  topPaper: HighlightCard;
+  topFollowedTopic: HighlightCard;
+};
+
+export type TopicDetail = {
+  id: string;
+  name: string;
+  description: string;
+  paperCount: number;
+  trendScore: number;
 };
 
 export type DashboardKpis = {

@@ -37,7 +37,7 @@ export const MOCK_NOTIFICATIONS: NotificationItem[] = [
     id: "n5",
     type: "system",
     title: "Daily sync completed",
-    body: "Crossref / Scopus / IEEE — 12,482 new records ingested.",
+    body: "OpenAlex / Crossref / Semantic Scholar — metadata sync completed.",
     time: "Today, 02:00",
     unread: false,
   },

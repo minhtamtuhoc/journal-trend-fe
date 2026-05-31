@@ -24,9 +24,13 @@ import {
 } from "recharts";
 import { useAnalyticsSnapshot } from "@/hooks/data/use-analytics";
 import { usePapers } from "@/hooks/data/use-papers";
-import { Download, ArrowUpRight, TrendingUp } from "lucide-react";
+import { Download, ArrowUpRight, TrendingUp, Hash, User, FileText, Bookmark } from "lucide-react";
+import type { DashboardHighlights, HighlightCard, TopicTrend } from "@/types/domain";
 import { toast } from "sonner";
 import { SaveToCollectionButton } from "@/components/SaveToCollectionButton";
+import { reportsApi } from "@/services/http/reports-api";
+import { useAuth } from "@/auth";
+import { ApiError } from "@/api/errors";
 
 export const Route = createFileRoute("/dashboard")({ component: DashboardPage });
 
@@ -47,34 +51,100 @@ function tooltipStyle() {
 }
 
 function DashboardPage() {
-  const { data: analytics } = useAnalyticsSnapshot();
+  const { user } = useAuth();
+  const { data: analytics, isLoading } = useAnalyticsSnapshot();
   const { data: papers = [] } = usePapers();
+
+  const exportDataset = async () => {
+    if (!user) {
+      toast.error("Đăng nhập để xuất báo cáo CSV");
+      return;
+    }
+    try {
+      await reportsApi.downloadTopicTrendsCsv();
+      toast.success("Đã tải topic-trends.csv");
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.message : err instanceof Error ? err.message : "Xuất CSV thất bại";
+      toast.error(msg);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <AppLayout>
+        <div className="p-8 text-sm text-muted-foreground">Loading analytics…</div>
+      </AppLayout>
+    );
+  }
+
   const {
     kpis: KPIS,
     publicationVelocity: PUBLICATION_VELOCITY,
     categoryDistribution: CATEGORY_DISTRIBUTION,
     radarFields: RADAR_FIELDS,
     trendingKeywords: TRENDING_KEYWORDS,
+    trendingTopics = [],
+    highlights,
   } = analytics;
+
+  const TOPIC_TRENDS: TopicTrend[] = trendingTopics ?? [];
+  const HIGHLIGHTS: DashboardHighlights = highlights!;
 
   return (
     <AppLayout>
       <PageHeader
         title="Analytics Overview"
-        subtitle="Simulated global research trends · last updated 2 min ago"
+        subtitle="Topic trends from OpenAlex sync · click a topic to view papers"
         action={
-          <button onClick={() => toast.success("CSV export queued")} className="inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-medium text-brand-foreground glow-brand transition-transform hover:scale-[1.02]" style={{ background: "var(--gradient-brand)" }}>
+          <button type="button" onClick={exportDataset} className="inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-medium text-brand-foreground glow-brand transition-transform hover:scale-[1.02]" style={{ background: "var(--gradient-brand)" }}>
             <Download className="size-4" /> Export Dataset
           </button>
         }
       />
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <HighlightTile card={HIGHLIGHTS.topKeyword} icon={<Hash className="size-4" />} label="Top keyword" linkTo="topic" />
+        <HighlightTile card={HIGHLIGHTS.topAuthor} icon={<User className="size-4" />} label="Top author" linkTo="author" />
+        <HighlightTile card={HIGHLIGHTS.topPaper} icon={<FileText className="size-4" />} label="Top paper" linkTo="paper" />
+        <HighlightTile card={HIGHLIGHTS.topFollowedTopic} icon={<Bookmark className="size-4" />} label="Most followed topic" linkTo="topic" />
+      </div>
+
+      <Card className="mb-6" title="Top 10 Topic Trends" action={<Link to="/trends" className="text-xs text-brand hover:underline">Trend explorer</Link>}>
+        {TOPIC_TRENDS.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-4">
+            Chưa có dữ liệu topic trend. Đăng nhập Admin → <strong>Run Manual Sync</strong>, sau đó tải lại trang.
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            {TOPIC_TRENDS.slice(0, 10).map((t) => (
+              <Link
+                key={t.id}
+                to="/topics/$topicId"
+                params={{ topicId: t.id }}
+                className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg border border-border hover:border-brand/40 hover:bg-brand/5 transition-all group"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <span className="text-[10px] font-mono text-muted-foreground w-5">{String(t.rank).padStart(2, "0")}</span>
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium text-foreground group-hover:text-brand truncate">{t.name}</div>
+                    <div className="text-[10px] text-muted-foreground font-mono">{t.paperCount} papers</div>
+                  </div>
+                </div>
+                <span className={`text-xs font-mono shrink-0 ${t.trendScore >= 15 ? "text-success" : "text-muted-foreground"}`}>
+                  {t.trendScore >= 0 ? "+" : ""}{t.trendScore.toFixed(1)}%
+                </span>
+              </Link>
+            ))}
+          </div>
+        )}
+      </Card>
 
       {/* KPI grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <KpiCard label="Trend Score" value={KPIS.trendScore.toFixed(1)} delta={`+${KPIS.trendScoreDelta}%`} accent />
         <KpiCard label="Active Keywords" value={KPIS.activeKeywords.toLocaleString()} hint="Across 12 major journals" />
         <KpiCard label="Citation Volume" value={KPIS.citationVolume} hint="Growth spike detected" delta="+12.4%" />
-        <KpiCard label="Sync Health" value={`${KPIS.syncHealth}%`} hint="Scopus / CrossRef / IEEE" />
+        <KpiCard label="Sync Health" value={`${KPIS.syncHealth}%`} hint="OpenAlex · Crossref · Semantic Scholar" />
       </div>
 
       {/* Main charts */}
@@ -197,5 +267,65 @@ function DashboardPage() {
         </Card>
       </div>
     </AppLayout>
+  );
+}
+
+function HighlightTile({
+  card,
+  icon,
+  label,
+  linkTo,
+}: {
+  card: HighlightCard;
+  icon: React.ReactNode;
+  label: string;
+  linkTo: "topic" | "paper" | "search" | "author";
+}) {
+  const inner = (
+    <div className="glass rounded-2xl p-4 h-full border border-border hover:border-brand/30 transition-colors">
+      <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">
+        {icon}
+        {label}
+      </div>
+      <div className="text-sm font-semibold text-foreground line-clamp-2">{card.title || "—"}</div>
+      <div className="text-[10px] text-muted-foreground mt-1 truncate">{card.subtitle}</div>
+      {card.metricLabel ? (
+        <div className="text-lg font-bold font-mono text-brand mt-2">
+          {card.metricLabel === "trend %"
+            ? `${card.metric >= 0 ? "+" : ""}${card.metric.toFixed(1)}%`
+            : card.metric.toLocaleString()}
+          <span className="text-[10px] text-muted-foreground font-sans ml-1">{card.metricLabel}</span>
+        </div>
+      ) : null}
+    </div>
+  );
+
+  if (!card.id) return inner;
+
+  if (linkTo === "topic") {
+    return (
+      <Link to="/topics/$topicId" params={{ topicId: card.id }} className="block">
+        {inner}
+      </Link>
+    );
+  }
+  if (linkTo === "paper") {
+    return (
+      <Link to="/papers/$id" params={{ id: card.id }} className="block">
+        {inner}
+      </Link>
+    );
+  }
+  if (linkTo === "author") {
+    return (
+      <Link to="/authors/$authorId" params={{ authorId: card.id }} className="block">
+        {inner}
+      </Link>
+    );
+  }
+  return (
+    <Link to="/search" search={{ q: card.title }} className="block">
+      {inner}
+    </Link>
   );
 }
