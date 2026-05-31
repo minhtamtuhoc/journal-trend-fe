@@ -1,5 +1,9 @@
 import js from "@eslint/js";
+<<<<<<< Updated upstream
 import eslintConfigPrettier from "eslint-config-prettier";
+=======
+import eslintConfigPrettier from "eslint-config-prettier"; // 1. Import config này
+>>>>>>> Stashed changes
 import globals from "globals";
 import reactHooks from "eslint-plugin-react-hooks";
 import reactRefresh from "eslint-plugin-react-refresh";
@@ -11,7 +15,11 @@ export default tseslint.config(
     extends: [
       js.configs.recommended,
       ...tseslint.configs.recommended,
+<<<<<<< Updated upstream
       eslintConfigPrettier,
+=======
+      eslintConfigPrettier, // 2. Đặt nó ở đây để ghi đè và tắt các rule xung đột
+>>>>>>> Stashed changes
     ],
     files: ["**/*.{ts,tsx}"],
     languageOptions: {
@@ -31,8 +39,12 @@ export default tseslint.config(
           paths: [
             {
               name: "server-only",
+<<<<<<< Updated upstream
               message:
                 "TanStack Start does not use the Next.js `server-only` package.",
+=======
+              message: "TanStack Start does not use the Next.js `server-only` package.",
+>>>>>>> Stashed changes
             },
           ],
         },
@@ -44,6 +56,11 @@ export default tseslint.config(
       ],
 
       "@typescript-eslint/no-unused-vars": "off",
+      // Không cần rule "prettier/prettier" ở đây vì Prettier đã tự lo việc format
     },
   },
+<<<<<<< Updated upstream
 );
+=======
+);
+>>>>>>> Stashed changes
