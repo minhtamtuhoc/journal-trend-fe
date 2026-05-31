@@ -20,18 +20,34 @@ const tooltipStyle = {
 
 function TrendsPage() {
   const { data: analytics } = useAnalyticsSnapshot();
-  const { isAuthorFollowed, toggleAuthorFollow, isKeywordFollowed, toggleKeywordFollow } = useSavedItems();
+  const { isAuthorFollowed, toggleAuthorFollow, isKeywordFollowed, toggleKeywordFollow } =
+    useSavedItems();
 
-  const { publicationVelocity: PUBLICATION_VELOCITY, radarFields: RADAR_FIELDS, trendingKeywords: TRENDING_KEYWORDS, trendingAuthors: TRENDING_AUTHORS } =
-    analytics;
+  // const { publicationVelocity: PUBLICATION_VELOCITY, radarFields: RADAR_FIELDS, trendingKeywords: TRENDING_KEYWORDS, trendingAuthors: TRENDING_AUTHORS } =
+  //   analytics;
+  // const trending = TRENDING_KEYWORDS.filter((k) => k.trendScore >= 15 && k.monthsTrending >= 3);
+  // Sửa từ dòng 25 - 28 thành:
+  const {
+    publicationVelocity: PUBLICATION_VELOCITY = [],
+    radarFields: RADAR_FIELDS = [],
+    trendingKeywords: TRENDING_KEYWORDS = [],
+    trendingAuthors: TRENDING_AUTHORS = [],
+  } = analytics ?? {};
+
   const trending = TRENDING_KEYWORDS.filter((k) => k.trendScore >= 15 && k.monthsTrending >= 3);
-
   return (
     <AppLayout>
-      <PageHeader title="Trend Analytics" subtitle="Trend score = ((current − previous) / previous) × 100. Trending when ≥15% for 3 consecutive months." />
+      <PageHeader
+        title="Trend Analytics"
+        subtitle="Trend score = ((current − previous) / previous) × 100. Trending when ≥15% for 3 consecutive months."
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-6">
-        <KPI label="Trending Keywords" value={trending.length.toString()} icon={<Flame className="size-4" />} />
+        <KPI
+          label="Trending Keywords"
+          value={trending.length.toString()}
+          icon={<Flame className="size-4" />}
+        />
         <KPI label="Trending Authors" value="142" icon={<TrendingUp className="size-4" />} />
         <KPI label="Avg Trend Score" value="+21.4%" />
         <KPI label="Peak Velocity" value="6,108/mo" />
@@ -48,12 +64,35 @@ function TrendsPage() {
                 </linearGradient>
               </defs>
               <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="month" stroke="var(--muted-foreground)" fontSize={11} tickLine={false} axisLine={false} />
-              <YAxis stroke="var(--muted-foreground)" fontSize={11} tickLine={false} axisLine={false} />
+              <XAxis
+                dataKey="month"
+                stroke="var(--muted-foreground)"
+                fontSize={11}
+                tickLine={false}
+                axisLine={false}
+              />
+              <YAxis
+                stroke="var(--muted-foreground)"
+                fontSize={11}
+                tickLine={false}
+                axisLine={false}
+              />
               <Tooltip contentStyle={tooltipStyle} />
               <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Area type="monotone" dataKey="citations" stroke="var(--chart-1)" fill="url(#ga)" strokeWidth={2} />
-              <Line type="monotone" dataKey="papers" stroke="var(--chart-2)" strokeWidth={2} dot={false} />
+              <Area
+                type="monotone"
+                dataKey="citations"
+                stroke="var(--chart-1)"
+                fill="url(#ga)"
+                strokeWidth={2}
+              />
+              <Line
+                type="monotone"
+                dataKey="papers"
+                stroke="var(--chart-2)"
+                strokeWidth={2}
+                dot={false}
+              />
             </AreaChart>
           </ResponsiveContainer>
         </Card>
@@ -63,8 +102,18 @@ function TrendsPage() {
             <RadarChart data={RADAR_FIELDS}>
               <PolarGrid stroke="var(--border)" />
               <PolarAngleAxis dataKey="field" stroke="var(--muted-foreground)" fontSize={11} />
-              <Radar dataKey="current" stroke="var(--chart-1)" fill="var(--chart-1)" fillOpacity={0.4} />
-              <Radar dataKey="previous" stroke="var(--chart-2)" fill="var(--chart-2)" fillOpacity={0.15} />
+              <Radar
+                dataKey="current"
+                stroke="var(--chart-1)"
+                fill="var(--chart-1)"
+                fillOpacity={0.4}
+              />
+              <Radar
+                dataKey="previous"
+                stroke="var(--chart-2)"
+                fill="var(--chart-2)"
+                fillOpacity={0.15}
+              />
               <Tooltip contentStyle={tooltipStyle} />
             </RadarChart>
           </ResponsiveContainer>
@@ -90,8 +139,14 @@ function TrendsPage() {
                   <tr key={k.id} className="hover:bg-secondary/40 transition-colors">
                     <td className="py-3 text-foreground font-medium">{k.term}</td>
                     <td className="py-3 text-right font-mono text-muted-foreground">{k.count}</td>
-                    <td className={`py-3 text-right font-mono ${k.trendScore >= 15 ? "text-success" : "text-muted-foreground"}`}>+{k.trendScore.toFixed(1)}%</td>
-                    <td className="py-3 text-right font-mono text-muted-foreground">{k.monthsTrending}</td>
+                    <td
+                      className={`py-3 text-right font-mono ${k.trendScore >= 15 ? "text-success" : "text-muted-foreground"}`}
+                    >
+                      +{k.trendScore.toFixed(1)}%
+                    </td>
+                    <td className="py-3 text-right font-mono text-muted-foreground">
+                      {k.monthsTrending}
+                    </td>
                     <td className="py-3 text-right">
                       <button
                         onClick={() => {
@@ -123,16 +178,26 @@ function TrendsPage() {
             {TRENDING_AUTHORS.map((a, i) => {
               const followed = isAuthorFollowed(a.name);
               return (
-                <div key={a.id} className="flex items-center gap-3 p-3 rounded-lg hover:bg-secondary/40 transition-colors">
-                  <div className="size-8 rounded-full flex items-center justify-center text-[10px] font-bold text-brand-foreground shrink-0" style={{ background: "var(--gradient-brand)" }}>
+                <div
+                  key={a.id}
+                  className="flex items-center gap-3 p-3 rounded-lg hover:bg-secondary/40 transition-colors"
+                >
+                  <div
+                    className="size-8 rounded-full flex items-center justify-center text-[10px] font-bold text-brand-foreground shrink-0"
+                    style={{ background: "var(--gradient-brand)" }}
+                  >
                     {String(i + 1).padStart(2, "0")}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium text-foreground truncate">{a.name}</div>
-                    <div className="text-[10px] text-muted-foreground truncate">{a.affiliation} · h-index {a.hIndex}</div>
+                    <div className="text-[10px] text-muted-foreground truncate">
+                      {a.affiliation} · h-index {a.hIndex}
+                    </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-xs font-mono text-success">+{a.trendScore.toFixed(1)}%</span>
+                    <span className="text-xs font-mono text-success">
+                      +{a.trendScore.toFixed(1)}%
+                    </span>
                     <button
                       onClick={() => {
                         const added = toggleAuthorFollow({ id: a.id, name: a.name });

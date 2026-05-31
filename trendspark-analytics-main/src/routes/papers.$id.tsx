@@ -46,10 +46,12 @@ function PaperDetailPage() {
   const authors = paper.authors?.length ? paper.authors : ["Unknown author"];
   const keywords = paper.keywords ?? [];
   const series = buildPaperCitationSeries(paper.id, paper.citations ?? 0);
+
   const primaryAuthorRef = paper.authorRefs?.[0];
   const mainAuthorName = primaryAuthorRef?.name ?? authors[0];
   const mainAuthorId = primaryAuthorRef?.id ?? null;
   const mainAuthorFollowed = isAuthorFollowed(mainAuthorName);
+
   const journalId = paper?.journalId ?? null;
   const journalFollowed = journalId ? followedJournals.some((j) => j.id === journalId) : false;
 

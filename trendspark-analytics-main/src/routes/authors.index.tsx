@@ -2,15 +2,18 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppLayout, PageHeader } from "@/components/AppLayout";
 import { Card } from "@/components/Card";
 import { useFeaturedAuthors } from "@/hooks/data/use-authors";
+
 import { useSavedItems } from "@/hooks/use-saved-items";
 import { ArrowUpRight, Bookmark, Search, User } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
+
 export const Route = createFileRoute("/authors/")({ component: AuthorsIndexPage });
 
 function AuthorsIndexPage() {
   const { data: authors = [], isLoading, isError } = useFeaturedAuthors();
+
   const { isAuthorFollowed, toggleAuthorFollow } = useSavedItems();
   const [query, setQuery] = useState("");
 
@@ -19,6 +22,7 @@ function AuthorsIndexPage() {
     if (!needle) return authors;
     return authors.filter((a) => a.name.toLowerCase().includes(needle));
   }, [authors, query]);
+
 
   return (
     <AppLayout>
@@ -42,6 +46,7 @@ function AuthorsIndexPage() {
           </p>
         </Card>
       ) : (
+
         <>
           <div className="relative mb-6">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
@@ -131,6 +136,7 @@ function AuthorsIndexPage() {
             </div>
           )}
         </>
+
       )}
     </AppLayout>
   );

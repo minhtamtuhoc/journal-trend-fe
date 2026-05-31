@@ -33,10 +33,12 @@ export type Author = {
   trendScore: number;
 };
 
+
 export type FollowedAuthor = {
   id: string | null;
   name: string;
 };
+
 
 export type AuthorProfile = Author & {
   openAlexId?: string | null;
