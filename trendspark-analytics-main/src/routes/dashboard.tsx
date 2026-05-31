@@ -56,6 +56,7 @@ function DashboardPage() {
   const { data: papers = [] } = usePapers();
 
 
+
   const exportDataset = async () => {
     if (!user) {
       toast.error("Đăng nhập để xuất báo cáo CSV");
@@ -87,6 +88,7 @@ function DashboardPage() {
     trendingTopics = [],
     highlights,
   } = analytics;
+
 
 
   const TOPIC_TRENDS: TopicTrend[] = trendingTopics ?? [];
@@ -150,6 +152,7 @@ function DashboardPage() {
         <KpiCard label="Active Keywords" value={KPIS.activeKeywords.toLocaleString()} hint="Across 12 major journals" />
         <KpiCard label="Citation Volume" value={KPIS.citationVolume} hint="Growth spike detected" delta="+12.4%" />
         <KpiCard label="Sync Health" value={`${KPIS.syncHealth}%`} hint="OpenAlex · Crossref · Semantic Scholar" />
+
 
       </div>
 

@@ -13,24 +13,16 @@ import { ApiError } from "@/api/errors";
 export const Route = createFileRoute("/admin")({ component: AdminPage });
 
 function AdminPage() {
-const { user } = useAuth();
 
-const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const { data: admin, isLoading: isLoadingAdmin, isError: isAdminError, refetch: refetchAdmin } = useAdminOverview();
+  const { data: sources = [] } = useAdminSources();
+  const updateSource = useUpdateAdminSource();
+  const AUDIT_LOGS = admin?.auditLogs ?? [];
+  const PENDING_REVIEW = admin?.pendingReview ?? [];
+  const [syncing, setSyncing] = useState(false);
 
-const {
-  data: admin,
-  isLoading: isLoadingAdmin,
-  isError: isAdminError,
-  refetch: refetchAdmin,
-} = useAdminOverview();
-
-const { data: sources = [] } = useAdminSources();
-const updateSource = useUpdateAdminSource();
-
-const AUDIT_LOGS = admin?.auditLogs ?? [];
-const PENDING_REVIEW = admin?.pendingReview ?? [];
-
-const [syncing, setSyncing] = useState(false);
 
   if (!user) return null;
   if (!isAdminUser(user)) {
@@ -158,15 +150,6 @@ const [syncing, setSyncing] = useState(false);
             </button>
           </div>
 
-          <button
-            onClick={runSync}
-            disabled={syncing}
-            className="inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-semibold text-brand-foreground glow-brand disabled:opacity-60"
-            style={{ background: "var(--gradient-brand)" }}
-          >
-            <RefreshCw className={`size-4 ${syncing ? "animate-spin" : ""}`} />{" "}
-            {syncing ? "Syncing..." : "Run Manual Sync"}
-          </button>
 
         }
       />

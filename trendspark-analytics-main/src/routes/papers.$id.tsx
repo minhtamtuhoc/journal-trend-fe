@@ -46,8 +46,12 @@ function PaperDetailPage() {
   const authors = paper.authors?.length ? paper.authors : ["Unknown author"];
   const keywords = paper.keywords ?? [];
   const series = buildPaperCitationSeries(paper.id, paper.citations ?? 0);
-  const mainAuthor = authors[0];
-  const mainAuthorFollowed = isAuthorFollowed(mainAuthor);
+
+  const primaryAuthorRef = paper.authorRefs?.[0];
+  const mainAuthorName = primaryAuthorRef?.name ?? authors[0];
+  const mainAuthorId = primaryAuthorRef?.id ?? null;
+  const mainAuthorFollowed = isAuthorFollowed(mainAuthorName);
+
   const journalId = paper?.journalId ?? null;
   const journalFollowed = journalId ? followedJournals.some((j) => j.id === journalId) : false;
 
@@ -84,11 +88,11 @@ function PaperDetailPage() {
             ) : null}
             <button
               onClick={() => {
-                const added = toggleAuthorFollow(mainAuthor);
+                const added = toggleAuthorFollow({ id: mainAuthorId, name: mainAuthorName });
                 if (added) {
-                  toast.success(`Following ${mainAuthor}`);
+                  toast.success(`Following ${mainAuthorName}`);
                 } else {
-                  toast.info(`Unfollowed ${mainAuthor}`);
+                  toast.info(`Unfollowed ${mainAuthorName}`);
                 }
               }}
               className={`inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-semibold transition-all ${
@@ -205,7 +209,7 @@ function PaperDetailPage() {
                     </div>
                     <button
                       onClick={() => {
-                        const added = toggleAuthorFollow(a);
+                        const added = toggleAuthorFollow({ id: author.id, name: a });
                         if (added) {
                           toast.success(`Following ${a}`);
                         } else {

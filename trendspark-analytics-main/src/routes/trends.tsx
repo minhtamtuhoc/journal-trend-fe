@@ -200,7 +200,7 @@ function TrendsPage() {
                     </span>
                     <button
                       onClick={() => {
-                        const added = toggleAuthorFollow(a.name);
+                        const added = toggleAuthorFollow({ id: a.id, name: a.name });
                         if (added) {
                           toast.success(`Following ${a.name}`);
                         } else {
