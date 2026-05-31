@@ -14,9 +14,12 @@ import {
   Sparkles,
   Activity,
   Command,
+  Moon,
+  Sun,
 } from "lucide-react";
 import { useEffect } from "react";
 import { useAuth, isAdminUser } from "@/auth";
+import { useTheme } from "@/theme";
 import { useNotifications } from "@/hooks/data/use-notifications";
 import { motion } from "framer-motion";
 
@@ -33,6 +36,7 @@ const nav = [
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const { data: notifications = [] } = useNotifications();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -157,6 +161,14 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="flex items-center gap-6">
+            <button
+              type="button"
+              onClick={toggleTheme}
+              aria-label={theme === "light" ? "Switch to dark mode" : "Switch to light mode"}
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {theme === "light" ? <Moon className="size-5" /> : <Sun className="size-5" />}
+            </button>
             <Link to="/notifications" className="relative text-muted-foreground hover:text-foreground transition-colors">
               <Bell className="size-5" />
               {unread > 0 && <span className="absolute -top-1 -right-1 size-2 bg-brand rounded-full ring-2 ring-background" />}
