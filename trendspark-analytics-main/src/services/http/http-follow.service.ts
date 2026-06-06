@@ -4,6 +4,14 @@ import type { Journal } from "@/types/brief";
 import type { TopicTrend } from "@/types/domain";
 
 type TopicDto = { id: number; name: string; description?: string };
+type JournalDto = {
+  id: number;
+  name: string;
+  publisher?: string | null;
+  issn?: string | null;
+  domain?: string | null;
+  impactFactor?: number;
+};
 
 function mapTopic(t: TopicDto, i: number): TopicTrend {
   return {
@@ -17,26 +25,31 @@ function mapTopic(t: TopicDto, i: number): TopicTrend {
 
 export class HttpFollowService implements FollowService {
   listTopics() {
-    return apiClient.get<TopicDto[]>("/follows/topics").then((rows) => rows.map(mapTopic));
+    return apiClient.get<TopicDto[]>("/follow/topics").then((rows) => rows.map(mapTopic));
   }
 
   followTopic(topicId: string) {
-    return apiClient.post<void>(`/follows/topics/${topicId}`);
+    return apiClient.post<void>(`/follow/topics/${topicId}`);
   }
 
   unfollowTopic(topicId: string) {
-    return apiClient.delete<void>(`/follows/topics/${topicId}`);
+    return apiClient.delete<void>(`/follow/topics/${topicId}`);
   }
 
   listJournals() {
-    return apiClient.get<Journal[]>("/follows/journals");
+    return apiClient.get<JournalDto[]>("/follow/journals").then((rows) =>
+      rows.map((r) => ({
+        ...r,
+        id: String(r.id),
+      }))
+    );
   }
 
   followJournal(journalId: string) {
-    return apiClient.post<void>(`/follows/journals/${journalId}`);
+    return apiClient.post<void>(`/follow/journals/${journalId}`);
   }
 
   unfollowJournal(journalId: string) {
-    return apiClient.delete<void>(`/follows/journals/${journalId}`);
+    return apiClient.delete<void>(`/follow/journals/${journalId}`);
   }
 }

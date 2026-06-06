@@ -46,4 +46,36 @@ export class MockAdminService implements AdminService {
     if (body.syncSchedule !== undefined) src.syncSchedule = body.syncSchedule;
     return { ...src };
   }
+
+  async recalculateTrends() {
+    await mockDelay(150);
+    return { papersFetched: 0, status: "SUCCESS", message: "Recalculated all trends successfully" };
+  }
+
+  async backfillTrends(months: number) {
+    await mockDelay(150);
+    return { papersFetched: 0, status: "SUCCESS", message: `Backfilled historical trends for ${months} months` };
+  }
+
+  async getTrendDemoStats() {
+    await mockDelay(100);
+    return { totalTrendRecords: 120, status: "SUCCESS" };
+  }
+
+  async repairMetadata(limit: number) {
+    await mockDelay(200);
+    return { papersFetched: limit, status: "SUCCESS", message: `Repaired ${limit} papers` };
+  }
+
+  async listAnomalies(limit = 20) {
+    await mockDelay(100);
+    return [
+      { topicId: "1", topicName: "LNP", trendScore: 310.2, paperCount: 15, detectedAt: new Date().toISOString() }
+    ].slice(0, limit);
+  }
+
+  async expireStaleReviews() {
+    await mockDelay(150);
+    return { papersFetched: 0, status: "SUCCESS", message: "Expired stale reviews successfully" };
+  }
 }

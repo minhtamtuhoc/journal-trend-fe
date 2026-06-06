@@ -23,6 +23,9 @@ import type { CollectionsService } from "@/services/interfaces/collections.servi
 import { HttpFollowService } from "@/services/http/http-follow.service";
 import { HttpPapersService } from "@/services/http/http-papers.service";
 import { MockFollowService } from "@/services/mock/mock-follow.service";
+import type { JournalsService } from "@/services/interfaces/journals.service";
+import { HttpJournalsService } from "@/services/http/http-journals.service";
+import { MockJournalsService } from "@/services/mock/mock-journals.service";
 
 export type AppServices = {
   analytics: AnalyticsService;
@@ -33,6 +36,7 @@ export type AppServices = {
   admin: AdminService;
   auth: AuthService;
   collections: CollectionsService;
+  journals: JournalsService;
 };
 
 function createMockServices(): AppServices {
@@ -45,6 +49,7 @@ function createMockServices(): AppServices {
     admin: new MockAdminService(),
     auth: new MockAuthService(),
     collections: new MockCollectionsService(),
+    journals: new MockJournalsService(),
   };
 }
 
@@ -58,6 +63,7 @@ function createHttpServices(): AppServices {
     admin: new HttpAdminService(),
     auth: new HttpAuthService(),
     collections: new HttpCollectionsService(),
+    journals: new HttpJournalsService(),
   };
 }
 
@@ -65,7 +71,7 @@ let services: AppServices | null = null;
 
 export function getServices(): AppServices {
   if (!services) {
-    services = apiConfig.useMock ? createMockServices() : createHttpServices();
+    services = createHttpServices();
   }
   return services;
 }

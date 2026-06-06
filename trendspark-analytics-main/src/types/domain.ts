@@ -5,6 +5,12 @@ export type AuthorRef = {
   name: string;
 };
 
+/** Mirrors backend HelixTopicRef: a keyword with its persisted topic ID. */
+export type TopicRef = {
+  id: string;
+  name: string;
+};
+
 export type Paper = {
   id: string;
   title: string;
@@ -15,7 +21,7 @@ export type Paper = {
   year: number;
   citations: number;
   trendScore: number;
-  keywords: string[];
+  keywords: TopicRef[];
   category: string;
   impactFactor: number;
   doi: string;

@@ -3,6 +3,7 @@ import { getServices } from "@/services";
 import { authStorage } from "@/auth/storage";
 import type { LoginCredentials, RegisterCredentials, User } from "@/auth/types";
 import { normalizeUser } from "@/auth/roles";
+import { useQueryClient } from "@tanstack/react-query";
 
 type AuthContextValue = {
   user: User | null;
@@ -18,6 +19,7 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const qc = useQueryClient();
 
   useEffect(() => {
     let cancelled = false;
@@ -63,7 +65,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(() => {
     void getServices().auth.logout();
     setUser(null);
-  }, []);
+    qc.clear();
+    localStorage.removeItem("helix_followed_authors");
+    window.dispatchEvent(new Event("helix-saved-items-changed"));
+  }, [qc]);
 
   const updateProfile = useCallback(async (fullName: string) => {
     const session = await getServices().auth.updateProfile(fullName);

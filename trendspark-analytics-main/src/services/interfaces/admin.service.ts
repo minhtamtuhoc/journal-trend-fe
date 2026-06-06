@@ -19,4 +19,10 @@ export interface AdminService {
   resetStaleSync(): Promise<AdminSyncResult>;
   listSources(): Promise<ApiSource[]>;
   updateSource(name: string, body: { enabled?: boolean; syncSchedule?: string }): Promise<ApiSource>;
+  recalculateTrends(): Promise<AdminSyncResult>;
+  backfillTrends(months: number): Promise<AdminSyncResult>;
+  getTrendDemoStats(): Promise<unknown>;
+  repairMetadata(limit: number): Promise<AdminSyncResult>;
+  listAnomalies(limit?: number): Promise<unknown[]>;
+  expireStaleReviews(): Promise<AdminSyncResult>;
 }

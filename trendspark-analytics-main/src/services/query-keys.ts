@@ -26,6 +26,8 @@ export const queryKeys = {
   admin: {
     overview: ["admin", "overview"] as const,
     sources: ["admin", "sources"] as const,
+    anomalies: ["admin", "anomalies"] as const,
+    demoStats: ["admin", "demoStats"] as const,
   },
   follows: {
     topics: ["follows", "topics"] as const,

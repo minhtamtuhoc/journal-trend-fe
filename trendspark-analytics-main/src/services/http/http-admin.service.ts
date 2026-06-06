@@ -26,4 +26,28 @@ export class HttpAdminService implements AdminService {
   updateSource(name: string, body: { enabled?: boolean; syncSchedule?: string }) {
     return apiClient.patch<ApiSource>(`/admin/sources/${encodeURIComponent(name)}`, body);
   }
+
+  recalculateTrends() {
+    return apiClient.post<AdminSyncResult>("/admin/trends/recalculate");
+  }
+
+  backfillTrends(months: number) {
+    return apiClient.post<AdminSyncResult>("/admin/trends/backfill", undefined, { params: { months } });
+  }
+
+  getTrendDemoStats() {
+    return apiClient.get<unknown>("/admin/trends/demo-stats");
+  }
+
+  repairMetadata(limit: number) {
+    return apiClient.post<AdminSyncResult>("/admin/papers/repair-metadata", undefined, { params: { limit } });
+  }
+
+  listAnomalies(limit?: number) {
+    return apiClient.get<unknown[]>("/admin/anomalies", { params: { limit } });
+  }
+
+  expireStaleReviews() {
+    return apiClient.post<AdminSyncResult>("/admin/papers/review/expire-stale");
+  }
 }
