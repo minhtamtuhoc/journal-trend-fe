@@ -5,6 +5,7 @@ import { Heatmap } from "@/components/Heatmap";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, PolarAngleAxis, PolarGrid, Radar, RadarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useAnalyticsSnapshot } from "@/hooks/data/use-analytics";
 import { useSavedItems } from "@/hooks/use-saved-items";
+import { useFollowedTopics, useFollowTopic, useUnfollowTopic } from "@/hooks/data/use-follows";
 import { Flame, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 
@@ -20,8 +21,12 @@ const tooltipStyle = {
 
 function TrendsPage() {
   const { data: analytics } = useAnalyticsSnapshot();
-  const { isAuthorFollowed, toggleAuthorFollow, isKeywordFollowed, toggleKeywordFollow } =
-    useSavedItems();
+  const { isAuthorFollowed, toggleAuthorFollow } = useSavedItems();
+  const { data: followedTopics = [] } = useFollowedTopics();
+  const followTopic = useFollowTopic();
+  const unfollowTopic = useUnfollowTopic();
+
+  const isTopicFollowed = (topicId: string) => followedTopics.some((t) => t.id === topicId);
 
   // const { publicationVelocity: PUBLICATION_VELOCITY, radarFields: RADAR_FIELDS, trendingKeywords: TRENDING_KEYWORDS, trendingAuthors: TRENDING_AUTHORS } =
   //   analytics;
@@ -134,7 +139,7 @@ function TrendsPage() {
             </thead>
             <tbody className="divide-y divide-border">
               {TRENDING_KEYWORDS.map((k) => {
-                const followed = isKeywordFollowed(k.term);
+                const followed = isTopicFollowed(k.id);
                 return (
                   <tr key={k.id} className="hover:bg-secondary/40 transition-colors">
                     <td className="py-3 text-foreground font-medium">{k.term}</td>
@@ -150,11 +155,14 @@ function TrendsPage() {
                     <td className="py-3 text-right">
                       <button
                         onClick={() => {
-                          const added = toggleKeywordFollow(k.term);
-                          if (added) {
-                            toast.success(`Following keyword: ${k.term}`);
+                          if (followed) {
+                            unfollowTopic.mutate(k.id, {
+                              onSuccess: () => toast.info(`Unfollowed keyword: ${k.term}`),
+                            });
                           } else {
-                            toast.info(`Unfollowed keyword: ${k.term}`);
+                            followTopic.mutate(k.id, {
+                              onSuccess: () => toast.success(`Following keyword: ${k.term}`),
+                            });
                           }
                         }}
                         className={`text-[10px] px-2.5 py-0.5 rounded-md border transition-all cursor-pointer ${

@@ -9,7 +9,7 @@ import { UserPlus, ArrowUpRight, ExternalLink, UserCheck, BookMarked } from "luc
 import { toast } from "sonner";
 import { SaveToCollectionButton } from "@/components/SaveToCollectionButton";
 import { useAuth } from "@/auth";
-import { useFollowedJournals, useFollowJournal, useUnfollowJournal } from "@/hooks/data/use-follows";
+import { useFollowedJournals, useFollowJournal, useUnfollowJournal, useFollowedTopics, useFollowTopic, useUnfollowTopic } from "@/hooks/data/use-follows";
 import { ApiError } from "@/api/errors";
 
 export const Route = createFileRoute("/papers/$id")({
@@ -23,15 +23,15 @@ function PaperDetailPage() {
   const { data: related = [] } = useRelatedPapers(id, category);
 
   const { user } = useAuth();
-  const {
-    isAuthorFollowed,
-    toggleAuthorFollow,
-    isKeywordFollowed,
-    toggleKeywordFollow,
-  } = useSavedItems();
+  const { isAuthorFollowed, toggleAuthorFollow } = useSavedItems();
   const { data: followedJournals = [] } = useFollowedJournals();
   const followJournal = useFollowJournal();
   const unfollowJournal = useUnfollowJournal();
+  const { data: followedTopics = [] } = useFollowedTopics();
+  const followTopic = useFollowTopic();
+  const unfollowTopic = useUnfollowTopic();
+
+  const isTopicFollowed = (topicId: string) => followedTopics.some((t) => t.id === topicId);
 
   if (isLoading) {
     return (
@@ -114,17 +114,20 @@ function PaperDetailPage() {
           <Card title="Abstract">
             <p className="text-sm text-muted-foreground leading-relaxed">{paper.abstract || "No abstract available."}</p>
             <div className="mt-6 flex flex-wrap gap-2">
-              {keywords.map((k: string) => {
-                const followed = isKeywordFollowed(k);
+              {keywords.map((k) => {
+                const followed = isTopicFollowed(k.id);
                 return (
                   <button
-                    key={k}
+                    key={k.id}
                     onClick={() => {
-                      const added = toggleKeywordFollow(k);
-                      if (added) {
-                        toast.success(`Following keyword: ${k}`);
+                      if (followed) {
+                        unfollowTopic.mutate(k.id, {
+                          onSuccess: () => toast.info(`Unfollowed keyword: ${k.name}`),
+                        });
                       } else {
-                        toast.info(`Unfollowed keyword: ${k}`);
+                        followTopic.mutate(k.id, {
+                          onSuccess: () => toast.success(`Following keyword: ${k.name}`),
+                        });
                       }
                     }}
                     className={`text-xs px-2.5 py-1 rounded-full border flex items-center gap-1 transition-all cursor-pointer ${
@@ -133,7 +136,7 @@ function PaperDetailPage() {
                         : "border-border bg-secondary/40 text-foreground hover:border-brand/30"
                     }`}
                   >
-                    <span>{k}</span>
+                    <span>{k.name}</span>
                     <span className="text-[9px] opacity-75">{followed ? "✓" : "+"}</span>
                   </button>
                 );
@@ -178,7 +181,12 @@ function PaperDetailPage() {
         <div className="space-y-6">
           <Card title="Metrics">
             <div className="grid grid-cols-2 gap-4">
-              <Metric label="Trend Score" value={`+${(paper.trendScore ?? 0).toFixed(1)}%`} accent />
+              <Metric
+                label="Related Topic Trend"
+                value={`+${(paper.trendScore ?? 0).toFixed(1)}%`}
+                accent
+                tooltip="Mức tăng trưởng cao nhất trong số các chủ đề (keywords) gắn với bài viết này trong tháng hiện tại."
+              />
               <Metric label="Citations" value={(paper.citations ?? 0).toLocaleString()} />
               <Metric label="Impact Factor" value={(paper.impactFactor ?? 0).toString()} />
               <Metric label="Year" value={paper.year.toString()} />
@@ -251,10 +259,17 @@ function PaperDetailPage() {
   );
 }
 
-function Metric({ label, value, accent = false }: { label: string; value: string; accent?: boolean }) {
+function Metric({ label, value, accent = false, tooltip }: { label: string; value: string; accent?: boolean; tooltip?: string }) {
   return (
     <div>
-      <p className="text-[10px] uppercase tracking-widest text-muted-foreground">{label}</p>
+      <p className="text-[10px] uppercase tracking-widest text-muted-foreground flex items-center gap-1">
+        <span>{label}</span>
+        {tooltip && (
+          <span title={tooltip} className="cursor-help text-[10px] text-muted-foreground opacity-60 hover:opacity-100 transition-opacity">
+            ⓘ
+          </span>
+        )}
+      </p>
       <p className={`text-lg font-bold font-mono mt-1 ${accent ? "text-success" : "text-foreground"}`}>{value}</p>
     </div>
   );

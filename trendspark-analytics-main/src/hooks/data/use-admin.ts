@@ -38,3 +38,47 @@ export function useUpdateAdminSource() {
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.admin.sources }),
   });
 }
+
+export function useRecalculateTrends() {
+  return useMutation({
+    mutationFn: () => getServices().admin.recalculateTrends(),
+  });
+}
+
+export function useBackfillTrends() {
+  return useMutation({
+    mutationFn: (months: number) => getServices().admin.backfillTrends(months),
+  });
+}
+
+export function useTrendDemoStats() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: queryKeys.admin.demoStats,
+    queryFn: () => getServices().admin.getTrendDemoStats(),
+    enabled: isBrowser && isAdminUser(user),
+    ...mockQueryDefaults,
+  });
+}
+
+export function useRepairMetadata() {
+  return useMutation({
+    mutationFn: (limit: number) => getServices().admin.repairMetadata(limit),
+  });
+}
+
+export function useAdminAnomalies(limit?: number) {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: queryKeys.admin.anomalies,
+    queryFn: () => getServices().admin.listAnomalies(limit),
+    enabled: isBrowser && isAdminUser(user),
+    ...mockQueryDefaults,
+  });
+}
+
+export function useExpireStaleReviews() {
+  return useMutation({
+    mutationFn: () => getServices().admin.expireStaleReviews(),
+  });
+}

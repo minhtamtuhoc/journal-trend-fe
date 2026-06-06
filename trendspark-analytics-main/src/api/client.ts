@@ -65,7 +65,11 @@ export class ApiClient {
         throw await ApiError.fromResponse(res);
       }
       if (res.status === 204) return undefined as T;
-      return res.json() as Promise<T>;
+      const text = await res.text();
+      if (!text || text.trim() === "") {
+        return undefined as T;
+      }
+      return JSON.parse(text) as T;
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") {
         throw new ApiError("Request timed out. Backend có đang chạy trên port 8080 không?", 0);

@@ -2,9 +2,9 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppLayout, PageHeader } from "@/components/AppLayout";
 import { Card } from "@/components/Card";
 import { usePapers } from "@/hooks/data/use-papers";
-import { useSavedItems } from "@/hooks/use-saved-items";
+import { useFollowedTopics, useFollowTopic, useUnfollowTopic } from "@/hooks/data/use-follows";
 import type { Paper } from "@/types/domain";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Search as SearchIcon, Download, SlidersHorizontal, ArrowUpRight } from "lucide-react";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -28,7 +28,18 @@ function SearchPage() {
   const [category, setCategory] = useState("all");
   const [minCitations, setMinCitations] = useState(0);
 
-  const { isKeywordFollowed, toggleKeywordFollow } = useSavedItems();
+  const { data: followedTopics = [] } = useFollowedTopics();
+  const followTopic = useFollowTopic();
+  const unfollowTopic = useUnfollowTopic();
+
+  const isTopicFollowed = (topicId: string) => followedTopics.some((t) => t.id === topicId);
+
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 20;
+
+  useEffect(() => {
+    setPage(1);
+  }, [q, sort, year, category, minCitations]);
 
   const results = useMemo(() => {
     let r: Paper[] = PAPERS;
@@ -38,7 +49,7 @@ function SearchPage() {
         (p) =>
           p.title.toLowerCase().includes(needle) ||
           p.authors.some((a) => a.toLowerCase().includes(needle)) ||
-          p.keywords.some((k) => k.toLowerCase().includes(needle)) ||
+          p.keywords.some((k) => k.name.toLowerCase().includes(needle)) ||
           p.journal.toLowerCase().includes(needle),
       );
     }
@@ -48,6 +59,12 @@ function SearchPage() {
     r = [...r].sort((a, b) => (sort === "trend" ? b.trendScore - a.trendScore : sort === "citations" ? b.citations - a.citations : b.year - a.year));
     return r;
   }, [PAPERS, q, sort, year, category, minCitations]);
+
+  const totalResults = results.length;
+  const totalPages = Math.ceil(totalResults / PAGE_SIZE);
+  const startIndex = (page - 1) * PAGE_SIZE;
+  const endIndex = Math.min(startIndex + PAGE_SIZE, totalResults);
+  const paginatedResults = results.slice(startIndex, endIndex);
 
   const exportCsv = () => {
     const header = "title,authors,journal,year,citations,trendScore,doi";
@@ -113,12 +130,16 @@ function SearchPage() {
           </div>
 
           <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>{results.length} results</span>
+            <span>
+              {totalResults === 0
+                ? "Showing 0 of 0 papers"
+                : `Showing ${startIndex + 1}-${endIndex} of ${totalResults} papers`}
+            </span>
             <span className="font-mono">sorted by {sort}</span>
           </div>
 
           <div className="space-y-3">
-            {results.map((p) => {
+            {paginatedResults.map((p) => {
               return (
                 <Card key={p.id} className="hover:border-brand/40 transition-colors">
                   <div className="flex items-start justify-between gap-4">
@@ -150,18 +171,21 @@ function SearchPage() {
                       </div>
                       <div className="flex flex-wrap gap-1.5 mt-3">
                         {p.keywords.map((k) => {
-                          const followed = isKeywordFollowed(k);
+                          const followed = isTopicFollowed(k.id);
                           return (
                             <button
-                              key={k}
+                              key={k.id}
                               onClick={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
-                                const added = toggleKeywordFollow(k);
-                                if (added) {
-                                  toast.success(`Following keyword: ${k}`);
+                                if (followed) {
+                                  unfollowTopic.mutate(k.id, {
+                                    onSuccess: () => toast.info(`Unfollowed keyword: ${k.name}`),
+                                  });
                                 } else {
-                                  toast.info(`Unfollowed keyword: ${k}`);
+                                  followTopic.mutate(k.id, {
+                                    onSuccess: () => toast.success(`Following keyword: ${k.name}`),
+                                  });
                                 }
                               }}
                               className={`text-[10px] px-2 py-0.5 rounded-full border flex items-center gap-1 transition-all cursor-pointer ${
@@ -170,17 +194,21 @@ function SearchPage() {
                                   : "border-border bg-secondary/40 text-muted-foreground hover:border-brand/30 hover:text-foreground"
                               }`}
                             >
-                              <span>{k}</span>
+                              <span>{k.name}</span>
                               <span className="text-[8px] opacity-75">{followed ? "✓" : "+"}</span>
                             </button>
                           );
                         })}
+                        {p.trendScore > 0 && (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-success/15 border border-success/30 text-success font-medium">
+                            Related Topic Trend: +{p.trendScore.toFixed(1)}%
+                          </span>
+                        )}
                       </div>
                     </div>
                     <div className="text-right shrink-0">
-                      <div className="font-mono font-bold text-success">+{p.trendScore.toFixed(1)}%</div>
-                      <div className="text-[10px] text-muted-foreground uppercase tracking-widest mt-1">{p.citations} cites</div>
-                      <div className="text-[10px] text-muted-foreground uppercase tracking-widest">IF {p.impactFactor}</div>
+                      <div className="text-[10px] text-muted-foreground uppercase tracking-widest">{p.citations} cites</div>
+                      <div className="text-[10px] text-muted-foreground uppercase tracking-widest mt-0.5">IF {p.impactFactor}</div>
                       <div className="flex gap-1 mt-3 justify-end">
                         <SaveToCollectionButton paperId={p.id} paperTitle={p.title} />
                         <Link to="/papers/$id" params={{ id: p.id }} className="p-1.5 rounded-md border border-border hover:border-brand/40 hover:text-brand transition-colors">
@@ -193,6 +221,42 @@ function SearchPage() {
               );
             })}
           </div>
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-1.5 mt-6 py-4 border-t border-border">
+              <button
+                type="button"
+                disabled={page === 1}
+                onClick={() => setPage((p) => Math.max(p - 1, 1))}
+                className="inline-flex items-center justify-center h-8 px-3 rounded-lg text-xs font-medium border border-border hover:border-brand/40 disabled:opacity-50 disabled:pointer-events-none transition-colors cursor-pointer"
+              >
+                Previous
+              </button>
+              
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setPage(p)}
+                  className={`inline-flex items-center justify-center size-8 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                    page === p
+                      ? "bg-brand/10 border-brand/45 text-brand"
+                      : "border-border hover:border-brand/40"
+                  }`}
+                >
+                  {p}
+                </button>
+              ))}
+
+              <button
+                type="button"
+                disabled={page === totalPages}
+                onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
+                className="inline-flex items-center justify-center h-8 px-3 rounded-lg text-xs font-medium border border-border hover:border-brand/40 disabled:opacity-50 disabled:pointer-events-none transition-colors cursor-pointer"
+              >
+                Next
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </AppLayout>

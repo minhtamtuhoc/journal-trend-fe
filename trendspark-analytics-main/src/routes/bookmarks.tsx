@@ -11,7 +11,7 @@ import { useMemo, useState } from "react";
 import { Download, Trash2, Users, Hash, Flame, ArrowRight, BookOpen } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/auth";
-import { useFollowedJournals, useUnfollowJournal } from "@/hooks/data/use-follows";
+import { useFollowedJournals, useUnfollowJournal, useFollowedTopics, useUnfollowTopic } from "@/hooks/data/use-follows";
 import { ApiError } from "@/api/errors";
 
 export const Route = createFileRoute("/bookmarks")({ component: BookmarksPage });
@@ -39,18 +39,14 @@ function BookmarksPage() {
 
   const { data: followedJournals = [], isLoading: loadingJournals } = useFollowedJournals();
   const unfollowJournal = useUnfollowJournal();
-  const {
-    followedAuthors,
-    followedKeywords,
-    toggleAuthorFollow,
-    toggleKeywordFollow,
-  } = useSavedItems();
+  const { data: followedTopics = [] } = useFollowedTopics();
+  const unfollowTopic = useUnfollowTopic();
+  const { followedAuthors, toggleAuthorFollow } = useSavedItems();
 
 
   //const TRENDING_AUTHORS = analytics.trendingAuthors;
   //const TRENDING_KEYWORDS = analytics.trendingKeywords;
   const TRENDING_AUTHORS = analytics?.trendingAuthors ?? [];
-  const TRENDING_KEYWORDS = analytics?.trendingKeywords ?? [];
 
 
   const savedAuthors = useMemo((): SavedAuthorCard[] => {
@@ -75,18 +71,14 @@ function BookmarksPage() {
   }, [followedAuthors, TRENDING_AUTHORS, featuredAuthors]);
 
 
-  const savedKeywords = followedKeywords.map((term) => {
-    const found = TRENDING_KEYWORDS.find((k) => k.term.toLowerCase() === term.toLowerCase());
-    return (
-      found || {
-        id: term,
-        term,
-        count: 8,
-        category: "Computer Science",
-        trendScore: 15.2,
-      }
-    );
-  });
+  /** Map backend TopicTrend → keyword card shape for display. */
+  const savedKeywords = followedTopics.map((t) => ({
+    id: t.id,
+    term: t.name,
+    count: t.paperCount,
+    category: "Research",
+    trendScore: t.trendScore,
+  }));
 
   const tabs = [
     { id: "authors", label: "Authors", count: savedAuthors.length },
@@ -159,7 +151,7 @@ function BookmarksPage() {
     <AppLayout>
       <PageHeader
         title="Follow Center"
-        subtitle="Authors & keywords (local) · Journals (synced with backend when signed in)"
+        subtitle="Authors (local) · Keywords & Journals (synced with backend when signed in)"
         action={
           <button
             onClick={exportCsv}
@@ -323,62 +315,6 @@ function BookmarksPage() {
         </div>
       )}
 
-      {tab === "journals" && (
-        <div>
-          {!user ? (
-            <div className="text-center py-16 glass rounded-2xl border border-border max-w-md mx-auto">
-              <p className="text-sm text-muted-foreground px-4">Đăng nhập để theo dõi journal và nhận thông báo bài mới sau sync.</p>
-              <Link to="/login" className="mt-4 inline-block text-sm text-brand hover:underline">
-                Sign in
-              </Link>
-            </div>
-          ) : loadingJournals ? (
-            <p className="text-sm text-muted-foreground">Loading journals…</p>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {followedJournals.map((j) => (
-                <Card key={j.id} className="flex items-center justify-between hover:border-brand/35 transition-colors group">
-                  <div className="min-w-0">
-                    <div className="font-semibold text-sm flex items-center gap-1.5 text-foreground">
-                      <BookOpen className="size-3.5 text-brand shrink-0" /> {j.name}
-                    </div>
-                    <div className="text-[10px] text-muted-foreground mt-1 truncate">
-                      {[j.publisher, j.domain].filter(Boolean).join(" · ") || "Academic journal"}
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      unfollowJournal.mutate(j.id, {
-                        onSuccess: () => toast.info(`Unfollowed journal: ${j.name}`),
-                        onError: (err) => {
-                          const msg = err instanceof ApiError ? err.message : "Unfollow failed";
-                          toast.error(msg);
-                        },
-                      });
-                    }}
-                    className="p-1.5 rounded-md border border-border hover:border-destructive/40 hover:text-destructive transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 cursor-pointer shrink-0"
-                    title="Unfollow journal"
-                  >
-                    <Trash2 className="size-3" />
-                  </button>
-                </Card>
-              ))}
-            </div>
-          )}
-          {user && !loadingJournals && followedJournals.length === 0 && (
-            <div className="text-center py-16 glass rounded-2xl border border-border max-w-md mx-auto">
-              <div className="size-12 rounded-full bg-brand/10 border border-brand/20 flex items-center justify-center text-brand mx-auto mb-4">
-                <BookOpen className="size-5" />
-              </div>
-              <h3 className="font-semibold text-sm text-foreground">No followed journals</h3>
-              <p className="text-xs text-muted-foreground mt-1 max-w-xs mx-auto px-4">
-                Mở chi tiết bài báo và bấm <strong>Follow journal</strong> để nhận thông báo khi sync có bài mới.
-              </p>
-            </div>
-          )}
-        </div>
-      )}
 
       {tab === "keywords" && (
         <div>
@@ -402,8 +338,13 @@ function BookmarksPage() {
                   </span>
                   <button
                     onClick={() => {
-                      toggleKeywordFollow(k.term);
-                      toast.info(`Unfollowed keyword: ${k.term}`);
+                      unfollowTopic.mutate(k.id, {
+                        onSuccess: () => toast.info(`Unfollowed keyword: ${k.term}`),
+                        onError: (err) => {
+                          const msg = err instanceof ApiError ? err.message : "Unfollow failed";
+                          toast.error(msg);
+                        },
+                      });
                     }}
                     className="p-1.5 rounded-md border border-border hover:border-destructive/40 hover:text-destructive transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 cursor-pointer"
                     title="Unfollow Keyword"
