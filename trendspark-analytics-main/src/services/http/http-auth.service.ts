@@ -12,11 +12,8 @@ export class HttpAuthService implements AuthService {
     return normalized;
   }
 
-  async register(credentials: RegisterCredentials): Promise<AuthSession> {
-    const session = await apiClient.post<AuthSession>("/auth/register", credentials);
-    const normalized = { ...session, user: normalizeUser(session.user) };
-    authStorage.setSession(normalized);
-    return normalized;
+  async register(credentials: RegisterCredentials): Promise<void> {
+    await apiClient.post("/auth/register", credentials);
   }
 
   async logout(): Promise<void> {

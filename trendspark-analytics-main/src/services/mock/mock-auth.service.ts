@@ -27,11 +27,8 @@ export class MockAuthService implements AuthService {
     return session;
   }
 
-  async register({ name, email }: RegisterCredentials): Promise<AuthSession> {
+  async register({ name, email }: RegisterCredentials): Promise<void> {
     await new Promise((r) => setTimeout(r, AUTH_DELAY_MS));
-    const session = buildSession({ name, email, role: roleFromEmail(email) });
-    authStorage.setSession(session);
-    return session;
   }
 
   async logout(): Promise<void> {

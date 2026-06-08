@@ -47,8 +47,8 @@ function RegisterPage() {
     setLoading(true);
     try {
       await register(name, email, password);
-      toast.success("Account created");
-      navigate({ to: "/dashboard" });
+      toast.success("Đăng ký thành công, vui lòng đăng nhập.");
+      navigate({ to: "/login" });
     } catch (error) {
       const message =
         error instanceof ApiError
