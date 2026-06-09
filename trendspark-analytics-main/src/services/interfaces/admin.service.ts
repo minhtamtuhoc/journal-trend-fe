@@ -25,4 +25,6 @@ export interface AdminService {
   repairMetadata(limit: number): Promise<AdminSyncResult>;
   listAnomalies(limit?: number): Promise<unknown[]>;
   expireStaleReviews(): Promise<AdminSyncResult>;
+  approveReview(id: string, note?: string): Promise<unknown>;
+  deletePaper(id: string): Promise<unknown>;
 }

@@ -50,4 +50,12 @@ export class HttpAdminService implements AdminService {
   expireStaleReviews() {
     return apiClient.post<AdminSyncResult>("/admin/papers/review/expire-stale");
   }
+
+  approveReview(id: string, note?: string) {
+    return apiClient.post<unknown>(`/v1/admin/papers/${encodeURIComponent(id)}/review/accept`, undefined, { params: { note } });
+  }
+
+  deletePaper(id: string) {
+    return apiClient.delete<unknown>(`/v1/admin/papers/${encodeURIComponent(id)}`);
+  }
 }
