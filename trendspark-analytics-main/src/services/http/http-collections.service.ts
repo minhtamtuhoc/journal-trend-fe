@@ -1,4 +1,4 @@
-import { apiClient } from "@/api/client";
+  import { apiClient } from "@/api/client";
 import type { Collection } from "@/types/domain";
 import type {
   CollectionsService,

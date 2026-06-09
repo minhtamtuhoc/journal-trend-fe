@@ -82,3 +82,81 @@ export function useExpireStaleReviews() {
     mutationFn: () => getServices().admin.expireStaleReviews(),
   });
 }
+
+export function useApprovePaper() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, note }: { id: string; note?: string }) =>
+      getServices().admin.approveReview(id, note),
+    onMutate: async ({ id }) => {
+      await qc.cancelQueries({ queryKey: ["pending-review"] });
+      const previous = qc.getQueryData<unknown[]>(["pending-review"]);
+      if (previous) {
+        qc.setQueryData(
+          ["pending-review"],
+          previous.filter((item: any) => item.id !== id)
+        );
+      }
+      return { previous };
+    },
+    onError: (err, variables, context) => {
+      if (context?.previous) {
+        qc.setQueryData(["pending-review"], context.previous);
+      }
+    },
+    onSuccess: (data, { id }) => {
+      qc.setQueryData(
+        ["pending-review"],
+        (old: unknown[] | undefined) => old?.filter((item: any) => item.id !== id) ?? []
+      );
+      qc.invalidateQueries({ queryKey: queryKeys.admin.overview });
+    },
+  });
+}
+
+export function useDeletePaper() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      getServices().admin.deletePaper(id),
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: ["pending-review"] });
+      const previous = qc.getQueryData<unknown[]>(["pending-review"]);
+      if (previous) {
+        qc.setQueryData(
+          ["pending-review"],
+          previous.filter((item: any) => item.id !== id)
+        );
+      }
+      return { previous };
+    },
+    onError: (err, variables, context) => {
+      if (context?.previous) {
+        qc.setQueryData(["pending-review"], context.previous);
+      }
+    },
+    onSuccess: (data, id) => {
+      qc.setQueryData(
+        ["pending-review"],
+        (old: unknown[] | undefined) => old?.filter((item: any) => item.id !== id) ?? []
+      );
+      qc.invalidateQueries({ queryKey: queryKeys.admin.overview });
+      qc.invalidateQueries({ queryKey: queryKeys.papers.all });
+    },
+  });
+}
+
+export function usePendingReview() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ["pending-review"],
+    queryFn: async () => {
+      const overview = await getServices().admin.getOverview();
+      return overview.pendingReview;
+    },
+    enabled: isBrowser && isAdminUser(user),
+    placeholderData: [],
+    retry: 1,
+    ...mockQueryDefaults,
+  });
+}

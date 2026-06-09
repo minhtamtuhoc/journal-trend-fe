@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppLayout, PageHeader } from "@/components/AppLayout";
 import { Card } from "@/components/Card";
-import { useAdminOverview, useAdminSources, useUpdateAdminSource } from "@/hooks/data/use-admin";
+import { useAdminOverview, useAdminSources, useUpdateAdminSource, useApprovePaper, useDeletePaper, usePendingReview } from "@/hooks/data/use-admin";
 import { useState } from "react";
 import { RefreshCw, CheckCircle2, XCircle, AlertTriangle, Activity } from "lucide-react";
 import { toast } from "sonner";
@@ -19,8 +19,10 @@ function AdminPage() {
   const { data: admin, isLoading: isLoadingAdmin, isError: isAdminError, refetch: refetchAdmin } = useAdminOverview();
   const { data: sources = [] } = useAdminSources();
   const updateSource = useUpdateAdminSource();
+  const approvePaper = useApprovePaper();
+  const deletePaper = useDeletePaper();
+  const { data: PENDING_REVIEW = [] } = usePendingReview();
   const AUDIT_LOGS = admin?.auditLogs ?? [];
-  const PENDING_REVIEW = admin?.pendingReview ?? [];
   const [syncing, setSyncing] = useState(false);
 
 
@@ -205,15 +207,36 @@ function AdminPage() {
                   <div className="flex gap-1 shrink-0">
                     <button
                       type="button"
-                      onClick={() => toast.success("Đã duyệt (demo)")}
-                      className="p-1.5 rounded-md border border-border hover:border-success/40 hover:text-success transition-colors"
+                      disabled={approvePaper.isPending || deletePaper.isPending}
+                      onClick={() => {
+                        approvePaper.mutate(
+                          { id: p.id },
+                          {
+                            onSuccess: () => toast.success("Đã duyệt bài báo thành công"),
+                            onError: (err) => {
+                              const msg = err instanceof ApiError ? err.message : "Duyệt thất bại";
+                              toast.error(msg);
+                            },
+                          }
+                        );
+                      }}
+                      className="p-1.5 rounded-md border border-border hover:border-success/40 hover:text-success transition-colors disabled:opacity-50"
                     >
                       <CheckCircle2 className="size-3.5" />
                     </button>
                     <button
                       type="button"
-                      onClick={() => toast.info("Đã ẩn (demo)")}
-                      className="p-1.5 rounded-md border border-border hover:border-destructive/40 hover:text-destructive transition-colors"
+                      disabled={approvePaper.isPending || deletePaper.isPending}
+                      onClick={() => {
+                        deletePaper.mutate(p.id, {
+                          onSuccess: () => toast.success("Đã xóa bài báo thành công"),
+                          onError: (err) => {
+                            const msg = err instanceof ApiError ? err.message : "Xóa thất bại";
+                            toast.error(msg);
+                          },
+                        });
+                      }}
+                      className="p-1.5 rounded-md border border-border hover:border-destructive/40 hover:text-destructive transition-colors disabled:opacity-50"
                     >
                       <XCircle className="size-3.5" />
                     </button>

@@ -78,4 +78,14 @@ export class MockAdminService implements AdminService {
     await mockDelay(150);
     return { papersFetched: 0, status: "SUCCESS", message: "Expired stale reviews successfully" };
   }
+
+  async approveReview(id: string, note?: string) {
+    await mockDelay(150);
+    return { status: "SUCCESS", message: "Approved (mock)" };
+  }
+
+  async deletePaper(id: string) {
+    await mockDelay(150);
+    return { status: "SUCCESS", message: "Deleted (mock)" };
+  }
 }
