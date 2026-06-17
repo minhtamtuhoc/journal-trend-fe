@@ -102,20 +102,19 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             <Settings className="size-4" />
             Profile Settings
           </Link>
-          <Link
-            to="/admin"
-            className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-              pathname.startsWith("/admin")
-                ? "bg-brand/10 text-brand border border-brand/30"
-                : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-            }`}
-          >
-            <Shield className="size-4" />
-            <span className="flex-1">Admin Panel</span>
-            {!isAdminUser(user) && (
-              <span className="text-[9px] font-mono uppercase text-muted-foreground">Admin</span>
-            )}
-          </Link>
+          {isAdminUser(user) && (
+            <Link
+              to="/admin"
+              className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                pathname.startsWith("/admin")
+                  ? "bg-brand/10 text-brand border border-brand/30"
+                  : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+              }`}
+            >
+              <Shield className="size-4" />
+              <span className="flex-1">Admin Panel</span>
+            </Link>
+          )}
         </nav>
 
         <div className="shrink-0 p-4 border-t border-border space-y-3 bg-background/80">

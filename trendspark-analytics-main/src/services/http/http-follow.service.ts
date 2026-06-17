@@ -3,7 +3,13 @@ import type { FollowService } from "@/services/interfaces/follow.service";
 import type { Journal } from "@/types/brief";
 import type { TopicTrend } from "@/types/domain";
 
-type TopicDto = { id: number; name: string; description?: string };
+type TopicDto = {
+  keywordId: number;
+  term: string;
+  domain?: string | null;
+  paperCount: number;
+  trendScore?: number | null;
+};
 type JournalDto = {
   id: number;
   name: string;
@@ -15,10 +21,10 @@ type JournalDto = {
 
 function mapTopic(t: TopicDto, i: number): TopicTrend {
   return {
-    id: String(t.id),
-    name: t.name,
-    paperCount: 0,
-    trendScore: 0,
+    id: String(t.keywordId),
+    name: t.term,
+    paperCount: t.paperCount,
+    trendScore: t.trendScore ?? 0,
     rank: i + 1,
   };
 }

@@ -1,35 +1,35 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppLayout, PageHeader } from "@/components/AppLayout";
 import { Card, KpiCard } from "@/components/Card";
-import { Heatmap } from "@/components/Heatmap";
+import { useState } from "react";
 import {
-  Area,
-  AreaChart,
   CartesianGrid,
-  Cell,
   Legend,
   Line,
   LineChart,
-  Pie,
-  PieChart,
-  PolarAngleAxis,
-  PolarGrid,
-  PolarRadiusAxis,
-  Radar,
-  RadarChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
-import { useAnalyticsSnapshot } from "@/hooks/data/use-analytics";
-import { usePapers } from "@/hooks/data/use-papers";
-import { Download, ArrowUpRight, TrendingUp, Hash, User, FileText, Bookmark } from "lucide-react";
-import type { DashboardHighlights, HighlightCard, TopicTrend } from "@/types/domain";
+import {
+  useDashboardSummary,
+  useKeywordChartData,
+} from "@/hooks/data/use-dashboard";
+import {
+  Download,
+  Calendar,
+  Layers,
+  FileText,
+  Activity,
+  Award,
+  Hash,
+  AlertTriangle,
+  ArrowUpRight,
+} from "lucide-react";
 import { toast } from "sonner";
-import { SaveToCollectionButton } from "@/components/SaveToCollectionButton";
 import { reportsApi } from "@/services/http/reports-api";
-import { useAuth } from "@/auth";
+import { useAuth, isAdminUser } from "@/auth";
 import { ApiError } from "@/api/errors";
 
 export const Route = createFileRoute("/dashboard")({ component: DashboardPage });
@@ -50,12 +50,23 @@ function tooltipStyle() {
   } as const;
 }
 
+const MONTH_NAMES = [
+  "", "Jan", "Feb", "Mar", "Apr", "May", "Jun", 
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+];
+
+function formatMonthYear(month: number, year: number) {
+  const m = MONTH_NAMES[month] || String(month);
+  return `${m} ${year}`;
+}
+
 function DashboardPage() {
   const { user } = useAuth();
-  const { data: analytics, isLoading } = useAnalyticsSnapshot();
-  const { data: papers = [] } = usePapers();
-
-
+  const isAdmin = isAdminUser(user);
+  
+  const { data: summary, isLoading, error } = useDashboardSummary();
+  const [selectedKeywordId, setSelectedKeywordId] = useState<number | null>(null);
+  const { data: chartData } = useKeywordChartData(selectedKeywordId);
 
   const exportDataset = async () => {
     if (!user) {
@@ -74,365 +85,308 @@ function DashboardPage() {
   if (isLoading) {
     return (
       <AppLayout>
-        <div className="p-8 text-sm text-muted-foreground">Loading analytics…</div>
+        <div className="p-8 text-sm text-muted-foreground animate-pulse">Loading dashboard statistics...</div>
       </AppLayout>
     );
   }
 
-  const {
-    kpis: KPIS,
-    publicationVelocity: PUBLICATION_VELOCITY,
-    categoryDistribution: CATEGORY_DISTRIBUTION,
-    radarFields: RADAR_FIELDS,
-    trendingKeywords: TRENDING_KEYWORDS,
-    trendingTopics = [],
-    highlights,
-  } = analytics;
+  if (error || !summary) {
+    return (
+      <AppLayout>
+        <div className="p-8 text-sm text-destructive flex items-center gap-2">
+          <AlertTriangle className="size-4" />
+          Failed to load dashboard data. Please try again.
+        </div>
+      </AppLayout>
+    );
+  }
 
+  const { kpi, trendingTopics, trendingKeywords, recentPublications, topJournals, syncMonitor } = summary;
 
+  const defaultKeywordId = trendingKeywords.length > 0 ? trendingKeywords[0].keywordId : null;
+  const activeKeywordId = selectedKeywordId || defaultKeywordId;
 
-  const TOPIC_TRENDS: TopicTrend[] = trendingTopics ?? [];
-  const HIGHLIGHTS: DashboardHighlights = highlights!;
+  // Prepare chart data format
+  const chartPoints = chartData?.history.map(pt => ({
+    name: formatMonthYear(pt.month, pt.year),
+    "Paper Count": pt.paperCount,
+    "Trend Score (%)": pt.trendScore
+  })) || [];
 
   return (
     <AppLayout>
       <PageHeader
-        title="Analytics Overview"
-        subtitle="Topic trends from OpenAlex sync · click a topic to view papers"
+        title="Dashboard Overview"
+        subtitle="Scientific journal publication statistics and dynamically derived topic trends"
         action={
-
-          <button type="button" onClick={exportDataset} className="inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-medium text-brand-foreground glow-brand transition-transform hover:scale-[1.02]" style={{ background: "var(--gradient-brand)" }}>
-
+          <button
+            type="button"
+            onClick={exportDataset}
+            className="inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-medium text-brand-foreground glow-brand transition-transform hover:scale-[1.02]"
+            style={{ background: "var(--gradient-brand)" }}
+          >
             <Download className="size-4" /> Export Dataset
           </button>
         }
       />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <HighlightTile card={HIGHLIGHTS.topKeyword} icon={<Hash className="size-4" />} label="Top keyword" linkTo="topic" />
-        <HighlightTile card={HIGHLIGHTS.topAuthor} icon={<User className="size-4" />} label="Top author" linkTo="author" />
-        <HighlightTile card={HIGHLIGHTS.topPaper} icon={<FileText className="size-4" />} label="Top paper" linkTo="paper" />
-        <HighlightTile card={HIGHLIGHTS.topFollowedTopic} icon={<Bookmark className="size-4" />} label="Most followed topic" linkTo="topic" />
+      {/* SECTION 1 - KPI CARDS */}
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
+        <KpiCard label="Total Papers" value={kpi.totalPapers.toLocaleString()} hint="Active papers in system" />
+        <KpiCard label="Total Journals" value={kpi.totalJournals.toLocaleString()} hint="Indexed academic sources" />
+        <KpiCard label="Total Keywords" value={kpi.totalKeywords.toLocaleString()} hint="Extracted research concepts" />
+        <KpiCard label="Trending Keywords" value={kpi.trendingKeywordsCount.toLocaleString()} hint="Keywords exceeding threshold" />
+        <KpiCard label="Trending Topics" value={kpi.trendingTopicsCount.toLocaleString()} hint="Derived from Keyword.domain" />
+        <KpiCard 
+          label="Last Sync Status" 
+          value={kpi.lastSyncStatus} 
+          accent={kpi.lastSyncStatus === "SUCCESS"} 
+          hint={kpi.lastSyncTime ? `At ${new Date(kpi.lastSyncTime).toLocaleDateString()}` : "No sync logs"} 
+        />
       </div>
 
-      <Card className="mb-6" title="Top 10 Topic Trends" action={<Link to="/trends" className="text-xs text-brand hover:underline">Trend explorer</Link>}>
-        {TOPIC_TRENDS.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-4">
-            Chưa có dữ liệu topic trend. Đăng nhập Admin → <strong>Run Manual Sync</strong>, sau đó tải lại trang.
-          </p>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            {TOPIC_TRENDS.slice(0, 10).map((t) => (
-              <Link
-                key={t.id}
-                to="/topics/$topicId"
-                params={{ topicId: t.id }}
-                className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg border border-border hover:border-brand/40 hover:bg-brand/5 transition-all group"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <span className="text-[10px] font-mono text-muted-foreground w-5">{String(t.rank).padStart(2, "0")}</span>
-                  <div className="min-w-0">
-                    <div className="text-sm font-medium text-foreground group-hover:text-brand truncate">{t.name}</div>
-                    <div className="text-[10px] text-muted-foreground font-mono">{t.paperCount} papers</div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        {/* SECTION 2 - TOP 10 TRENDING TOPICS */}
+        <Card className="lg:col-span-2" title="Top 10 Trending Topics">
+          {trendingTopics.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4">
+              Chưa có dữ liệu topic trend. Hãy chạy đồng bộ dữ liệu hoặc recalculate trend trong trang Admin.
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {trendingTopics.map((topic, i) => (
+                <Link
+                  key={topic.topicName}
+                  to="/topics/domain/$domain"
+                  params={{ domain: encodeURIComponent(topic.topicName) }}
+                  className="flex flex-col justify-between p-4 rounded-xl border border-border hover:border-brand/40 hover:bg-brand/5 transition-all group cursor-pointer"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-xs font-mono text-muted-foreground">#{i + 1}</span>
+                      <div className="text-sm font-bold text-foreground group-hover:text-brand truncate">
+                        {topic.topicName}
+                      </div>
+                    </div>
+                    <span className="text-xs font-bold text-success font-mono">
+                      +{topic.averageTrendScore.toFixed(1)}% avg
+                    </span>
                   </div>
-                </div>
-                <span className={`text-xs font-mono shrink-0 ${t.trendScore >= 15 ? "text-success" : "text-muted-foreground"}`}>
-                  {t.trendScore >= 0 ? "+" : ""}{t.trendScore.toFixed(1)}%
-                </span>
-              </Link>
-            ))}
+                  
+                  <div className="flex justify-between items-center text-[10px] text-muted-foreground mb-3 font-mono">
+                    <span>{topic.trendingKeywordsCount} trending keywords</span>
+                    <span className="flex items-center gap-1 text-brand/70"><ArrowUpRight className="size-3" /> View papers</span>
+                  </div>
+
+                  <div className="flex flex-wrap gap-1">
+                    {topic.topKeywords.map(kw => (
+                      <span key={kw.term} className="text-[10px] px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground font-mono">
+                        {kw.term} (+{kw.trendScore.toFixed(0)}%)
+                      </span>
+                    ))}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </Card>
+
+        {/* SECTION 3 - TOP 10 TRENDING KEYWORDS */}
+        <Card title="Top 10 Trending Keywords">
+          {trendingKeywords.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4">Chưa có dữ liệu từ khóa thịnh hành.</p>
+          ) : (
+            <div className="space-y-3.5">
+              {trendingKeywords.slice(0, 10).map((k) => (
+                <Link
+                  key={k.keyword}
+                  to="/search"
+                  search={{ q: k.keyword }}
+                  className="flex items-center justify-between text-sm p-1.5 -mx-1.5 rounded-lg hover:bg-brand/5 transition-colors group"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="text-[10px] font-mono text-muted-foreground w-4">
+                      {String(k.rank).padStart(2, "0")}
+                    </span>
+                    <span className="text-foreground truncate font-medium group-hover:text-brand">{k.keyword}</span>
+                    <span className="text-[9px] text-muted-foreground bg-secondary px-1.5 py-0.5 rounded">
+                      {k.domain}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className="text-[10px] text-muted-foreground font-mono">{k.paperCount} papers</span>
+                    <span className="text-xs font-mono text-success font-bold">
+                      +{k.trendScore.toFixed(0)}%
+                    </span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </Card>
+      </div>
+
+      {/* SECTION 4 - KEYWORD TREND CHART */}
+      <Card 
+        className="mb-6" 
+        title="Keyword Trend Chart"
+        action={
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground font-medium">Select Keyword:</span>
+            <select
+              className="bg-background text-foreground border border-border rounded-lg text-xs px-2.5 py-1.5 focus:border-brand focus:outline-none max-w-[200px]"
+              value={activeKeywordId || ""}
+              onChange={(e) => setSelectedKeywordId(Number(e.target.value))}
+            >
+              {trendingKeywords.map(k => (
+                <option key={(k as any).keywordId || k.keyword} value={(k as any).keywordId}>
+                  {k.keyword}
+                </option>
+              ))}
+            </select>
           </div>
+        }
+      >
+        {!activeKeywordId ? (
+          <p className="text-sm text-muted-foreground py-8 text-center">Vui lòng chọn từ khóa để xem biểu đồ.</p>
+        ) : chartPoints.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-8 text-center">Không có dữ liệu xu hướng lịch sử cho từ khóa này.</p>
+        ) : (
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={chartPoints} margin={{ top: 10, right: 30, left: 10, bottom: 5 }}>
+              <CartesianGrid stroke={chartTheme.grid} strokeDasharray="3 3" vertical={false} />
+              <XAxis dataKey="name" stroke={chartTheme.axis} fontSize={11} tickLine={false} axisLine={false} />
+              <YAxis yAxisId="left" stroke={chartTheme.axis} fontSize={11} tickLine={false} axisLine={false} label={{ value: 'Paper Count', angle: -90, position: 'insideLeft', style: { fill: 'var(--muted-foreground)', fontSize: 10 } }} />
+              <YAxis yAxisId="right" orientation="right" stroke={chartTheme.axis} fontSize={11} tickLine={false} axisLine={false} label={{ value: 'Trend Score (%)', angle: 90, position: 'insideRight', style: { fill: 'var(--muted-foreground)', fontSize: 10 } }} />
+              <Tooltip contentStyle={tooltipStyle()} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Line yAxisId="left" type="monotone" dataKey="Paper Count" stroke="var(--chart-1)" strokeWidth={2.5} activeDot={{ r: 6 }} />
+              <Line yAxisId="right" type="monotone" dataKey="Trend Score (%)" stroke="var(--chart-2)" strokeWidth={2} strokeDasharray="5 5" />
+            </LineChart>
+          </ResponsiveContainer>
         )}
       </Card>
 
-      {/* KPI grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-
-        <KpiCard label="Trend Score" value={KPIS.trendScore.toFixed(1)} delta={`+${KPIS.trendScoreDelta}%`} accent />
-        <KpiCard label="Active Keywords" value={KPIS.activeKeywords.toLocaleString()} hint="Across 12 major journals" />
-        <KpiCard label="Citation Volume" value={KPIS.citationVolume} hint="Growth spike detected" delta="+12.4%" />
-        <KpiCard label="Sync Health" value={`${KPIS.syncHealth}%`} hint="OpenAlex · Crossref · Semantic Scholar" />
-
-
-      </div>
-
-      {/* Main charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        <Card
-          className="lg:col-span-2"
-          title="Publication Velocity"
-          action={
-            <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest">
-              MONTHLY · 2024
-            </span>
-          }
-        >
-          <ResponsiveContainer width="100%" height={280}>
-            <AreaChart data={PUBLICATION_VELOCITY}>
-              <defs>
-                <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.5} />
-                  <stop offset="100%" stopColor="var(--chart-1)" stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="g2" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="var(--chart-2)" stopOpacity={0.35} />
-                  <stop offset="100%" stopColor="var(--chart-2)" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid stroke={chartTheme.grid} strokeDasharray="3 3" vertical={false} />
-              <XAxis
-                dataKey="month"
-                stroke={chartTheme.axis}
-                fontSize={11}
-                tickLine={false}
-                axisLine={false}
-              />
-              <YAxis stroke={chartTheme.axis} fontSize={11} tickLine={false} axisLine={false} />
-              <Tooltip contentStyle={tooltipStyle()} />
-              <Area
-                type="monotone"
-                dataKey="citations"
-                stroke="var(--chart-2)"
-                fill="url(#g2)"
-                strokeWidth={2}
-              />
-              <Area
-                type="monotone"
-                dataKey="papers"
-                stroke="var(--chart-1)"
-                fill="url(#g1)"
-                strokeWidth={2}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </Card>
-
-        <Card title="Top Trending Keywords">
-          <div className="space-y-3">
-            {TRENDING_KEYWORDS.slice(0, 6).map((k, i) => (
-              <div key={k.id} className="flex items-center justify-between text-sm">
-                <div className="flex items-center gap-3 min-w-0">
-                  <span className="text-[10px] font-mono text-muted-foreground w-4">
-                    {String(i + 1).padStart(2, "0")}
-                  </span>
-                  <span
-                    className="size-2 rounded-full"
-                    style={{ background: `var(--chart-${(i % 5) + 1})` }}
-                  />
-                  <span className="text-foreground truncate">{k.term}</span>
-                </div>
-                <span
-                  className={`text-xs font-mono ${k.trendScore >= 15 ? "text-success" : "text-muted-foreground"}`}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        {/* SECTION 5 - RECENT PUBLICATIONS */}
+        <Card title="Recent Publications">
+          {recentPublications.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4">Chưa có bài báo nào được xuất bản.</p>
+          ) : (
+            <div className="space-y-4">
+              {recentPublications.map((p) => (
+                <Link
+                  key={p.paperId}
+                  to="/papers/$id"
+                  params={{ id: String(p.paperId) }}
+                  className="block p-3 rounded-lg border border-border bg-secondary/10 hover:bg-secondary/20 hover:border-brand/40 transition-all group"
                 >
-                  {k.trendScore >= 0 ? "+" : ""}
-                  {k.trendScore.toFixed(1)}%
-                </span>
-              </div>
-            ))}
-          </div>
-          <Link
-            to="/trends"
-            className="mt-6 inline-flex items-center gap-1 text-xs text-brand hover:underline"
-          >
-            View trend explorer <ArrowUpRight className="size-3" />
-          </Link>
-        </Card>
-      </div>
-
-      {/* Secondary chart row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        <Card title="Domain Distribution">
-          <ResponsiveContainer width="100%" height={260}>
-            <PieChart>
-              <Pie
-                data={CATEGORY_DISTRIBUTION}
-                dataKey="value"
-                innerRadius={55}
-                outerRadius={90}
-                paddingAngle={3}
-              >
-                {CATEGORY_DISTRIBUTION.map((d, i) => (
-                  <Cell key={i} fill={d.fill} stroke="var(--background)" strokeWidth={2} />
-                ))}
-              </Pie>
-              <Tooltip contentStyle={tooltipStyle()} />
-              <Legend
-                iconType="circle"
-                wrapperStyle={{ fontSize: 11, color: "var(--muted-foreground)" }}
-              />
-            </PieChart>
-          </ResponsiveContainer>
-        </Card>
-
-        <Card title="Field Velocity (Radar)">
-          <ResponsiveContainer width="100%" height={260}>
-            <RadarChart data={RADAR_FIELDS}>
-              <PolarGrid stroke={chartTheme.grid} />
-              <PolarAngleAxis dataKey="field" stroke={chartTheme.axis} fontSize={11} />
-              <PolarRadiusAxis stroke="transparent" tick={false} />
-              <Radar
-                name="Current"
-                dataKey="current"
-                stroke="var(--chart-1)"
-                fill="var(--chart-1)"
-                fillOpacity={0.35}
-              />
-              <Radar
-                name="Previous"
-                dataKey="previous"
-                stroke="var(--chart-2)"
-                fill="var(--chart-2)"
-                fillOpacity={0.15}
-              />
-              <Tooltip contentStyle={tooltipStyle()} />
-            </RadarChart>
-          </ResponsiveContainer>
-        </Card>
-
-        <Card title="Citation Growth (12mo)">
-          <ResponsiveContainer width="100%" height={260}>
-            <LineChart data={PUBLICATION_VELOCITY}>
-              <CartesianGrid stroke={chartTheme.grid} strokeDasharray="3 3" vertical={false} />
-              <XAxis
-                dataKey="month"
-                stroke={chartTheme.axis}
-                fontSize={11}
-                tickLine={false}
-                axisLine={false}
-              />
-              <YAxis stroke={chartTheme.axis} fontSize={11} tickLine={false} axisLine={false} />
-              <Tooltip contentStyle={tooltipStyle()} />
-              <Line
-                type="monotone"
-                dataKey="citations"
-                stroke="var(--chart-2)"
-                strokeWidth={2.5}
-                dot={false}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </Card>
-      </div>
-
-      {/* Heatmap + feed */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card
-          className="lg:col-span-2"
-          title="Submission Heatmap (12w)"
-          action={
-            <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-widest">
-              UTC
-            </span>
-          }
-        >
-          <Heatmap />
-        </Card>
-
-        <Card
-          title="Signal Feed"
-          action={
-            <span className="inline-flex items-center gap-1 text-[10px] font-mono text-success uppercase tracking-widest">
-              <span className="size-1.5 rounded-full bg-success animate-pulse" /> LIVE
-            </span>
-          }
-        >
-          <div className="space-y-4">
-            {papers.slice(0, 4).map((p) => (
-              <div
-                key={p.id}
-                className="group rounded-lg hover:bg-secondary/40 transition-colors p-2 -m-2"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <Link to="/papers/$id" params={{ id: p.id }} className="block min-w-0 flex-1">
-                    <div className="text-[10px] font-mono text-muted-foreground mb-1 flex items-center justify-between">
-                      <span>{p.journal}</span>
-                      <span className="flex items-center gap-1 text-success">
-                        <TrendingUp className="size-2.5" /> {p.trendScore.toFixed(1)}
-                      </span>
-                    </div>
-                    <div className="text-xs font-medium leading-snug text-foreground group-hover:text-brand transition-colors">
+                  <div className="flex justify-between items-start gap-3 mb-1">
+                    <h4 className="text-sm font-semibold text-foreground group-hover:text-brand line-clamp-2 leading-snug">
                       {p.title}
-                    </div>
-                    <div className="text-[10px] text-muted-foreground mt-1 font-mono truncate">
-                      DOI: {p.doi}
-                    </div>
-                  </Link>
-                  <div className="shrink-0 flex items-center gap-2 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-                    <SaveToCollectionButton paperId={p.id} paperTitle={p.title} />
-                    <Link
-                      to="/papers/$id"
-                      params={{ id: p.id }}
-                      className="p-1.5 rounded-md border border-border hover:border-brand/40 hover:text-brand transition-colors"
-                    >
-                      <ArrowUpRight className="size-3.5" />
-                    </Link>
+                    </h4>
+                    <span className="text-[10px] font-mono font-bold text-brand bg-brand/10 px-2 py-0.5 rounded shrink-0">
+                      {p.citationCount} citations
+                    </span>
                   </div>
-                </div>
-              </div>
-            ))}
-          </div>
+                  <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-medium mb-2">
+                    <span className="text-brand truncate max-w-[200px]">{p.journal}</span>
+                    <span>•</span>
+                    <span className="flex items-center gap-1">
+                      <Calendar className="size-3" /> 
+                      {p.publicationDate ? new Date(p.publicationDate).toLocaleDateString() : "Unknown"}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {p.topKeywords.slice(0, 4).map(k => (
+                      <span key={k} className="text-[9px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-mono">
+                        {k}
+                      </span>
+                    ))}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </Card>
+
+        {/* SECTION 6 - TOP JOURNALS */}
+        <Card title="Top Journals by Volume">
+          {topJournals.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4">Chưa có dữ liệu tạp chí.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead>
+                  <tr className="border-b border-border text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    <th className="pb-3 font-semibold">Journal Name</th>
+                    <th className="pb-3 font-semibold text-right">Total Papers</th>
+                    <th className="pb-3 font-semibold text-right">Impact Factor</th>
+                    <th className="pb-3 font-semibold">Domain</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/40">
+                  {topJournals.map((j) => (
+                    <tr
+                      key={j.journalId}
+                      className="hover:bg-brand/5 transition-colors cursor-pointer group"
+                    >
+                      <td className="py-3 font-medium text-foreground truncate max-w-[220px]">
+                        <Link
+                          to="/search"
+                          search={{ q: j.journalName }}
+                          className="group-hover:text-brand transition-colors flex items-center gap-1"
+                        >
+                          {j.journalName}
+                          <ArrowUpRight className="size-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </Link>
+                      </td>
+                      <td className="py-3 text-right font-mono text-brand font-bold">{j.totalPapers.toLocaleString()}</td>
+                      <td className="py-3 text-right font-mono font-semibold">
+                        {j.impactFactor ? j.impactFactor.toFixed(3) : "—"}
+                      </td>
+                      <td className="py-3 text-muted-foreground text-xs">{j.domain}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </Card>
       </div>
+
+      {/* SECTION 7 - ADMIN SYNC MONITORING */}
+      {isAdmin && syncMonitor && (
+        <Card title="Admin Sync Monitoring">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="p-4 rounded-xl border border-border bg-secondary/5">
+              <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mb-1">Last Sync Started</p>
+              <p className="text-base font-bold font-mono text-foreground">
+                {syncMonitor.lastSyncTime ? new Date(syncMonitor.lastSyncTime).toLocaleString() : "N/A"}
+              </p>
+            </div>
+            <div className="p-4 rounded-xl border border-border bg-secondary/5">
+              <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mb-1">Status</p>
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-mono font-bold ${syncMonitor.syncStatus === 'SUCCESS' ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'}`}>
+                {syncMonitor.syncStatus}
+              </span>
+            </div>
+            <div className="p-4 rounded-xl border border-border bg-secondary/5">
+              <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mb-1">Papers Synced</p>
+              <p className="text-base font-bold font-mono text-brand">{syncMonitor.papersSynced}</p>
+            </div>
+            <div className="p-4 rounded-xl border border-border bg-secondary/5">
+              <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mb-1">Duration</p>
+              <p className="text-base font-bold font-mono text-foreground">{syncMonitor.durationSeconds} seconds</p>
+            </div>
+          </div>
+          {syncMonitor.errorMessage && (
+            <div className="mt-4 p-3 rounded-lg border border-destructive/20 bg-destructive/5 text-xs text-destructive font-mono">
+              <strong>Error Message:</strong> {syncMonitor.errorMessage}
+            </div>
+          )}
+        </Card>
+      )}
     </AppLayout>
-  );
-}
-
-function HighlightTile({
-  card,
-  icon,
-  label,
-  linkTo,
-}: {
-  card: HighlightCard;
-  icon: React.ReactNode;
-  label: string;
-  linkTo: "topic" | "paper" | "search" | "author";
-}) {
-  const inner = (
-    <div className="glass rounded-2xl p-4 h-full border border-border hover:border-brand/30 transition-colors">
-      <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">
-        {icon}
-        {label}
-      </div>
-      <div className="text-sm font-semibold text-foreground line-clamp-2">{card.title || "—"}</div>
-      <div className="text-[10px] text-muted-foreground mt-1 truncate">{card.subtitle}</div>
-      {card.metricLabel ? (
-        <div className="text-lg font-bold font-mono text-brand mt-2">
-          {card.metricLabel === "trend %"
-            ? `${card.metric >= 0 ? "+" : ""}${card.metric.toFixed(1)}%`
-            : card.metric.toLocaleString()}
-          <span className="text-[10px] text-muted-foreground font-sans ml-1">{card.metricLabel}</span>
-        </div>
-      ) : null}
-    </div>
-  );
-
-  if (!card.id) return inner;
-
-  if (linkTo === "topic") {
-    return (
-      <Link to="/topics/$topicId" params={{ topicId: card.id }} className="block">
-        {inner}
-      </Link>
-    );
-  }
-  if (linkTo === "paper") {
-    return (
-      <Link to="/papers/$id" params={{ id: card.id }} className="block">
-        {inner}
-      </Link>
-    );
-  }
-  if (linkTo === "author") {
-    return (
-      <Link to="/authors/$authorId" params={{ authorId: card.id }} className="block">
-        {inner}
-      </Link>
-    );
-  }
-  return (
-    <Link to="/search" search={{ q: card.title }} className="block">
-      {inner}
-    </Link>
   );
 }

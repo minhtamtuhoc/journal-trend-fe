@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as VerifyEmailRouteImport } from './routes/verify-email'
 import { Route as TrendsRouteImport } from './routes/trends'
 import { Route as SearchRouteImport } from './routes/search'
 import { Route as ReportsRouteImport } from './routes/reports'
@@ -24,11 +25,18 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CollectionsIndexRouteImport } from './routes/collections.index'
 import { Route as AuthorsIndexRouteImport } from './routes/authors.index'
+import { Route as TopicsDomainRouteImport } from './routes/topics.domain'
 import { Route as TopicsTopicIdRouteImport } from './routes/topics.$topicId'
 import { Route as PapersIdRouteImport } from './routes/papers.$id'
 import { Route as CollectionsCollectionIdRouteImport } from './routes/collections.$collectionId'
 import { Route as AuthorsAuthorIdRouteImport } from './routes/authors.$authorId'
+import { Route as TopicsDomainDomainRouteImport } from './routes/topics.domain.$domain'
 
+const VerifyEmailRoute = VerifyEmailRouteImport.update({
+  id: '/verify-email',
+  path: '/verify-email',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TrendsRoute = TrendsRouteImport.update({
   id: '/trends',
   path: '/trends',
@@ -104,6 +112,11 @@ const AuthorsIndexRoute = AuthorsIndexRouteImport.update({
   path: '/authors/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TopicsDomainRoute = TopicsDomainRouteImport.update({
+  id: '/topics/domain',
+  path: '/topics/domain',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TopicsTopicIdRoute = TopicsTopicIdRouteImport.update({
   id: '/topics/$topicId',
   path: '/topics/$topicId',
@@ -124,6 +137,11 @@ const AuthorsAuthorIdRoute = AuthorsAuthorIdRouteImport.update({
   path: '/authors/$authorId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TopicsDomainDomainRoute = TopicsDomainDomainRouteImport.update({
+  id: '/$domain',
+  path: '/$domain',
+  getParentRoute: () => TopicsDomainRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -139,12 +157,15 @@ export interface FileRoutesByFullPath {
   '/reports': typeof ReportsRoute
   '/search': typeof SearchRoute
   '/trends': typeof TrendsRoute
+  '/verify-email': typeof VerifyEmailRoute
   '/authors/$authorId': typeof AuthorsAuthorIdRoute
   '/collections/$collectionId': typeof CollectionsCollectionIdRoute
   '/papers/$id': typeof PapersIdRoute
   '/topics/$topicId': typeof TopicsTopicIdRoute
+  '/topics/domain': typeof TopicsDomainRouteWithChildren
   '/authors/': typeof AuthorsIndexRoute
   '/collections/': typeof CollectionsIndexRoute
+  '/topics/domain/$domain': typeof TopicsDomainDomainRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -159,12 +180,15 @@ export interface FileRoutesByTo {
   '/reports': typeof ReportsRoute
   '/search': typeof SearchRoute
   '/trends': typeof TrendsRoute
+  '/verify-email': typeof VerifyEmailRoute
   '/authors/$authorId': typeof AuthorsAuthorIdRoute
   '/collections/$collectionId': typeof CollectionsCollectionIdRoute
   '/papers/$id': typeof PapersIdRoute
   '/topics/$topicId': typeof TopicsTopicIdRoute
+  '/topics/domain': typeof TopicsDomainRouteWithChildren
   '/authors': typeof AuthorsIndexRoute
   '/collections': typeof CollectionsIndexRoute
+  '/topics/domain/$domain': typeof TopicsDomainDomainRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -181,12 +205,15 @@ export interface FileRoutesById {
   '/reports': typeof ReportsRoute
   '/search': typeof SearchRoute
   '/trends': typeof TrendsRoute
+  '/verify-email': typeof VerifyEmailRoute
   '/authors/$authorId': typeof AuthorsAuthorIdRoute
   '/collections/$collectionId': typeof CollectionsCollectionIdRoute
   '/papers/$id': typeof PapersIdRoute
   '/topics/$topicId': typeof TopicsTopicIdRoute
+  '/topics/domain': typeof TopicsDomainRouteWithChildren
   '/authors/': typeof AuthorsIndexRoute
   '/collections/': typeof CollectionsIndexRoute
+  '/topics/domain/$domain': typeof TopicsDomainDomainRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -204,12 +231,15 @@ export interface FileRouteTypes {
     | '/reports'
     | '/search'
     | '/trends'
+    | '/verify-email'
     | '/authors/$authorId'
     | '/collections/$collectionId'
     | '/papers/$id'
     | '/topics/$topicId'
+    | '/topics/domain'
     | '/authors/'
     | '/collections/'
+    | '/topics/domain/$domain'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -224,12 +254,15 @@ export interface FileRouteTypes {
     | '/reports'
     | '/search'
     | '/trends'
+    | '/verify-email'
     | '/authors/$authorId'
     | '/collections/$collectionId'
     | '/papers/$id'
     | '/topics/$topicId'
+    | '/topics/domain'
     | '/authors'
     | '/collections'
+    | '/topics/domain/$domain'
   id:
     | '__root__'
     | '/'
@@ -245,12 +278,15 @@ export interface FileRouteTypes {
     | '/reports'
     | '/search'
     | '/trends'
+    | '/verify-email'
     | '/authors/$authorId'
     | '/collections/$collectionId'
     | '/papers/$id'
     | '/topics/$topicId'
+    | '/topics/domain'
     | '/authors/'
     | '/collections/'
+    | '/topics/domain/$domain'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -267,14 +303,23 @@ export interface RootRouteChildren {
   ReportsRoute: typeof ReportsRoute
   SearchRoute: typeof SearchRoute
   TrendsRoute: typeof TrendsRoute
+  VerifyEmailRoute: typeof VerifyEmailRoute
   AuthorsAuthorIdRoute: typeof AuthorsAuthorIdRoute
   PapersIdRoute: typeof PapersIdRoute
   TopicsTopicIdRoute: typeof TopicsTopicIdRoute
+  TopicsDomainRoute: typeof TopicsDomainRouteWithChildren
   AuthorsIndexRoute: typeof AuthorsIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/verify-email': {
+      id: '/verify-email'
+      path: '/verify-email'
+      fullPath: '/verify-email'
+      preLoaderRoute: typeof VerifyEmailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/trends': {
       id: '/trends'
       path: '/trends'
@@ -380,6 +425,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthorsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/topics/domain': {
+      id: '/topics/domain'
+      path: '/topics/domain'
+      fullPath: '/topics/domain'
+      preLoaderRoute: typeof TopicsDomainRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/topics/$topicId': {
       id: '/topics/$topicId'
       path: '/topics/$topicId'
@@ -408,6 +460,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthorsAuthorIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/topics/domain/$domain': {
+      id: '/topics/domain/$domain'
+      path: '/$domain'
+      fullPath: '/topics/domain/$domain'
+      preLoaderRoute: typeof TopicsDomainDomainRouteImport
+      parentRoute: typeof TopicsDomainRoute
+    }
   }
 }
 
@@ -425,6 +484,18 @@ const CollectionsRouteWithChildren = CollectionsRoute._addFileChildren(
   CollectionsRouteChildren,
 )
 
+interface TopicsDomainRouteChildren {
+  TopicsDomainDomainRoute: typeof TopicsDomainDomainRoute
+}
+
+const TopicsDomainRouteChildren: TopicsDomainRouteChildren = {
+  TopicsDomainDomainRoute: TopicsDomainDomainRoute,
+}
+
+const TopicsDomainRouteWithChildren = TopicsDomainRoute._addFileChildren(
+  TopicsDomainRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
@@ -439,9 +510,11 @@ const rootRouteChildren: RootRouteChildren = {
   ReportsRoute: ReportsRoute,
   SearchRoute: SearchRoute,
   TrendsRoute: TrendsRoute,
+  VerifyEmailRoute: VerifyEmailRoute,
   AuthorsAuthorIdRoute: AuthorsAuthorIdRoute,
   PapersIdRoute: PapersIdRoute,
   TopicsTopicIdRoute: TopicsTopicIdRoute,
+  TopicsDomainRoute: TopicsDomainRouteWithChildren,
   AuthorsIndexRoute: AuthorsIndexRoute,
 }
 export const routeTree = rootRouteImport
