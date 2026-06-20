@@ -35,17 +35,17 @@ const nav = [
 ] as const;
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
-  const { user, logout } = useAuth();
+  const { user, initializing, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { data: notifications = [] } = useNotifications();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   useEffect(() => {
-    if (!user) navigate({ to: "/login" });
-  }, [user, navigate]);
+    if (!initializing && !user) navigate({ to: "/login" });
+  }, [user, initializing, navigate]);
 
-  if (!user) return null;
+  if (initializing || !user) return null;
 
   const unread = notifications.filter((n) => n.unread).length;
 

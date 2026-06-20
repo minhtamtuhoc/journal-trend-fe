@@ -8,6 +8,7 @@ import { useQueryClient } from "@tanstack/react-query";
 type AuthContextValue = {
   user: User | null;
   isLoading: boolean;
+  initializing: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string, role: RegisterRole) => Promise<void>;
   logout: () => void;
@@ -17,8 +18,12 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(() => {
+    const cached = authStorage.getUser();
+    return cached ? normalizeUser(cached) : null;
+  });
   const [isLoading, setIsLoading] = useState(true);
+  const [initializing, setInitializing] = useState(true);
   const qc = useQueryClient();
 
   useEffect(() => {
@@ -26,6 +31,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     (async () => {
       if (!authStorage.getAccessToken()) {
         setIsLoading(false);
+        setInitializing(false);
         return;
       }
       try {
@@ -42,6 +48,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } finally {
         if (!cancelled) {
           setIsLoading(false);
+          setInitializing(false);
         }
       }
     })();
@@ -75,8 +82,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ user, isLoading, login, register, logout, updateProfile }),
-    [user, isLoading, login, register, logout, updateProfile],
+    () => ({ user, isLoading, initializing, login, register, logout, updateProfile }),
+    [user, isLoading, initializing, login, register, logout, updateProfile],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

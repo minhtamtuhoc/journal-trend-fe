@@ -33,7 +33,13 @@ export class HttpAuthService implements AuthService {
 
   async updateProfile(fullName: string): Promise<AuthSession> {
     const session = await apiClient.put<AuthSession>("/auth/profile", { name: fullName });
-    const normalized = { ...session, user: normalizeUser(session.user) };
+    const cached = authStorage.getSession();
+    // refreshToken is intentionally preserved because /auth/me and /auth/profile do not rotate tokens
+    const normalized = {
+      ...session,
+      user: normalizeUser(session.user),
+      refreshToken: session.refreshToken || cached?.refreshToken || "",
+    };
     authStorage.setSession(normalized);
     return normalized;
   }
@@ -43,7 +49,14 @@ export class HttpAuthService implements AuthService {
     if (!cached) return null;
     try {
       const session = await apiClient.get<AuthSession>("/auth/me");
-      return { ...session, user: normalizeUser(session.user) };
+      // refreshToken is intentionally preserved because /auth/me and /auth/profile do not rotate tokens
+      const normalized = {
+        ...session,
+        user: normalizeUser(session.user),
+        refreshToken: session.refreshToken || cached.refreshToken || "",
+      };
+      authStorage.setSession(normalized);
+      return normalized;
     } catch {
       authStorage.setSession(null);
       return null;

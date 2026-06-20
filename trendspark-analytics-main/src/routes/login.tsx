@@ -22,9 +22,7 @@ function LoginPage() {
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    authStorage.setSession(null);
-  }, []);
+
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();

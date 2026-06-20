@@ -12,6 +12,7 @@ function buildSession(user: User): AuthSession {
   return {
     user,
     accessToken: `mock_${btoa(user.email)}`,
+    refreshToken: "mock-refresh-token",
   };
 }
 
