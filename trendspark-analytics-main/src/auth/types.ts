@@ -16,8 +16,19 @@ export type LoginCredentials = {
   password: string;
 };
 
-export type RegisterCredentials = {
+export type RegisterRole = "STUDENT" | "LECTURER" | "RESEARCHER";
+
+export interface RegisterCredentials {
   name: string;
   email: string;
   password: string;
-};
+  role: RegisterRole;
+}
+
+export interface RegisterRequest {
+  fullName: string;
+  email: string;
+  password: string;
+  role: RegisterRole;
+}
+

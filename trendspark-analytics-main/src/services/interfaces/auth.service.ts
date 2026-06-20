@@ -2,7 +2,7 @@ import type { AuthSession, LoginCredentials, RegisterCredentials } from "@/auth/
 
 export interface AuthService {
   login(credentials: LoginCredentials): Promise<AuthSession>;
-  register(credentials: RegisterCredentials): Promise<void>;
+  register(data: RegisterCredentials): Promise<void>;
   logout(): Promise<void>;
   getSession(): Promise<AuthSession | null>;
   updateProfile(fullName: string): Promise<AuthSession>;
