@@ -1,6 +1,6 @@
 import { apiClient } from "@/api/client";
 import type { AuthService } from "@/services/interfaces/auth.service";
-import type { AuthSession, LoginCredentials, RegisterCredentials } from "@/auth/types";
+import type { AuthSession, LoginCredentials, RegisterCredentials, RegisterRequest } from "@/auth/types";
 import { authStorage } from "@/auth/storage";
 import { normalizeUser } from "@/auth/roles";
 
@@ -13,7 +13,14 @@ export class HttpAuthService implements AuthService {
   }
 
   async register(credentials: RegisterCredentials): Promise<void> {
-    await apiClient.post("/auth/register", credentials);
+    const payload: RegisterRequest = {
+      fullName: credentials.name,
+      email: credentials.email,
+      password: credentials.password,
+      role: credentials.role,
+    };
+    console.log("REQUEST PAYLOAD", payload);
+    await apiClient.post("/v1/auth/register", payload);
   }
 
   async logout(): Promise<void> {
