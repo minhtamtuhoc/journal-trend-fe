@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap");
 @import "tailwindcss" source(none);
 @source "../src";
 @import "tw-animate-css";
@@ -5,7 +6,6 @@
 @custom-variant dark (&:is(.dark *));
 
 /* Helix Analytics — Deep Space Intelligence design system */
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap");
 
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
@@ -132,6 +132,28 @@
 }
 
 @layer base {
+  html {
+    color-scheme: dark;
+  }
+
+  html.light {
+    color-scheme: light;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    html.theme-transition *,
+    html.theme-transition *::before,
+    html.theme-transition *::after {
+      transition:
+        background-color 0.25s ease,
+        color 0.25s ease,
+        border-color 0.25s ease,
+        fill 0.25s ease,
+        stroke 0.25s ease,
+        box-shadow 0.25s ease;
+    }
+  }
+
   * {
     border-color: var(--color-border);
   }

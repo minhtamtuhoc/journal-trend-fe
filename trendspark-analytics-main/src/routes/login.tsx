@@ -43,6 +43,13 @@ function LoginPage() {
           : error instanceof Error
             ? error.message
             : "Sign in failed";
+      
+      if (message === "EMAIL_NOT_VERIFIED") {
+        toast.error("Email chưa được xác thực. Vui lòng xác thực email của bạn.");
+        navigate({ to: "/verify-email", search: { email } });
+        return;
+      }
+      
       setErr(message);
       toast.error(message);
     } finally {

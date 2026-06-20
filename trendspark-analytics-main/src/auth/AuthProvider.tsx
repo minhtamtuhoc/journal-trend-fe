@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { getServices } from "@/services";
 import { authStorage } from "@/auth/storage";
-import type { LoginCredentials, RegisterCredentials, User } from "@/auth/types";
+import type { LoginCredentials, RegisterCredentials, RegisterRole, User } from "@/auth/types";
 import { normalizeUser } from "@/auth/roles";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -9,7 +9,7 @@ type AuthContextValue = {
   user: User | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string) => Promise<void>;
+  register: (name: string, email: string, password: string, role: RegisterRole) => Promise<void>;
   logout: () => void;
   updateProfile: (fullName: string) => Promise<void>;
 };
@@ -56,10 +56,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(normalizeUser(session.user));
   }, []);
 
-  const register = useCallback(async (name: string, email: string, password: string) => {
-    const credentials: RegisterCredentials = { name, email, password };
-    const session = await getServices().auth.register(credentials);
-    setUser(normalizeUser(session.user));
+  const register = useCallback(async (name: string, email: string, password: string, role: RegisterRole) => {
+    const credentials: RegisterCredentials = { name, email, password, role };
+    await getServices().auth.register(credentials);
   }, []);
 
   const logout = useCallback(() => {

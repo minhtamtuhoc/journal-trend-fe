@@ -1,10 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppLayout, PageHeader } from "@/components/AppLayout";
 import { Card } from "@/components/Card";
-import { usePapers } from "@/hooks/data/use-papers";
+import { useSearchPapers, useAvailableYears } from "@/hooks/data/use-papers";
 import { useFollowedTopics, useFollowTopic, useUnfollowTopic } from "@/hooks/data/use-follows";
 import type { Paper } from "@/types/domain";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Search as SearchIcon, Download, SlidersHorizontal, ArrowUpRight } from "lucide-react";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -19,16 +19,39 @@ export const Route = createFileRoute("/search")({
 
 const SUGGESTIONS = ["CRISPR", "Quantum", "Neural Radiance", "Solid-state battery", "Edge AI", "Climate"];
 
+const categories = [
+  "Computer Science",
+  "Medicine",
+  "Engineering",
+  "Philosophy",
+  "Physics",
+  "Chemistry",
+  "Psychology",
+  "Education",
+  "Business",
+  "Biology",
+  "Mathematics",
+  "General"
+];
+
+function getVisiblePages(current: number, total: number) {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+  if (current <= 4) return [1, 2, 3, 4, 5, "...", total];
+  if (current >= total - 3) return [1, "...", total - 4, total - 3, total - 2, total - 1, total];
+  return [1, "...", current - 1, current, current + 1, "...", total];
+}
+
 function SearchPage() {
-  const { data: PAPERS = [] } = usePapers();
   const { q: initial } = Route.useSearch();
   const [q, setQ] = useState(initial ?? "");
-  const [sort, setSort] = useState<"trend" | "citations" | "year">("trend");
-  const [year, setYear] = useState("all");
+  const [sort, setSort] = useState<"citations" | "year">("citations");
+  const [fromYear, setFromYear] = useState<string>("all");
+  const [toYear, setToYear] = useState<string>("all");
   const [category, setCategory] = useState("all");
   const [minCitations, setMinCitations] = useState(0);
 
   const { data: followedTopics = [] } = useFollowedTopics();
+  const { data: availableYears = [] } = useAvailableYears();
   const followTopic = useFollowTopic();
   const unfollowTopic = useUnfollowTopic();
 
@@ -39,32 +62,34 @@ function SearchPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [q, sort, year, category, minCitations]);
+  }, [q, sort, fromYear, toYear, category, minCitations]);
 
-  const results = useMemo(() => {
-    let r: Paper[] = PAPERS;
-    if (q) {
-      const needle = q.toLowerCase();
-      r = r.filter(
-        (p) =>
-          p.title.toLowerCase().includes(needle) ||
-          p.authors.some((a) => a.toLowerCase().includes(needle)) ||
-          p.keywords.some((k) => k.name.toLowerCase().includes(needle)) ||
-          p.journal.toLowerCase().includes(needle),
-      );
-    }
-    if (year !== "all") r = r.filter((p) => p.year === Number(year));
-    if (category !== "all") r = r.filter((p) => p.category === category);
-    if (minCitations > 0) r = r.filter((p) => p.citations >= minCitations);
-    r = [...r].sort((a, b) => (sort === "trend" ? b.trendScore - a.trendScore : sort === "citations" ? b.citations - a.citations : b.year - a.year));
-    return r;
-  }, [PAPERS, q, sort, year, category, minCitations]);
+  useEffect(() => {
+    setQ(initial ?? "");
+  }, [initial]);
 
-  const totalResults = results.length;
-  const totalPages = Math.ceil(totalResults / PAGE_SIZE);
+  const sortParam =
+    sort === "year"
+      ? "publicationDate,desc"
+      : "citationCount,desc";
+
+  const { data, isLoading } = useSearchPapers({
+    q: q || undefined,
+    page: page - 1,
+    size: PAGE_SIZE,
+    sort: sortParam,
+    fromYear: fromYear !== "all" ? Number(fromYear) : undefined,
+    toYear: toYear !== "all" ? Number(toYear) : undefined,
+    category: category !== "all" ? category : undefined,
+    minCitations: minCitations > 0 ? minCitations : undefined,
+  });
+
+  const results = data?.content ?? [];
+  const totalResults = data?.totalElements ?? 0;
+  const totalPages = data?.totalPages ?? 0;
   const startIndex = (page - 1) * PAGE_SIZE;
   const endIndex = Math.min(startIndex + PAGE_SIZE, totalResults);
-  const paginatedResults = results.slice(startIndex, endIndex);
+  const paginatedResults = results;
 
   const exportCsv = () => {
     const header = "title,authors,journal,year,citations,trendScore,doi";
@@ -79,7 +104,10 @@ function SearchPage() {
     toast.success(`${results.length} papers exported`);
   };
 
-  const categories = Array.from(new Set(PAPERS.map((p) => p.category)));
+  const yearOptions: [string, string][] = [
+    ["all", "All years"],
+    ...availableYears.map(y => [y.toString(), y.toString()] as [string, string])
+  ];
 
   return (
     <AppLayout>
@@ -97,9 +125,12 @@ function SearchPage() {
         <aside className="space-y-4">
           <Card title="Filters" action={<SlidersHorizontal className="size-4 text-muted-foreground" />}>
             <div className="space-y-4">
-              <Select label="Year" value={year} onChange={setYear} options={[["all", "All years"], ["2024", "2024"], ["2023", "2023"]]} />
+              <div className="grid grid-cols-2 gap-2">
+                <Select label="From Year" value={fromYear} onChange={setFromYear} options={yearOptions} />
+                <Select label="To Year" value={toYear} onChange={setToYear} options={yearOptions} />
+              </div>
               <Select label="Category" value={category} onChange={setCategory} options={[["all", "All categories"], ...categories.map((c) => [c, c] as [string, string])]} />
-              <Select label="Sort by" value={sort} onChange={(v) => setSort(v as never)} options={[["trend", "Trend Score"], ["citations", "Citations"], ["year", "Year"]]} />
+              <Select label="Sort by" value={sort} onChange={(v) => setSort(v as never)} options={[["citations", "Citations"], ["year", "Year"]]} />
               <div>
                 <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Min Citations</label>
                 <input type="range" min="0" max="500" step="50" value={minCitations} onChange={(e) => setMinCitations(Number(e.target.value))} className="w-full mt-2 accent-[var(--brand)]" />
@@ -138,92 +169,104 @@ function SearchPage() {
             <span className="font-mono">sorted by {sort}</span>
           </div>
 
-          <div className="space-y-3">
-            {paginatedResults.map((p) => {
-              return (
-                <Card key={p.id} className="hover:border-brand/40 transition-colors">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 text-[10px] font-mono text-muted-foreground uppercase tracking-widest mb-2">
-                        <span className="px-2 py-0.5 rounded bg-brand/10 text-brand">{p.source}</span>
-                        <span>{p.journal}</span>
-                        <span>· {p.year}</span>
-                      </div>
-                      <Link to="/papers/$id" params={{ id: p.id }} className="text-base font-semibold text-foreground hover:text-brand transition-colors">
-                        {p.title}
-                      </Link>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {p.authorRefs?.length
-                          ? p.authorRefs.map((ref, i) => (
-                              <span key={ref.id}>
-                                {i > 0 ? ", " : ""}
-                                <Link
-                                  to="/authors/$authorId"
-                                  params={{ authorId: ref.id }}
-                                  className="hover:text-brand"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  {ref.name}
-                                </Link>
-                              </span>
-                            ))
-                          : p.authors.join(", ")}
-                      </div>
-                      <div className="flex flex-wrap gap-1.5 mt-3">
-                        {p.keywords.map((k) => {
-                          const followed = isTopicFollowed(k.id);
-                          return (
-                            <button
-                              key={k.id}
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                if (followed) {
-                                  unfollowTopic.mutate(k.id, {
-                                    onSuccess: () => toast.info(`Unfollowed keyword: ${k.name}`),
-                                  });
-                                } else {
-                                  followTopic.mutate(k.id, {
-                                    onSuccess: () => toast.success(`Following keyword: ${k.name}`),
-                                  });
-                                }
-                              }}
-                              className={`text-[10px] px-2 py-0.5 rounded-full border flex items-center gap-1 transition-all cursor-pointer ${
-                                followed
-                                  ? "border-brand/40 bg-brand/10 text-brand font-medium hover:bg-brand/20"
-                                  : "border-border bg-secondary/40 text-muted-foreground hover:border-brand/30 hover:text-foreground"
-                              }`}
-                            >
-                              <span>{k.name}</span>
-                              <span className="text-[8px] opacity-75">{followed ? "✓" : "+"}</span>
-                            </button>
-                          );
-                        })}
-                        {p.trendScore > 0 && (
-                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-success/15 border border-success/30 text-success font-medium">
-                            Related Topic Trend: +{p.trendScore.toFixed(1)}%
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <div className="text-[10px] text-muted-foreground uppercase tracking-widest">{p.citations} cites</div>
-                      <div className="text-[10px] text-muted-foreground uppercase tracking-widest mt-0.5">IF {p.impactFactor}</div>
-                      <div className="flex gap-1 mt-3 justify-end">
-                        <SaveToCollectionButton paperId={p.id} paperTitle={p.title} />
-                        <Link to="/papers/$id" params={{ id: p.id }} className="p-1.5 rounded-md border border-border hover:border-brand/40 hover:text-brand transition-colors">
-                          <ArrowUpRight className="size-3.5" />
+          {isLoading ? (
+            <div className="space-y-3 animate-pulse">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="h-32 rounded-xl bg-secondary/10 border border-border" />
+              ))}
+            </div>
+          ) : paginatedResults.length === 0 ? (
+            <div className="py-12 text-center text-sm text-muted-foreground">
+              No papers found matching your search criteria.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {paginatedResults.map((p) => {
+                return (
+                  <Card key={p.id} className="hover:border-brand/40 transition-colors">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 text-[10px] font-mono text-muted-foreground uppercase tracking-widest mb-2">
+                          <span className="shrink-0 px-2 py-0.5 rounded bg-brand/10 text-brand">{p.source}</span>
+                          <span className="truncate">{p.journal}</span>
+                          <span className="shrink-0">· {p.year}</span>
+                        </div>
+                        <Link to="/papers/$id" params={{ id: p.id }} className="text-base font-semibold text-foreground hover:text-brand transition-colors line-clamp-3 break-words">
+                          {p.title}
                         </Link>
+                        <div className="text-xs text-muted-foreground mt-1 line-clamp-2 break-words">
+                          {p.authorRefs?.length
+                            ? p.authorRefs.map((ref, i) => (
+                                <span key={ref.id}>
+                                  {i > 0 ? ", " : ""}
+                                  <Link
+                                    to="/authors/$authorId"
+                                    params={{ authorId: ref.id }}
+                                    className="hover:text-brand"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    {ref.name}
+                                  </Link>
+                                </span>
+                              ))
+                            : p.authors.join(", ")}
+                        </div>
+                        <div className="flex flex-wrap gap-1.5 mt-3">
+                          {p.keywords.map((k) => {
+                            const followed = isTopicFollowed(k.id);
+                            return (
+                              <button
+                                key={k.id}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  if (followed) {
+                                    unfollowTopic.mutate(k.id, {
+                                      onSuccess: () => toast.info(`Unfollowed keyword: ${k.name}`),
+                                    });
+                                  } else {
+                                    followTopic.mutate(k.id, {
+                                      onSuccess: () => toast.success(`Following keyword: ${k.name}`),
+                                    });
+                                  }
+                                }}
+                                className={`text-[10px] px-2 py-0.5 rounded-full border flex items-center gap-1 transition-all cursor-pointer ${
+                                  followed
+                                    ? "border-brand/40 bg-brand/10 text-brand font-medium hover:bg-brand/20"
+                                    : "border-border bg-secondary/40 text-muted-foreground hover:border-brand/30 hover:text-foreground"
+                                }`}
+                              >
+                                <span>{k.name}</span>
+                                <span className="text-[8px] opacity-75">{followed ? "✓" : "+"}</span>
+                              </button>
+                            );
+                          })}
+                          {p.trendScore > 0 && (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-success/15 border border-success/30 text-success font-medium">
+                              Related Topic Trend: +{p.trendScore.toFixed(1)}%
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <div className="text-[10px] text-muted-foreground uppercase tracking-widest">{p.citations} cites</div>
+                        <div className="text-[10px] text-muted-foreground uppercase tracking-widest mt-0.5">IF {p.impactFactor}</div>
+                        <div className="flex gap-1 mt-3 justify-end">
+                          <SaveToCollectionButton paperId={p.id} paperTitle={p.title} />
+                          <Link to="/papers/$id" params={{ id: p.id }} className="p-1.5 rounded-md border border-border hover:border-brand/40 hover:text-brand transition-colors">
+                            <ArrowUpRight className="size-3.5" />
+                          </Link>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </Card>
-              );
-            })}
-          </div>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
 
           {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-1.5 mt-6 py-4 border-t border-border">
+            <div className="flex flex-wrap items-center justify-center gap-1.5 mt-6 py-4 border-t border-border">
               <button
                 type="button"
                 disabled={page === 1}
@@ -233,18 +276,22 @@ function SearchPage() {
                 Previous
               </button>
               
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                <button
-                  key={p}
-                  onClick={() => setPage(p)}
-                  className={`inline-flex items-center justify-center size-8 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
-                    page === p
-                      ? "bg-brand/10 border-brand/45 text-brand"
-                      : "border-border hover:border-brand/40"
-                  }`}
-                >
-                  {p}
-                </button>
+              {getVisiblePages(page, totalPages).map((p, i) => (
+                p === "..." ? (
+                  <span key={`dots-${i}`} className="px-1 text-muted-foreground">...</span>
+                ) : (
+                  <button
+                    key={p}
+                    onClick={() => setPage(p as number)}
+                    className={`inline-flex items-center justify-center size-8 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                      page === p
+                        ? "bg-brand/10 border-brand/45 text-brand"
+                        : "border-border hover:border-brand/40"
+                    }`}
+                  >
+                    {p}
+                  </button>
+                )
               ))}
 
               <button

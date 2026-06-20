@@ -51,3 +51,30 @@ export function useRelatedPapers(paperId: string, category: string) {
     ...mockQueryDefaults,
   });
 }
+
+export function useSearchPapers(params: {
+  q?: string;
+  page: number;
+  size: number;
+  sort?: string;
+  fromYear?: number;
+  toYear?: number;
+  category?: string;
+  minCitations?: number;
+}) {
+  return useQuery({
+    queryKey: ["papers-search", params],
+    queryFn: () => getServices().papers.search(params),
+    enabled: isBrowser,
+    placeholderData: (prev) => prev,
+  });
+}
+
+export function useAvailableYears() {
+  return useQuery({
+    queryKey: ["available-years"],
+    queryFn: () => getServices().papers.getAvailableYears(),
+    enabled: isBrowser,
+    staleTime: 5 * 60 * 1000,
+  });
+}
