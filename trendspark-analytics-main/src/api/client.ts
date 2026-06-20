@@ -12,7 +12,12 @@ const DEFAULT_TIMEOUT_MS = 15_000;
 
 function isPublicAuthPath(path: string): boolean {
   const normalized = path.startsWith("/") ? path : `/${path}`;
-  return normalized === "/auth/login" || normalized === "/auth/register";
+  return (
+    normalized === "/auth/login" ||
+    normalized === "/auth/register" ||
+    normalized === "/v1/auth/register" ||
+    normalized === "/v1/auth/refresh"
+  );
 }
 
 function buildUrl(path: string, params?: RequestOptions["params"]): string {
@@ -36,10 +41,12 @@ function buildUrl(path: string, params?: RequestOptions["params"]): string {
   return isAbsoluteBase ? url.toString() : url.pathname + url.search;
 }
 
+let refreshPromise: Promise<string | null> | null = null;
+
 export class ApiClient {
   constructor(private readonly baseUrl = apiConfig.baseUrl) {}
 
-  private async request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  private async request<T>(path: string, options: RequestOptions = {}, retryCount = 0): Promise<T> {
     const { body, params, headers, timeoutMs = DEFAULT_TIMEOUT_MS, ...init } = options;
     const token = authStorage.getAccessToken();
     const sendAuth = Boolean(token) && !isPublicAuthPath(path);
@@ -59,8 +66,68 @@ export class ApiClient {
       });
 
       if (!res.ok) {
+        // Backend returns 400 (Bad Request) instead of 401 when the access token expires 
+        // specifically on manual validation endpoints like /auth/me and /auth/profile.
+        const isAuthVerificationRoute = path === "/auth/me" || path === "/auth/profile";
+        const shouldTriggerRefresh = res.status === 401 || (res.status === 400 && isAuthVerificationRoute);
+
+        if (shouldTriggerRefresh && !isPublicAuthPath(path) && retryCount < 1) {
+          const refreshToken = authStorage.getRefreshToken();
+          if (refreshToken) {
+            if (!refreshPromise) {
+              refreshPromise = (async () => {
+                try {
+                  const refreshRes = await fetch(buildUrl("/v1/auth/refresh"), {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({ refreshToken }),
+                  });
+                  if (!refreshRes.ok) {
+                    throw new Error("Token refresh request failed");
+                  }
+                  const refreshJson = await refreshRes.json();
+                  const tokenData = refreshJson?.data as { accessToken: string; refreshToken: string } | undefined;
+                  if (!tokenData || !tokenData.accessToken || !tokenData.refreshToken) {
+                    throw new Error("Invalid token response format");
+                  }
+
+                  const existingSession = authStorage.getSession();
+                  if (existingSession) {
+                    authStorage.setSession({
+                      ...existingSession,
+                      accessToken: tokenData.accessToken,
+                      refreshToken: tokenData.refreshToken,
+                    });
+                  }
+                  return tokenData.accessToken;
+                } catch (err) {
+                  authStorage.clearSession();
+                  if (typeof window !== "undefined") {
+                    window.location.href = "/login";
+                  }
+                  return null;
+                } finally {
+                  refreshPromise = null;
+                }
+              })();
+            }
+
+            const newAccessToken = await refreshPromise;
+            if (newAccessToken) {
+              return this.request<T>(path, options, retryCount + 1);
+            }
+          } else {
+            authStorage.clearSession();
+            if (typeof window !== "undefined") {
+              window.location.href = "/login";
+            }
+          }
+        }
+
         if ((res.status === 401 || res.status === 403) && !isPublicAuthPath(path)) {
-          authStorage.setSession(null);
+          authStorage.clearSession();
         }
         throw await ApiError.fromResponse(res);
       }
