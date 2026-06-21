@@ -58,4 +58,13 @@ export class MockAuthService implements AuthService {
 
     return null;
   }
+
+  async forgotPassword(email: string): Promise<void> {
+    await new Promise((r) => setTimeout(r, AUTH_DELAY_MS));
+  }
+
+  async resetPassword(token: string, newPassword: string): Promise<void> {
+    await new Promise((r) => setTimeout(r, AUTH_DELAY_MS));
+  }
 }
+

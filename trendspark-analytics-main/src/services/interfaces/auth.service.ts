@@ -6,4 +6,6 @@ export interface AuthService {
   logout(): Promise<void>;
   getSession(): Promise<AuthSession | null>;
   updateProfile(fullName: string): Promise<AuthSession>;
+  forgotPassword(email: string): Promise<void>;
+  resetPassword(token: string, newPassword: string): Promise<void>;
 }
