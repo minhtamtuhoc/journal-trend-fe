@@ -3,6 +3,7 @@ import { useState } from "react";
 import { z } from "zod";
 import { AuthShell } from "@/components/AuthShell";
 import { toast } from "sonner";
+import { getServices } from "@/services";
 
 export const Route = createFileRoute("/forgot-password")({ component: ForgotPage });
 
@@ -10,15 +11,30 @@ function ForgotPage() {
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading) return;
+
     const r = z.string().email().safeParse(email);
-    if (!r.success) return setErr("Enter a valid email");
+    if (!r.success) {
+      setErr("Enter a valid email");
+      return;
+    }
     setErr(null);
-    await new Promise((res) => setTimeout(res, 400));
-    setSent(true);
-    toast.success("Reset link sent (simulated)");
+    setLoading(true);
+
+    try {
+      await getServices().auth.forgotPassword(email);
+      setSent(true);
+      toast.success("Reset link sent successfully");
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Failed to send reset link";
+      toast.error(msg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -31,14 +47,14 @@ function ForgotPage() {
         <form onSubmit={submit} className="space-y-4">
           <div>
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Email</label>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@lab.edu" className="mt-1 w-full h-10 px-3 bg-secondary/40 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand/40" />
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} disabled={loading} placeholder="you@lab.edu" className="mt-1 w-full h-10 px-3 bg-secondary/40 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand/40 disabled:opacity-50" />
           </div>
           {err && <div className="text-xs text-destructive">{err}</div>}
-          <button type="submit" className="w-full h-10 rounded-lg text-sm font-semibold text-brand-foreground glow-brand" style={{ background: "var(--gradient-brand)" }}>
-            Send reset link
+          <button type="submit" disabled={loading} className="w-full h-10 rounded-lg text-sm font-semibold text-brand-foreground glow-brand disabled:opacity-50 disabled:cursor-not-allowed" style={{ background: "var(--gradient-brand)" }}>
+            {loading ? "Sending..." : "Send reset link"}
           </button>
         </form>
       )}
     </AuthShell>
   );
-}
+}

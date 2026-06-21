@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as VerifyEmailRouteImport } from './routes/verify-email'
 import { Route as TrendsRouteImport } from './routes/trends'
 import { Route as SearchRouteImport } from './routes/search'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as ProfileRouteImport } from './routes/profile'
@@ -45,6 +46,11 @@ const TrendsRoute = TrendsRouteImport.update({
 const SearchRoute = SearchRouteImport.update({
   id: '/search',
   path: '/search',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ReportsRoute = ReportsRouteImport.update({
@@ -155,6 +161,7 @@ export interface FileRoutesByFullPath {
   '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
   '/reports': typeof ReportsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/search': typeof SearchRoute
   '/trends': typeof TrendsRoute
   '/verify-email': typeof VerifyEmailRoute
@@ -178,6 +185,7 @@ export interface FileRoutesByTo {
   '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
   '/reports': typeof ReportsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/search': typeof SearchRoute
   '/trends': typeof TrendsRoute
   '/verify-email': typeof VerifyEmailRoute
@@ -203,6 +211,7 @@ export interface FileRoutesById {
   '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
   '/reports': typeof ReportsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/search': typeof SearchRoute
   '/trends': typeof TrendsRoute
   '/verify-email': typeof VerifyEmailRoute
@@ -229,6 +238,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/register'
     | '/reports'
+    | '/reset-password'
     | '/search'
     | '/trends'
     | '/verify-email'
@@ -252,6 +262,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/register'
     | '/reports'
+    | '/reset-password'
     | '/search'
     | '/trends'
     | '/verify-email'
@@ -276,6 +287,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/register'
     | '/reports'
+    | '/reset-password'
     | '/search'
     | '/trends'
     | '/verify-email'
@@ -301,6 +313,7 @@ export interface RootRouteChildren {
   ProfileRoute: typeof ProfileRoute
   RegisterRoute: typeof RegisterRoute
   ReportsRoute: typeof ReportsRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   SearchRoute: typeof SearchRoute
   TrendsRoute: typeof TrendsRoute
   VerifyEmailRoute: typeof VerifyEmailRoute
@@ -332,6 +345,13 @@ declare module '@tanstack/react-router' {
       path: '/search'
       fullPath: '/search'
       preLoaderRoute: typeof SearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reports': {
@@ -508,6 +528,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProfileRoute: ProfileRoute,
   RegisterRoute: RegisterRoute,
   ReportsRoute: ReportsRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   SearchRoute: SearchRoute,
   TrendsRoute: TrendsRoute,
   VerifyEmailRoute: VerifyEmailRoute,

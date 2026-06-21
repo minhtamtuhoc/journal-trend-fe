@@ -21,7 +21,7 @@ export class ApiError extends Error {
         : res.statusText || `Request failed (${res.status})`;
 
     if (res.status === 401) {
-      message = "Phiên đăng nhập hết hạn hoặc chưa đăng nhập. Vui lòng đăng nhập lại.";
+      message = "Incorrect password";
     } else if (res.status === 403) {
       const isAuthRoute = res.url.includes("/auth/login") || res.url.includes("/auth/register");
       if (isAuthRoute) {
