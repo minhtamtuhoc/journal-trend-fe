@@ -36,4 +36,8 @@ export const queryKeys = {
   auth: {
     session: ["auth", "session"] as const,
   },
+  superAdmin: {
+    admins: ["superAdmin", "admins"] as const,
+    users: (q?: string, page?: number, size?: number) => ["superAdmin", "users", { q, page, size }] as const,
+  },
 } as const;

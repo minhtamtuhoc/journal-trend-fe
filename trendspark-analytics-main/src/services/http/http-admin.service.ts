@@ -1,6 +1,16 @@
 import { apiClient } from "@/api/client";
 import type { ApiSource } from "@/types/brief";
 import type { AdminOverview, AdminService, AdminSyncResult } from "@/services/interfaces/admin.service";
+import type { UserAdminResponse } from "@/types/domain";
+import type { PageResponse } from "@/services/interfaces/papers.service";
+
+interface BackendApiResponse<T> {
+  success: boolean;
+  message: string;
+  data: T;
+  timestamp: string;
+}
+
 
 export class HttpAdminService implements AdminService {
   getOverview() {
@@ -57,5 +67,12 @@ export class HttpAdminService implements AdminService {
 
   deletePaper(id: string) {
     return apiClient.delete<unknown>(`/v1/admin/papers/${encodeURIComponent(id)}`);
+  }
+
+  async searchUsers(q?: string, page = 0, size = 20): Promise<PageResponse<UserAdminResponse>> {
+    const res = await apiClient.get<BackendApiResponse<PageResponse<UserAdminResponse>>>("/v1/admin/users", {
+      params: { q, page, size }
+    });
+    return res.data;
   }
 }

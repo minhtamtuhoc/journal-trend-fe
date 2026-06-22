@@ -26,6 +26,10 @@ import { MockFollowService } from "@/services/mock/mock-follow.service";
 import type { JournalsService } from "@/services/interfaces/journals.service";
 import { HttpJournalsService } from "@/services/http/http-journals.service";
 import { MockJournalsService } from "@/services/mock/mock-journals.service";
+import type { SuperAdminService } from "@/services/interfaces/super-admin.service";
+import { HttpSuperAdminService } from "@/services/http/http-super-admin.service";
+import { MockSuperAdminService } from "@/services/mock/mock-super-admin.service";
+
 
 export type AppServices = {
   analytics: AnalyticsService;
@@ -37,6 +41,7 @@ export type AppServices = {
   auth: AuthService;
   collections: CollectionsService;
   journals: JournalsService;
+  superAdmin: SuperAdminService;
 };
 
 function createMockServices(): AppServices {
@@ -50,6 +55,7 @@ function createMockServices(): AppServices {
     auth: new MockAuthService(),
     collections: new MockCollectionsService(),
     journals: new MockJournalsService(),
+    superAdmin: new MockSuperAdminService(),
   };
 }
 
@@ -64,6 +70,7 @@ function createHttpServices(): AppServices {
     auth: new HttpAuthService(),
     collections: new HttpCollectionsService(),
     journals: new HttpJournalsService(),
+    superAdmin: new HttpSuperAdminService(),
   };
 }
 

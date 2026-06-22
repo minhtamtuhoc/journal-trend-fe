@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { AppLayout, PageHeader } from "@/components/AppLayout";
 import { Card } from "@/components/Card";
 import { useAdminOverview, useAdminSources, useUpdateAdminSource, useApprovePaper, useDeletePaper, usePendingReview } from "@/hooks/data/use-admin";
@@ -13,6 +13,12 @@ import { ApiError } from "@/api/errors";
 export const Route = createFileRoute("/admin")({ component: AdminPage });
 
 function AdminPage() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const isExactAdmin = pathname === "/admin" || pathname === "/admin/";
+
+  if (!isExactAdmin) {
+    return <Outlet />;
+  }
 
   const { user } = useAuth();
   const queryClient = useQueryClient();

@@ -155,3 +155,13 @@ export type AuditLogEntry = {
 export type PendingReviewPaper = Paper & {
   status: "pending" | "flagged";
 };
+
+export type UserAdminResponse = {
+  id: number;
+  email: string;
+  fullName: string;
+  role: "STUDENT" | "LECTURER" | "RESEARCHER" | "ADMIN" | "SUPER_ADMIN";
+  status: "ACTIVE" | "LOCKED" | string;
+  createdAt: string;
+  updatedAt: string;
+};
