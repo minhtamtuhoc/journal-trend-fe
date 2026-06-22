@@ -2,6 +2,16 @@ import type { AdminService } from "@/services/interfaces/admin.service";
 import type { ApiSource } from "@/types/brief";
 import { MOCK_AUDIT_LOGS, MOCK_PENDING_REVIEW } from "@/mocks/data/admin";
 import { mockDelay } from "@/services/utils";
+import type { UserAdminResponse } from "@/types/domain";
+import type { PageResponse } from "@/services/interfaces/papers.service";
+
+export const MOCK_USERS: UserAdminResponse[] = [
+  { id: 1, email: "admin@research.local", fullName: "System Super Admin", role: "SUPER_ADMIN", status: "ACTIVE", createdAt: "2026-01-01T00:00:00", updatedAt: "2026-01-01T00:00:00" },
+  { id: 2, email: "lecturer1@helix.io", fullName: "Dr. John Doe", role: "LECTURER", status: "ACTIVE", createdAt: "2026-01-02T00:00:00", updatedAt: "2026-01-02T00:00:00" },
+  { id: 3, email: "student1@helix.io", fullName: "Jane Smith", role: "STUDENT", status: "ACTIVE", createdAt: "2026-01-03T00:00:00", updatedAt: "2026-01-03T00:00:00" },
+  { id: 4, email: "admin1@helix.io", fullName: "Admin Manager", role: "ADMIN", status: "ACTIVE", createdAt: "2026-01-04T00:00:00", updatedAt: "2026-01-04T00:00:00" },
+];
+
 
 const MOCK_SOURCES: ApiSource[] = [
   { name: "OpenAlex", baseUrl: "https://api.openalex.org", enabled: true, syncSchedule: "0 2 * * *", lastSyncAt: null, successRate: 99.2 },
@@ -87,5 +97,24 @@ export class MockAdminService implements AdminService {
   async deletePaper(id: string) {
     await mockDelay(150);
     return { status: "SUCCESS", message: "Deleted (mock)" };
+  }
+
+  async searchUsers(q?: string, page = 0, size = 20): Promise<PageResponse<UserAdminResponse>> {
+    await mockDelay(150);
+    const filtered = q
+      ? MOCK_USERS.filter(u => u.fullName.toLowerCase().includes(q.toLowerCase()) || u.email.toLowerCase().includes(q.toLowerCase()))
+      : MOCK_USERS;
+    const start = page * size;
+    const end = start + size;
+    const content = filtered.slice(start, end);
+    return {
+      content,
+      page,
+      size,
+      totalElements: filtered.length,
+      totalPages: Math.ceil(filtered.length / size),
+      first: page === 0,
+      last: end >= filtered.length,
+    };
   }
 }

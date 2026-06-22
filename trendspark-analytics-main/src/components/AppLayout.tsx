@@ -18,7 +18,7 @@ import {
   Sun,
 } from "lucide-react";
 import { useEffect } from "react";
-import { useAuth, isAdminUser } from "@/auth";
+import { useAuth, isAdminUser, isSuperAdminUser } from "@/auth";
 import { useTheme } from "@/theme";
 import { useNotifications } from "@/hooks/data/use-notifications";
 import { motion } from "framer-motion";
@@ -106,13 +106,26 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             <Link
               to="/admin"
               className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                pathname.startsWith("/admin")
+                pathname.startsWith("/admin") && !pathname.startsWith("/admin/users")
                   ? "bg-brand/10 text-brand border border-brand/30"
                   : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
               }`}
             >
               <Shield className="size-4" />
               <span className="flex-1">Admin Panel</span>
+            </Link>
+          )}
+          {isSuperAdminUser(user) && (
+            <Link
+              to="/admin/users"
+              className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                pathname.startsWith("/admin/users")
+                  ? "bg-brand/10 text-brand border border-brand/30"
+                  : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+              }`}
+            >
+              <Shield className="size-4 text-rose-400" />
+              <span className="flex-1 text-rose-400">User & Admin Management</span>
             </Link>
           )}
         </nav>

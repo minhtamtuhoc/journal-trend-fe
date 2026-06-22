@@ -1,5 +1,6 @@
 import type { ApiSource } from "@/types/brief";
-import type { AuditLogEntry, PendingReviewPaper } from "@/types/domain";
+import type { AuditLogEntry, PendingReviewPaper, UserAdminResponse } from "@/types/domain";
+import type { PageResponse } from "./papers.service";
 
 export type AdminOverview = {
   auditLogs: AuditLogEntry[];
@@ -27,4 +28,5 @@ export interface AdminService {
   expireStaleReviews(): Promise<AdminSyncResult>;
   approveReview(id: string, note?: string): Promise<unknown>;
   deletePaper(id: string): Promise<unknown>;
+  searchUsers(q?: string, page?: number, size?: number): Promise<PageResponse<UserAdminResponse>>;
 }

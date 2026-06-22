@@ -31,6 +31,7 @@ import { Route as TopicsTopicIdRouteImport } from './routes/topics.$topicId'
 import { Route as PapersIdRouteImport } from './routes/papers.$id'
 import { Route as CollectionsCollectionIdRouteImport } from './routes/collections.$collectionId'
 import { Route as AuthorsAuthorIdRouteImport } from './routes/authors.$authorId'
+import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as TopicsDomainDomainRouteImport } from './routes/topics.domain.$domain'
 
 const VerifyEmailRoute = VerifyEmailRouteImport.update({
@@ -143,6 +144,11 @@ const AuthorsAuthorIdRoute = AuthorsAuthorIdRouteImport.update({
   path: '/authors/$authorId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminUsersRoute = AdminUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AdminRoute,
+} as any)
 const TopicsDomainDomainRoute = TopicsDomainDomainRouteImport.update({
   id: '/$domain',
   path: '/$domain',
@@ -151,7 +157,7 @@ const TopicsDomainDomainRoute = TopicsDomainDomainRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/bookmarks': typeof BookmarksRoute
   '/collections': typeof CollectionsRouteWithChildren
   '/dashboard': typeof DashboardRoute
@@ -165,6 +171,7 @@ export interface FileRoutesByFullPath {
   '/search': typeof SearchRoute
   '/trends': typeof TrendsRoute
   '/verify-email': typeof VerifyEmailRoute
+  '/admin/users': typeof AdminUsersRoute
   '/authors/$authorId': typeof AuthorsAuthorIdRoute
   '/collections/$collectionId': typeof CollectionsCollectionIdRoute
   '/papers/$id': typeof PapersIdRoute
@@ -176,7 +183,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/bookmarks': typeof BookmarksRoute
   '/dashboard': typeof DashboardRoute
   '/forgot-password': typeof ForgotPasswordRoute
@@ -189,6 +196,7 @@ export interface FileRoutesByTo {
   '/search': typeof SearchRoute
   '/trends': typeof TrendsRoute
   '/verify-email': typeof VerifyEmailRoute
+  '/admin/users': typeof AdminUsersRoute
   '/authors/$authorId': typeof AuthorsAuthorIdRoute
   '/collections/$collectionId': typeof CollectionsCollectionIdRoute
   '/papers/$id': typeof PapersIdRoute
@@ -201,7 +209,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/bookmarks': typeof BookmarksRoute
   '/collections': typeof CollectionsRouteWithChildren
   '/dashboard': typeof DashboardRoute
@@ -215,6 +223,7 @@ export interface FileRoutesById {
   '/search': typeof SearchRoute
   '/trends': typeof TrendsRoute
   '/verify-email': typeof VerifyEmailRoute
+  '/admin/users': typeof AdminUsersRoute
   '/authors/$authorId': typeof AuthorsAuthorIdRoute
   '/collections/$collectionId': typeof CollectionsCollectionIdRoute
   '/papers/$id': typeof PapersIdRoute
@@ -242,6 +251,7 @@ export interface FileRouteTypes {
     | '/search'
     | '/trends'
     | '/verify-email'
+    | '/admin/users'
     | '/authors/$authorId'
     | '/collections/$collectionId'
     | '/papers/$id'
@@ -266,6 +276,7 @@ export interface FileRouteTypes {
     | '/search'
     | '/trends'
     | '/verify-email'
+    | '/admin/users'
     | '/authors/$authorId'
     | '/collections/$collectionId'
     | '/papers/$id'
@@ -291,6 +302,7 @@ export interface FileRouteTypes {
     | '/search'
     | '/trends'
     | '/verify-email'
+    | '/admin/users'
     | '/authors/$authorId'
     | '/collections/$collectionId'
     | '/papers/$id'
@@ -303,7 +315,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AdminRoute: typeof AdminRoute
+  AdminRoute: typeof AdminRouteWithChildren
   BookmarksRoute: typeof BookmarksRoute
   CollectionsRoute: typeof CollectionsRouteWithChildren
   DashboardRoute: typeof DashboardRoute
@@ -480,6 +492,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthorsAuthorIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/users': {
+      id: '/admin/users'
+      path: '/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AdminUsersRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/topics/domain/$domain': {
       id: '/topics/domain/$domain'
       path: '/$domain'
@@ -489,6 +508,16 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface AdminRouteChildren {
+  AdminUsersRoute: typeof AdminUsersRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminUsersRoute: AdminUsersRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
 interface CollectionsRouteChildren {
   CollectionsCollectionIdRoute: typeof CollectionsCollectionIdRoute
@@ -518,7 +547,7 @@ const TopicsDomainRouteWithChildren = TopicsDomainRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AdminRoute: AdminRoute,
+  AdminRoute: AdminRouteWithChildren,
   BookmarksRoute: BookmarksRoute,
   CollectionsRoute: CollectionsRouteWithChildren,
   DashboardRoute: DashboardRoute,
