@@ -1,7 +1,18 @@
 import type { NotificationItem } from "@/types/domain";
 
+export interface PaginatedNotifications {
+  content: NotificationItem[];
+  page: number;
+  totalPages: number;
+  last: boolean;
+  totalElements: number;
+}
+
 export interface NotificationsService {
-  list(): Promise<NotificationItem[]>;
+  list(page: number, size: number): Promise<PaginatedNotifications>;
   markAsRead(id: string): Promise<void>;
   markAllAsRead(): Promise<void>;
+  delete(id: string): Promise<void>;
+  deleteAll(): Promise<void>;
+  deleteAllRead(): Promise<void>;
 }
