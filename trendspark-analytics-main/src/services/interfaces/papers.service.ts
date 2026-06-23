@@ -17,6 +17,7 @@ export interface PapersService {
   listByTopic(topicId: string, limit?: number): Promise<Paper[]>;
   search(params: {
     q?: string;
+    topicId?: number;
     page: number;
     size: number;
     sort?: string;

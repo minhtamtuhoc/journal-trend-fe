@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { AppLayout, PageHeader } from "@/components/AppLayout";
 import { Card } from "@/components/Card";
 import { useSearchPapers, useAvailableYears } from "@/hooks/data/use-papers";
@@ -10,7 +10,10 @@ import { z } from "zod";
 import { toast } from "sonner";
 import { SaveToCollectionButton } from "@/components/SaveToCollectionButton";
 
-const searchSchema = z.object({ q: z.string().optional() });
+const searchSchema = z.object({
+  q: z.string().optional(),
+  topicId: z.coerce.number().optional(),
+});
 
 export const Route = createFileRoute("/search")({
   component: SearchPage,
@@ -42,7 +45,8 @@ function getVisiblePages(current: number, total: number) {
 }
 
 function SearchPage() {
-  const { q: initial } = Route.useSearch();
+  const { q: initial, topicId: initialTopicId } = Route.useSearch();
+  const navigate = useNavigate();
   const [q, setQ] = useState(initial ?? "");
   const [sort, setSort] = useState<"citations" | "year">("citations");
   const [fromYear, setFromYear] = useState<string>("all");
@@ -74,7 +78,9 @@ function SearchPage() {
       : "citationCount,desc";
 
   const { data, isLoading } = useSearchPapers({
-    q: q || undefined,
+    ...(initialTopicId != null
+      ? { topicId: initialTopicId }
+      : { q: q || undefined }),
     page: page - 1,
     size: PAGE_SIZE,
     sort: sortParam,
@@ -141,7 +147,21 @@ function SearchPage() {
           <Card title="Recent Searches">
             <div className="flex flex-wrap gap-2">
               {SUGGESTIONS.map((s) => (
-                <button key={s} onClick={() => setQ(s)} className="text-[11px] px-2.5 py-1 rounded-full border border-border bg-secondary/40 hover:border-brand/40 hover:text-brand transition-colors">
+                <button
+                  key={s}
+                  onClick={() => {
+                    setQ(s);
+                    navigate({
+                      to: "/search",
+                      search: {
+                        q: s,
+                        topicId: undefined,
+                      },
+                      replace: true,
+                    });
+                  }}
+                  className="text-[11px] px-2.5 py-1 rounded-full border border-border bg-secondary/40 hover:border-brand/40 hover:text-brand transition-colors"
+                >
                   {s}
                 </button>
               ))}
@@ -154,7 +174,18 @@ function SearchPage() {
             <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
             <input
               value={q}
-              onChange={(e) => setQ(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                setQ(val);
+                navigate({
+                  to: "/search",
+                  search: {
+                    q: val || undefined,
+                    topicId: undefined,
+                  },
+                  replace: true,
+                });
+              }}
               placeholder="Search papers, authors, keywords, DOIs..."
               className="w-full h-12 pl-11 pr-4 rounded-xl bg-surface/60 border border-border focus:outline-none focus:ring-2 focus:ring-brand/40 text-sm"
             />
