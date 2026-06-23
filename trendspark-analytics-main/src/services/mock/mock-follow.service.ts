@@ -1,5 +1,6 @@
 import type { FollowService } from "@/services/interfaces/follow.service";
 import type { Journal } from "@/types/brief";
+import type { FollowedAuthor } from "@/types/domain";
 import { mockDelay } from "@/services/utils";
 
 let followedJournals: Journal[] = [
@@ -20,6 +21,8 @@ let followedJournals: Journal[] = [
     impactFactor: 17.7,
   },
 ];
+
+let followedAuthors: FollowedAuthor[] = [];
 
 export class MockFollowService implements FollowService {
   async listTopics() {
@@ -67,4 +70,22 @@ export class MockFollowService implements FollowService {
     await mockDelay(100);
     followedJournals = followedJournals.filter((j) => j.id !== journalId);
   }
+
+  async listFollowedAuthors() {
+    await mockDelay(100);
+    return [...followedAuthors];
+  }
+
+  async followAuthor(authorId: string) {
+    await mockDelay(100);
+    if (!followedAuthors.some((a) => a.id === authorId)) {
+      followedAuthors.push({ id: authorId, name: `Mock Author ${authorId}` });
+    }
+  }
+
+  async unfollowAuthor(authorId: string) {
+    await mockDelay(100);
+    followedAuthors = followedAuthors.filter((a) => a.id !== authorId);
+  }
 }
+

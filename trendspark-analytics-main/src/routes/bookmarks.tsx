@@ -3,7 +3,6 @@ import { AppLayout, PageHeader } from "@/components/AppLayout";
 import { Card } from "@/components/Card";
 import { useAnalyticsSnapshot } from "@/hooks/data/use-analytics";
 import { useFeaturedAuthors } from "@/hooks/data/use-authors";
-import { useSavedItems } from "@/hooks/use-saved-items";
 
 import type { Author, FollowedAuthor } from "@/types/domain";
 import { useMemo, useState } from "react";
@@ -11,7 +10,7 @@ import { useMemo, useState } from "react";
 import { Download, Trash2, Users, Hash, Flame, ArrowRight, BookOpen } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/auth";
-import { useFollowedJournals, useUnfollowJournal, useFollowedTopics, useUnfollowTopic } from "@/hooks/data/use-follows";
+import { useFollowedJournals, useUnfollowJournal, useFollowedTopics, useUnfollowTopic, useFollowedAuthors, useUnfollowAuthor } from "@/hooks/data/use-follows";
 import { ApiError } from "@/api/errors";
 
 export const Route = createFileRoute("/bookmarks")({ component: BookmarksPage });
@@ -41,7 +40,8 @@ function BookmarksPage() {
   const unfollowJournal = useUnfollowJournal();
   const { data: followedTopics = [] } = useFollowedTopics();
   const unfollowTopic = useUnfollowTopic();
-  const { followedAuthors, toggleAuthorFollow } = useSavedItems();
+  const { data: followedAuthors = [], isLoading: loadingAuthors } = useFollowedAuthors();
+  const unfollowAuthor = useUnfollowAuthor();
 
 
   //const TRENDING_AUTHORS = analytics.trendingAuthors;
@@ -151,7 +151,7 @@ function BookmarksPage() {
     <AppLayout>
       <PageHeader
         title="Follow Center"
-        subtitle="Authors (local) · Keywords & Journals (synced with backend when signed in)"
+        subtitle="Authors · Keywords & Journals (synced with backend when signed in)"
         action={
           <button
             onClick={exportCsv}
@@ -176,66 +176,85 @@ function BookmarksPage() {
 
       {tab === "authors" && (
         <div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {!user ? (
+            <div className="text-center py-16 glass rounded-2xl border border-border max-w-md mx-auto">
+              <p className="text-sm text-muted-foreground px-4">Đăng nhập để theo dõi tác giả và đồng bộ dữ liệu.</p>
+              <Link to="/login" className="mt-4 inline-block text-sm text-brand hover:underline">
+                Sign in
+              </Link>
+            </div>
+          ) : loadingAuthors ? (
+            <p className="text-sm text-muted-foreground">Loading authors…</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 
-            {savedAuthors.map((a) => {
-              const cardBody = (
-                <>
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="size-10 rounded-full flex items-center justify-center text-xs font-bold text-brand-foreground" style={{ background: "var(--gradient-brand)" }}>
-                      {a.name.split(" ")[1]?.[0] ?? a.name[0] ?? "A"}
+              {savedAuthors.map((a) => {
+                const authorFollowId = a.profileId ?? followedAuthors.find((fa) => fa.name.toLowerCase() === a.name.toLowerCase())?.id;
+                const cardBody = (
+                  <>
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="size-10 rounded-full flex items-center justify-center text-xs font-bold text-brand-foreground" style={{ background: "var(--gradient-brand)" }}>
+                        {a.name.split(" ")[1]?.[0] ?? a.name[0] ?? "A"}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="font-semibold text-sm truncate">{a.name}</div>
+                        <div className="text-[10px] text-muted-foreground truncate">{a.affiliation}</div>
+                      </div>
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="font-semibold text-sm truncate">{a.name}</div>
-                      <div className="text-[10px] text-muted-foreground truncate">{a.affiliation}</div>
+                    <div className="grid grid-cols-3 gap-2 text-[10px] font-mono text-muted-foreground mb-1">
+                      <div><div className="text-foreground text-sm font-semibold">{a.papers}</div>papers</div>
+                      <div><div className="text-foreground text-sm font-semibold">{a.citations.toLocaleString()}</div>cites</div>
+                      <div><div className="text-foreground text-sm font-semibold">{a.hIndex}</div>h-idx</div>
+
                     </div>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2 text-[10px] font-mono text-muted-foreground mb-1">
-                    <div><div className="text-foreground text-sm font-semibold">{a.papers}</div>papers</div>
-                    <div><div className="text-foreground text-sm font-semibold">{a.citations.toLocaleString()}</div>cites</div>
-                    <div><div className="text-foreground text-sm font-semibold">{a.hIndex}</div>h-idx</div>
+                  </>
+                );
 
-                  </div>
-                </>
-              );
-
-              return (
-                <div key={`${a.profileId ?? "noid"}-${a.name}`} className="relative group">
-                  {a.profileId ? (
-                    <Link
-                      to="/authors/$authorId"
-                      params={{ authorId: a.profileId }}
-                      className="block"
-                    >
-                      <Card className="hover:border-brand/35 transition-colors cursor-pointer">
+                return (
+                  <div key={`${a.profileId ?? "noid"}-${a.name}`} className="relative group">
+                    {a.profileId ? (
+                      <Link
+                        to="/authors/$authorId"
+                        params={{ authorId: a.profileId }}
+                        className="block"
+                      >
+                        <Card className="hover:border-brand/35 transition-colors cursor-pointer">
+                          {cardBody}
+                        </Card>
+                      </Link>
+                    ) : (
+                      <Card className="hover:border-brand/35 transition-colors relative">
                         {cardBody}
                       </Card>
-                    </Link>
-                  ) : (
-                    <Card className="hover:border-brand/35 transition-colors relative">
-                      {cardBody}
-                    </Card>
-                  )}
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      toggleAuthorFollow({ id: a.profileId, name: a.name });
-                      toast.info(`Unfollowed ${a.name}`);
-                    }}
-                    className="absolute top-4 right-4 z-10 p-1.5 rounded-md border border-border hover:border-destructive/40 hover:text-destructive transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 cursor-pointer"
-                    title="Unfollow Author"
-                  >
-                    <Trash2 className="size-3" />
-                  </button>
-                </div>
+                    )}
+                    <button
+                      type="button"
+                      disabled={unfollowAuthor.isPending}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (!authorFollowId) return;
+                        unfollowAuthor.mutate(authorFollowId, {
+                          onSuccess: () => toast.info(`Unfollowed ${a.name}`),
+                          onError: (err) => {
+                            const msg = err instanceof ApiError ? err.message : "Unfollow failed";
+                            toast.error(msg);
+                          },
+                        });
+                      }}
+                      className="absolute top-4 right-4 z-10 p-1.5 rounded-md border border-border hover:border-destructive/40 hover:text-destructive transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 cursor-pointer"
+                      title="Unfollow Author"
+                    >
+                      <Trash2 className="size-3" />
+                    </button>
+                  </div>
 
-              );
-            })}
+                );
+              })}
 
-          </div>
-          {savedAuthors.length === 0 && (
+            </div>
+          )}
+          {user && !loadingAuthors && savedAuthors.length === 0 && (
             <div className="text-center py-16 glass rounded-2xl border border-border max-w-md mx-auto">
               <div className="size-12 rounded-full bg-brand/10 border border-brand/20 flex items-center justify-center text-brand mx-auto mb-4">
                 <Users className="size-5" />

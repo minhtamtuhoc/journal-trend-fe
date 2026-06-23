@@ -28,6 +28,18 @@ export function useFollowedJournals() {
   });
 }
 
+export function useFollowedAuthors() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: queryKeys.follows.authors,
+    queryFn: () => getServices().follow.listFollowedAuthors(),
+    enabled: isBrowser && Boolean(user),
+    placeholderData: [],
+    retry: 1,
+    ...mockQueryDefaults,
+  });
+}
+
 export function useFollowTopic() {
   const qc = useQueryClient();
   return useMutation({
@@ -59,3 +71,20 @@ export function useUnfollowJournal() {
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.follows.journals }),
   });
 }
+
+export function useFollowAuthor() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (authorId: string) => getServices().follow.followAuthor(authorId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.follows.authors }),
+  });
+}
+
+export function useUnfollowAuthor() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (authorId: string) => getServices().follow.unfollowAuthor(authorId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.follows.authors }),
+  });
+}
+

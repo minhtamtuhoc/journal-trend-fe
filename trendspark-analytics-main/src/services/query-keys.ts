@@ -32,6 +32,7 @@ export const queryKeys = {
   follows: {
     topics: ["follows", "topics"] as const,
     journals: ["follows", "journals"] as const,
+    authors: ["follows", "authors"] as const,
   },
   auth: {
     session: ["auth", "session"] as const,

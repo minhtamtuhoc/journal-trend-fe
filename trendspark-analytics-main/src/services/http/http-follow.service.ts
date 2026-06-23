@@ -1,7 +1,7 @@
 import { apiClient } from "@/api/client";
 import type { FollowService } from "@/services/interfaces/follow.service";
 import type { Journal } from "@/types/brief";
-import type { TopicTrend } from "@/types/domain";
+import type { FollowedAuthor, TopicTrend } from "@/types/domain";
 
 type TopicDto = {
   keywordId: number;
@@ -17,6 +17,14 @@ type JournalDto = {
   issn?: string | null;
   domain?: string | null;
   impactFactor?: number;
+};
+type AuthorDto = {
+  id: number;
+  name: string;
+  affiliation?: string | null;
+  citationCount?: number;
+  sourceType?: string | null;
+  sourceIdentifier?: string | null;
 };
 
 function mapTopic(t: TopicDto, i: number): TopicTrend {
@@ -58,4 +66,19 @@ export class HttpFollowService implements FollowService {
   unfollowJournal(journalId: string) {
     return apiClient.delete<void>(`/follow/journals/${journalId}`);
   }
+
+  listFollowedAuthors(): Promise<FollowedAuthor[]> {
+    return apiClient.get<AuthorDto[]>("/follow/authors").then((rows) =>
+      rows.map((r) => ({ id: String(r.id), name: r.name }))
+    );
+  }
+
+  followAuthor(authorId: string) {
+    return apiClient.post<void>(`/follow/authors/${authorId}`);
+  }
+
+  unfollowAuthor(authorId: string) {
+    return apiClient.delete<void>(`/follow/authors/${authorId}`);
+  }
 }
+
