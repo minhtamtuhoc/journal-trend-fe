@@ -201,7 +201,7 @@ function DashboardPage() {
                 <Link
                   key={k.keyword}
                   to="/search"
-                  search={{ q: k.keyword }}
+                  search={{ topicId: k.keywordId }}
                   className="flex items-center justify-between text-sm p-1.5 -mx-1.5 rounded-lg hover:bg-brand/5 transition-colors group"
                 >
                   <div className="flex items-center gap-3 min-w-0">

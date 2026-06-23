@@ -54,6 +54,7 @@ export function useRelatedPapers(paperId: string, category: string) {
 
 export function useSearchPapers(params: {
   q?: string;
+  topicId?: number;
   page: number;
   size: number;
   sort?: string;
