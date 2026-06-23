@@ -127,11 +127,16 @@ export type HeatmapCell = {
 
 export type NotificationItem = {
   id: string;
-  type: string;
-  title: string;
-  body: string;
-  time: string;
+  message: string;
+  createdAt: string;
+  readStatus: "READ" | "UNREAD";
+  triggerType: "NEW_PAPER" | "TRENDING_KEYWORD" | "SYSTEM";
   unread: boolean;
+  uiType: "paper" | "trend" | "system";
+  paperId?: string;
+  authorId?: string;
+  journalId?: string;
+  keywordId?: string;
 };
 
 export type Collection = {
