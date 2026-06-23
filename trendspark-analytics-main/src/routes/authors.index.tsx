@@ -3,18 +3,25 @@ import { AppLayout, PageHeader } from "@/components/AppLayout";
 import { Card } from "@/components/Card";
 import { useFeaturedAuthors } from "@/hooks/data/use-authors";
 
-import { useSavedItems } from "@/hooks/use-saved-items";
+import { useFollowedAuthors, useFollowAuthor, useUnfollowAuthor } from "@/hooks/data/use-follows";
 import { ArrowUpRight, Bookmark, Search, User } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { useAuth } from "@/auth";
+import { ApiError } from "@/api/errors";
 
 
 export const Route = createFileRoute("/authors/")({ component: AuthorsIndexPage });
 
 function AuthorsIndexPage() {
   const { data: authors = [], isLoading, isError } = useFeaturedAuthors();
+  const { user } = useAuth();
 
-  const { isAuthorFollowed, toggleAuthorFollow } = useSavedItems();
+  const { data: followedAuthors = [] } = useFollowedAuthors();
+  const followAuthorMut = useFollowAuthor();
+  const unfollowAuthorMut = useUnfollowAuthor();
+  const isAuthorFollowed = (authorId: string) => followedAuthors.some((a) => a.id === authorId);
+
   const [query, setQuery] = useState("");
 
   const filteredAuthors = useMemo(() => {
@@ -68,7 +75,7 @@ function AuthorsIndexPage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               {filteredAuthors.map((a) => {
-                const followed = isAuthorFollowed(a.name);
+                const followed = isAuthorFollowed(a.id);
                 return (
                   <div
                     key={a.id}
@@ -111,14 +118,30 @@ function AuthorsIndexPage() {
                     </Link>
                     <button
                       type="button"
+                      disabled={followAuthorMut.isPending || unfollowAuthorMut.isPending}
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        const added = toggleAuthorFollow({ id: a.id, name: a.name });
-                        if (added) {
-                          toast.success(`Following ${a.name}`);
+                        if (!user) {
+                          toast.error("Đăng nhập để theo dõi tác giả");
+                          return;
+                        }
+                        if (followed) {
+                          unfollowAuthorMut.mutate(a.id, {
+                            onSuccess: () => toast.info(`Unfollowed ${a.name}`),
+                            onError: (err) => {
+                              const msg = err instanceof ApiError ? err.message : "Unfollow failed";
+                              toast.error(msg);
+                            },
+                          });
                         } else {
-                          toast.info(`Unfollowed ${a.name}`);
+                          followAuthorMut.mutate(a.id, {
+                            onSuccess: () => toast.success(`Following ${a.name}`),
+                            onError: (err) => {
+                              const msg = err instanceof ApiError ? err.message : "Follow failed. Max 20 authors.";
+                              toast.error(msg);
+                            },
+                          });
                         }
                       }}
                       className={`absolute top-4 right-4 z-10 p-1.5 rounded-md border transition-colors cursor-pointer ${

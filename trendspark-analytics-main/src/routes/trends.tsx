@@ -4,10 +4,11 @@ import { Card } from "@/components/Card";
 import { Heatmap } from "@/components/Heatmap";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, PolarAngleAxis, PolarGrid, Radar, RadarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useAnalyticsSnapshot } from "@/hooks/data/use-analytics";
-import { useSavedItems } from "@/hooks/use-saved-items";
-import { useFollowedTopics, useFollowTopic, useUnfollowTopic } from "@/hooks/data/use-follows";
+import { useFollowedTopics, useFollowTopic, useUnfollowTopic, useFollowedAuthors, useFollowAuthor, useUnfollowAuthor } from "@/hooks/data/use-follows";
 import { Flame, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/auth";
+import { ApiError } from "@/api/errors";
 
 export const Route = createFileRoute("/trends")({ component: TrendsPage });
 
@@ -21,12 +22,16 @@ const tooltipStyle = {
 
 function TrendsPage() {
   const { data: analytics } = useAnalyticsSnapshot();
-  const { isAuthorFollowed, toggleAuthorFollow } = useSavedItems();
+  const { user } = useAuth();
+  const { data: followedAuthors = [] } = useFollowedAuthors();
+  const followAuthorMut = useFollowAuthor();
+  const unfollowAuthorMut = useUnfollowAuthor();
   const { data: followedTopics = [] } = useFollowedTopics();
   const followTopic = useFollowTopic();
   const unfollowTopic = useUnfollowTopic();
 
   const isTopicFollowed = (topicId: string) => followedTopics.some((t) => t.id === topicId);
+  const isAuthorFollowed = (authorId: string) => followedAuthors.some((a) => a.id === authorId);
 
   // const { publicationVelocity: PUBLICATION_VELOCITY, radarFields: RADAR_FIELDS, trendingKeywords: TRENDING_KEYWORDS, trendingAuthors: TRENDING_AUTHORS } =
   //   analytics;
@@ -184,7 +189,7 @@ function TrendsPage() {
         <Card title="Trending Authors">
           <div className="space-y-3">
             {TRENDING_AUTHORS.map((a, i) => {
-              const followed = isAuthorFollowed(a.name);
+              const followed = isAuthorFollowed(a.id);
               return (
                 <div
                   key={a.id}
@@ -207,12 +212,28 @@ function TrendsPage() {
                       +{a.trendScore.toFixed(1)}%
                     </span>
                     <button
+                      disabled={followAuthorMut.isPending || unfollowAuthorMut.isPending}
                       onClick={() => {
-                        const added = toggleAuthorFollow({ id: a.id, name: a.name });
-                        if (added) {
-                          toast.success(`Following ${a.name}`);
+                        if (!user) {
+                          toast.error("Đăng nhập để theo dõi tác giả");
+                          return;
+                        }
+                        if (followed) {
+                          unfollowAuthorMut.mutate(a.id, {
+                            onSuccess: () => toast.info(`Unfollowed ${a.name}`),
+                            onError: (err) => {
+                              const msg = err instanceof ApiError ? err.message : "Unfollow failed";
+                              toast.error(msg);
+                            },
+                          });
                         } else {
-                          toast.info(`Unfollowed ${a.name}`);
+                          followAuthorMut.mutate(a.id, {
+                            onSuccess: () => toast.success(`Following ${a.name}`),
+                            onError: (err) => {
+                              const msg = err instanceof ApiError ? err.message : "Follow failed. Max 20 authors.";
+                              toast.error(msg);
+                            },
+                          });
                         }
                       }}
                       className={`text-[10px] px-2 py-0.5 rounded-md border transition-all cursor-pointer ${

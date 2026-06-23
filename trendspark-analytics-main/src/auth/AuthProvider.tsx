@@ -72,8 +72,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     void getServices().auth.logout();
     setUser(null);
     qc.clear();
-    localStorage.removeItem("helix_followed_authors");
-    window.dispatchEvent(new Event("helix-saved-items-changed"));
   }, [qc]);
 
   const updateProfile = useCallback(async (fullName: string) => {

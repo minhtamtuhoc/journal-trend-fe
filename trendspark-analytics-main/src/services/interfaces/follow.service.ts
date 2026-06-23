@@ -1,5 +1,5 @@
 import type { Journal } from "@/types/brief";
-import type { TopicTrend } from "@/types/domain";
+import type { FollowedAuthor, TopicTrend } from "@/types/domain";
 
 export interface FollowService {
   listTopics(): Promise<TopicTrend[]>;
@@ -8,4 +8,7 @@ export interface FollowService {
   listJournals(): Promise<Journal[]>;
   followJournal(journalId: string): Promise<void>;
   unfollowJournal(journalId: string): Promise<void>;
+  listFollowedAuthors(): Promise<FollowedAuthor[]>;
+  followAuthor(authorId: string): Promise<void>;
+  unfollowAuthor(authorId: string): Promise<void>;
 }

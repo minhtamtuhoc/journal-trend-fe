@@ -2,14 +2,13 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { AppLayout, PageHeader } from "@/components/AppLayout";
 import { Card } from "@/components/Card";
 import { usePaper, useRelatedPapers } from "@/hooks/data/use-papers";
-import { useSavedItems } from "@/hooks/use-saved-items";
 import { buildPaperCitationSeries } from "@/utils/paper-series";
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis } from "recharts";
 import { UserPlus, ArrowUpRight, ExternalLink, UserCheck, BookMarked } from "lucide-react";
 import { toast } from "sonner";
 import { SaveToCollectionButton } from "@/components/SaveToCollectionButton";
 import { useAuth } from "@/auth";
-import { useFollowedJournals, useFollowJournal, useUnfollowJournal, useFollowedTopics, useFollowTopic, useUnfollowTopic } from "@/hooks/data/use-follows";
+import { useFollowedJournals, useFollowJournal, useUnfollowJournal, useFollowedTopics, useFollowTopic, useUnfollowTopic, useFollowedAuthors, useFollowAuthor, useUnfollowAuthor } from "@/hooks/data/use-follows";
 import { ApiError } from "@/api/errors";
 
 export const Route = createFileRoute("/papers/$id")({
@@ -23,7 +22,11 @@ function PaperDetailPage() {
   const { data: related = [] } = useRelatedPapers(id, category);
 
   const { user } = useAuth();
-  const { isAuthorFollowed, toggleAuthorFollow } = useSavedItems();
+  const { data: followedAuthors = [] } = useFollowedAuthors();
+  const followAuthorMut = useFollowAuthor();
+  const unfollowAuthorMut = useUnfollowAuthor();
+  const isAuthorFollowed = (authorId: string | null) => authorId ? followedAuthors.some((a) => a.id === authorId) : false;
+
   const { data: followedJournals = [] } = useFollowedJournals();
   const followJournal = useFollowJournal();
   const unfollowJournal = useUnfollowJournal();
@@ -50,10 +53,39 @@ function PaperDetailPage() {
   const primaryAuthorRef = paper.authorRefs?.[0];
   const mainAuthorName = primaryAuthorRef?.name ?? authors[0];
   const mainAuthorId = primaryAuthorRef?.id ?? null;
-  const mainAuthorFollowed = isAuthorFollowed(mainAuthorName);
+  const mainAuthorFollowed = isAuthorFollowed(mainAuthorId);
 
   const journalId = paper?.journalId ?? null;
   const journalFollowed = journalId ? followedJournals.some((j) => j.id === journalId) : false;
+
+  const handleAuthorFollow = (authorId: string | null, authorName: string) => {
+    if (!user) {
+      toast.error("Đăng nhập để theo dõi tác giả");
+      return;
+    }
+    if (!authorId) {
+      toast.error("Tác giả này chưa có trong hệ thống, không thể theo dõi.");
+      return;
+    }
+    const followed = isAuthorFollowed(authorId);
+    if (followed) {
+      unfollowAuthorMut.mutate(authorId, {
+        onSuccess: () => toast.info(`Unfollowed ${authorName}`),
+        onError: (err) => {
+          const msg = err instanceof ApiError ? err.message : "Unfollow failed";
+          toast.error(msg);
+        },
+      });
+    } else {
+      followAuthorMut.mutate(authorId, {
+        onSuccess: () => toast.success(`Following ${authorName}`),
+        onError: (err) => {
+          const msg = err instanceof ApiError ? err.message : "Follow failed. Max 20 authors.";
+          toast.error(msg);
+        },
+      });
+    }
+  };
 
   return (
     <AppLayout>
@@ -87,14 +119,8 @@ function PaperDetailPage() {
               </button>
             ) : null}
             <button
-              onClick={() => {
-                const added = toggleAuthorFollow({ id: mainAuthorId, name: mainAuthorName });
-                if (added) {
-                  toast.success(`Following ${mainAuthorName}`);
-                } else {
-                  toast.info(`Unfollowed ${mainAuthorName}`);
-                }
-              }}
+              disabled={followAuthorMut.isPending || unfollowAuthorMut.isPending || !mainAuthorId}
+              onClick={() => handleAuthorFollow(mainAuthorId, mainAuthorName)}
               className={`inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-semibold transition-all ${
                 mainAuthorFollowed
                   ? "bg-brand/10 border border-brand/45 text-brand"
@@ -200,7 +226,7 @@ function PaperDetailPage() {
                 : paper.authors.map((name) => ({ id: null as string | null, name }))
               ).map((author) => {
                 const a = author.name;
-                const followed = isAuthorFollowed(a);
+                const followed = isAuthorFollowed(author.id);
                 return (
                   <div key={author.id ?? a} className="flex items-center gap-3">
                     <div className="size-8 rounded-full flex items-center justify-center text-[10px] font-bold text-brand-foreground" style={{ background: "var(--gradient-brand)" }}>
@@ -215,23 +241,23 @@ function PaperDetailPage() {
                         a
                       )}
                     </div>
-                    <button
-                      onClick={() => {
-                        const added = toggleAuthorFollow({ id: author.id, name: a });
-                        if (added) {
-                          toast.success(`Following ${a}`);
-                        } else {
-                          toast.info(`Unfollowed ${a}`);
-                        }
-                      }}
-                      className={`text-[10px] px-2 py-1 rounded-md border transition-all ${
-                        followed
-                          ? "border-brand/40 bg-brand/10 text-brand"
-                          : "border-border hover:border-brand/40 hover:text-brand"
-                      }`}
-                    >
-                      {followed ? "Following" : "Follow"}
-                    </button>
+                    {author.id ? (
+                      <button
+                        disabled={followAuthorMut.isPending || unfollowAuthorMut.isPending}
+                        onClick={() => handleAuthorFollow(author.id, a)}
+                        className={`text-[10px] px-2 py-1 rounded-md border transition-all ${
+                          followed
+                            ? "border-brand/40 bg-brand/10 text-brand"
+                            : "border-border hover:border-brand/40 hover:text-brand"
+                        }`}
+                      >
+                        {followed ? "Following" : "Follow"}
+                      </button>
+                    ) : (
+                      <span className="text-[10px] px-2 py-1 text-muted-foreground" title="Tác giả chưa có trong hệ thống">
+                        —
+                      </span>
+                    )}
                   </div>
                 );
               })}
