@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppLayout, PageHeader } from "@/components/AppLayout";
 import { Card } from "@/components/Card";
 import { Heatmap } from "@/components/Heatmap";
@@ -19,6 +19,13 @@ const tooltipStyle = {
   color: "var(--popover-foreground)",
   fontSize: 12,
 } as const;
+
+function getPreviousMonthName() {
+  const d = new Date();
+  d.setDate(1); // prevent month rollover bug
+  d.setMonth(d.getMonth() - 1);
+  return d.toLocaleString("en-US", { month: "long" });
+}
 
 function TrendsPage() {
   const { data: analytics } = useAnalyticsSnapshot();
@@ -131,7 +138,7 @@ function TrendsPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <Card title="Trend Score Ranking">
+        <Card title={`TREND SCORE RANKING - ${getPreviousMonthName()}`}>
           <table className="w-full text-sm">
             <thead>
               <tr className="text-[10px] uppercase tracking-widest text-muted-foreground border-b border-border">
@@ -147,7 +154,15 @@ function TrendsPage() {
                 const followed = isTopicFollowed(k.id);
                 return (
                   <tr key={k.id} className="hover:bg-secondary/40 transition-colors">
-                    <td className="py-3 text-foreground font-medium">{k.term}</td>
+                    <td className="py-3 text-foreground font-medium">
+                      <Link
+                        to="/topics/$topicId"
+                        params={{ topicId: k.id }}
+                        className="hover:text-brand transition-colors cursor-pointer hover:underline"
+                      >
+                        {k.term}
+                      </Link>
+                    </td>
                     <td className="py-3 text-right font-mono text-muted-foreground">{k.count}</td>
                     <td
                       className={`py-3 text-right font-mono ${k.trendScore >= 15 ? "text-success" : "text-muted-foreground"}`}
@@ -170,11 +185,10 @@ function TrendsPage() {
                             });
                           }
                         }}
-                        className={`text-[10px] px-2.5 py-0.5 rounded-md border transition-all cursor-pointer ${
-                          followed
-                            ? "border-brand/40 bg-brand/10 text-brand font-medium hover:bg-brand/20"
-                            : "border-border hover:border-brand/40 hover:text-brand"
-                        }`}
+                        className={`text-[10px] px-2.5 py-0.5 rounded-md border transition-all cursor-pointer ${followed
+                          ? "border-brand/40 bg-brand/10 text-brand font-medium hover:bg-brand/20"
+                          : "border-border hover:border-brand/40 hover:text-brand"
+                          }`}
                       >
                         {followed ? "Following" : "Follow"}
                       </button>
@@ -202,7 +216,13 @@ function TrendsPage() {
                     {String(i + 1).padStart(2, "0")}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-foreground truncate">{a.name}</div>
+                    <Link
+                      to="/authors/$authorId"
+                      params={{ authorId: a.id }}
+                      className="text-sm font-medium text-foreground hover:text-brand transition-colors cursor-pointer block truncate"
+                    >
+                      {a.name}
+                    </Link>
                     <div className="text-[10px] text-muted-foreground truncate">
                       {a.affiliation} · h-index {a.hIndex}
                     </div>
@@ -236,11 +256,10 @@ function TrendsPage() {
                           });
                         }
                       }}
-                      className={`text-[10px] px-2 py-0.5 rounded-md border transition-all cursor-pointer ${
-                        followed
-                          ? "border-brand/40 bg-brand/10 text-brand"
-                          : "border-border hover:border-brand/40 hover:text-brand"
-                      }`}
+                      className={`text-[10px] px-2 py-0.5 rounded-md border transition-all cursor-pointer ${followed
+                        ? "border-brand/40 bg-brand/10 text-brand"
+                        : "border-border hover:border-brand/40 hover:text-brand"
+                        }`}
                     >
                       {followed ? "Following" : "Follow"}
                     </button>

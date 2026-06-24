@@ -59,9 +59,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Sidebar */}
       <aside className="w-64 shrink-0 border-r border-border glass flex flex-col min-h-screen max-h-screen sticky top-0">
         <Link to="/dashboard" className="p-6 flex items-center gap-3">
-          <div className="size-9 rounded-lg flex items-center justify-center glow-brand" style={{ background: "var(--gradient-brand)" }}>
-            <Sparkles className="size-4 text-brand-foreground" />
-          </div>
+          <img src="/logo.png?v=3" alt="Helix Analytics" className="size-9 rounded-lg object-contain glow-brand border border-border/40 shrink-0 bg-surface-elevated p-1.5" />
           <div>
             <div className="font-bold tracking-tight text-foreground text-sm uppercase">Helix Analytics</div>
             <div className="text-[10px] text-muted-foreground font-mono">v4.0 · intelligence</div>

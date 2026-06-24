@@ -34,7 +34,7 @@ export function toPaperDomainModel(p: BackendPaperDetail): Paper {
     ? p.keywords.map((k) => ({ id: String(k.keywordId), name: k.term }))
     : [];
   const category = keywords.length > 0 ? keywords[0].name : "General";
-  
+
   const currentYear = new Date().getFullYear();
   const diff = Math.max(1.0, (currentYear - year + 1.0) * 1.5);
   const impactFactor = Number((p.citationCount / diff).toFixed(3));
