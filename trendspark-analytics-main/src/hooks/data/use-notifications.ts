@@ -79,6 +79,33 @@ export function useMarkAllNotificationsRead() {
   });
 }
 
+export function useMarkMultipleNotificationsRead() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (ids: string[]) => getServices().notifications.markMultipleAsRead(ids),
+    onMutate: async (ids) => {
+      await qc.cancelQueries({ queryKey: queryKeys.notifications.all });
+      const previous = qc.getQueryData<InfiniteData<PaginatedNotifications>>(queryKeys.notifications.all);
+      qc.setQueryData<InfiniteData<PaginatedNotifications>>(queryKeys.notifications.all, (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page) => ({
+            ...page,
+            content: page.content.map((n) =>
+              ids.includes(n.id) ? { ...n, unread: false, readStatus: "READ" as const } : n
+            ),
+          })),
+        };
+      });
+      return { previous };
+    },
+    onError: (_err, _ids, ctx) => {
+      if (ctx?.previous) qc.setQueryData(queryKeys.notifications.all, ctx.previous);
+    },
+  });
+}
+
 export function useDeleteNotification() {
   const qc = useQueryClient();
   return useMutation({
@@ -99,6 +126,31 @@ export function useDeleteNotification() {
       return { previous };
     },
     onError: (_err, _id, ctx) => {
+      if (ctx?.previous) qc.setQueryData(queryKeys.notifications.all, ctx.previous);
+    },
+  });
+}
+
+export function useDeleteMultipleNotifications() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (ids: string[]) => getServices().notifications.deleteMultiple(ids),
+    onMutate: async (ids) => {
+      await qc.cancelQueries({ queryKey: queryKeys.notifications.all });
+      const previous = qc.getQueryData<InfiniteData<PaginatedNotifications>>(queryKeys.notifications.all);
+      qc.setQueryData<InfiniteData<PaginatedNotifications>>(queryKeys.notifications.all, (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page) => ({
+            ...page,
+            content: page.content.filter((n) => !ids.includes(n.id)),
+          })),
+        };
+      });
+      return { previous };
+    },
+    onError: (_err, _ids, ctx) => {
       if (ctx?.previous) qc.setQueryData(queryKeys.notifications.all, ctx.previous);
     },
   });
