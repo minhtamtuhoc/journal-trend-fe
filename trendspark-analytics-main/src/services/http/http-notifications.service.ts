@@ -102,4 +102,25 @@ export class HttpNotificationsService implements NotificationsService {
   deleteAllRead() {
     return apiClient.delete<void>("/v1/notifications/all-read");
   }
+
+  markMultipleAsRead(ids: string[]) {
+    const persistedIds = ids.filter(isPersistedNotificationId);
+    if (persistedIds.length === 0) {
+      return Promise.resolve();
+    }
+    return apiClient.patch<void>("/v1/notifications/bulk-read", null, {
+      params: { ids: persistedIds.join(",") }
+    });
+  }
+
+  deleteMultiple(ids: string[]) {
+    hideNotifications(ids);
+    const persistedIds = ids.filter(isPersistedNotificationId);
+    if (persistedIds.length > 0) {
+      apiClient.delete<void>("/v1/notifications/bulk", {
+        params: { ids: persistedIds.join(",") }
+      }).catch((err) => console.error("Failed to delete bulk notifications on backend:", err));
+    }
+    return Promise.resolve();
+  }
 }

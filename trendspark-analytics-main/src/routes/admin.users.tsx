@@ -126,8 +126,10 @@ function SuperAdminUsersPage() {
         <Card
           title="System Administrators"
           className="overflow-hidden"
-          subtitle="Users with elevated ADMIN or SUPER_ADMIN access privileges."
         >
+          <div className="text-xs text-muted-foreground mb-4 -mt-3">
+            Users with elevated ADMIN or SUPER_ADMIN access privileges.
+          </div>
           {isLoadingAdmins ? (
             <div className="py-8 text-center text-sm text-muted-foreground">Đang tải danh sách Admin...</div>
           ) : admins.length === 0 ? (
@@ -215,8 +217,10 @@ function SuperAdminUsersPage() {
         {/* Section 2: Search Users */}
         <Card
           title="All Users Database"
-          subtitle="Search and modify roles for students, lecturers, researchers, and other users."
         >
+          <div className="text-xs text-muted-foreground mb-4 -mt-3">
+            Search and modify roles for students, lecturers, researchers, and other users.
+          </div>
           <div className="flex items-center gap-2 mb-4 relative max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
             <Input
