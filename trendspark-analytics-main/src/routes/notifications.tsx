@@ -6,8 +6,13 @@ import {
   useNotifications,
   useDeleteAllNotifications,
   useDeleteAllReadNotifications,
+<<<<<<< HEAD
   useMarkMultipleNotificationsRead,
   useDeleteMultipleNotifications,
+=======
+  useDeleteMultipleNotifications,
+  useMarkMultipleNotificationsRead,
+>>>>>>> ca7f2111c87963d2646163452effd381ef8a47d0
 } from "@/hooks/data/use-notifications";
 import { usePaper } from "@/hooks/data/use-papers";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -28,8 +33,23 @@ import { toast } from "sonner";
 import { ApiError } from "@/api/errors";
 import { useState, useEffect, useMemo } from "react";
 import { formatDistanceToNow, parseISO, isValid } from "date-fns";
+<<<<<<< HEAD
 import { z } from "zod";
 import { groupNotifications, type NotificationGroup, type PaperSummary } from "@/utils/notification-grouper";
+=======
+import type { NotificationItem } from "@/types/domain";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+>>>>>>> ca7f2111c87963d2646163452effd381ef8a47d0
 
 const notificationsSearchSchema = z.object({
   page: z.coerce.number().catch(1).optional(),
@@ -330,20 +350,35 @@ function NotificationsPage() {
 
   const navigate = useNavigate();
   const markAll = useMarkAllNotificationsRead();
+<<<<<<< HEAD
   const markMultiple = useMarkMultipleNotificationsRead();
+=======
+  const deleteOne = useDeleteNotification();
+>>>>>>> ca7f2111c87963d2646163452effd381ef8a47d0
   const deleteMultiple = useDeleteMultipleNotifications();
   const deleteAll = useDeleteAllNotifications();
   const deleteAllRead = useDeleteAllReadNotifications();
+  const markMultipleRead = useMarkMultipleNotificationsRead();
 
   const [filter, setFilter] = useState<"all" | "unread" | "read">("all");
+<<<<<<< HEAD
   const [selectedGroup, setSelectedGroup] = useState<NotificationGroup | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+=======
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [confirmDeleteTarget, setConfirmDeleteTarget] = useState<{
+    ids: string[];
+    message: string;
+    isDeleteAllAction?: boolean;
+  } | null>(null);
+>>>>>>> ca7f2111c87963d2646163452effd381ef8a47d0
 
   // Group notifications using memoized selector
   const grouped = useMemo(() => groupNotifications(notifications), [notifications]);
 
   const unreadGroupsCount = useMemo(() => grouped.filter((g) => g.unread).length, [grouped]);
 
+<<<<<<< HEAD
   const filteredGroups = useMemo(() => {
     return grouped.filter((g) => {
       if (filter === "unread") return g.unread;
@@ -396,13 +431,96 @@ function NotificationsPage() {
       toast.error(err instanceof ApiError ? err.message : "Failed");
     }
   };
+=======
+  // Reset selected IDs when filter or notifications change
+  useEffect(() => {
+    setSelectedIds([]);
+  }, [filter]);
+
+  // Infinite Scroll Effect
+  useEffect(() => {
+    const handleScroll = () => {
+      if (
+        window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 100 &&
+        hasNextPage &&
+        !isFetchingNextPage
+      ) {
+        void fetchNextPage();
+      }
+    };
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+>>>>>>> ca7f2111c87963d2646163452effd381ef8a47d0
+
+  const onMarkMultipleRead = async () => {
+    if (selectedIds.length === 0) return;
+    try {
+      await markMultipleRead.mutateAsync(selectedIds);
+      setSelectedIds([]);
+      toast.success("Selected notifications marked as read");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Failed to mark read");
+    }
+  };
 
   const onMarkAll = async () => {
     try {
       await markAll.mutateAsync();
+<<<<<<< HEAD
       toast.success("Marked all notifications as read");
+=======
+      toast.success("Marked all as read");
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Failed");
+    }
+  };
+
+  const onMarkOne = async (id: string) => {
+    try {
+      await markOne.mutateAsync(id);
+      toast.success("Marked as read");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Failed");
+    }
+  };
+
+  const executeDelete = async (ids: string[]) => {
+    try {
+      if (ids.length === 1) {
+        await deleteOne.mutateAsync(ids[0]);
+      } else {
+        await deleteMultiple.mutateAsync(ids);
+      }
+      setSelectedIds((prev) => prev.filter((id) => !ids.includes(id)));
+      toast.success(ids.length === 1 ? "Notification deleted" : `${ids.length} notifications deleted`);
+>>>>>>> ca7f2111c87963d2646163452effd381ef8a47d0
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Failed to delete");
+    }
+  };
+
+  const handleDeleteOneClick = (n: NotificationItem) => {
+    if (n.unread) {
+      setConfirmDeleteTarget({
+        ids: [n.id],
+        message: "Thông báo này bạn chưa đọc, bạn có muốn xóa nó không?",
+      });
+    } else {
+      void executeDelete([n.id]);
+    }
+  };
+
+  const handleDeleteSelectedClick = () => {
+    if (selectedIds.length === 0) return;
+    const hasUnread = notifications.some((n) => selectedIds.includes(n.id) && n.unread);
+    if (hasUnread) {
+      setConfirmDeleteTarget({
+        ids: selectedIds,
+        message: "Bạn có thông báo chưa đọc, bạn có muốn xóa chúng không?",
+      });
+    } else {
+      void executeDelete(selectedIds);
     }
   };
 
@@ -424,6 +542,7 @@ function NotificationsPage() {
     }
   };
 
+<<<<<<< HEAD
   // Safe navigation effect: reset current page if page is out of bounds
   useEffect(() => {
     if (page > totalPages && totalPages > 0) {
@@ -435,6 +554,51 @@ function NotificationsPage() {
       });
     }
   }, [page, totalPages, navigate]);
+=======
+  const handleDeleteAllClick = () => {
+    const hasUnread = notifications.some((n) => n.unread);
+    if (hasUnread) {
+      setConfirmDeleteTarget({
+        ids: [],
+        message: "Bạn có thông báo chưa đọc, bạn có muốn xóa tất cả không?",
+        isDeleteAllAction: true,
+      });
+    } else {
+      void onDeleteAll();
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!confirmDeleteTarget) return;
+    const { ids, isDeleteAllAction } = confirmDeleteTarget;
+    setConfirmDeleteTarget(null);
+    if (isDeleteAllAction) {
+      await onDeleteAll();
+    } else {
+      await executeDelete(ids);
+    }
+  };
+
+  const isAllSelected =
+    filteredNotifications.length > 0 &&
+    filteredNotifications.every((n) => selectedIds.includes(n.id));
+
+  const handleSelectAll = (checked: boolean) => {
+    if (!checked) {
+      setSelectedIds((prev) => prev.filter((id) => !filteredNotifications.some((n) => n.id === id)));
+    } else {
+      setSelectedIds((prev) => {
+        const next = [...prev];
+        filteredNotifications.forEach((n) => {
+          if (!next.includes(n.id)) {
+            next.push(n.id);
+          }
+        });
+        return next;
+      });
+    }
+  };
+>>>>>>> ca7f2111c87963d2646163452effd381ef8a47d0
 
   return (
     <AppLayout>
@@ -453,19 +617,40 @@ function NotificationsPage() {
             </button>
             <button
               type="button"
+<<<<<<< HEAD
               onClick={onDeleteAllRead}
               disabled={deleteAllRead.isPending || grouped.filter((g) => !g.unread).length === 0}
               className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-xs font-medium border border-border bg-surface/50 hover:bg-surface text-muted-foreground hover:text-destructive hover:border-destructive/30 transition-colors disabled:opacity-50 cursor-pointer"
+=======
+              onClick={handleDeleteSelectedClick}
+              disabled={deleteOne.isPending || deleteMultiple.isPending || selectedIds.length === 0}
+              className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-xs font-medium border border-border bg-surface/50 hover:bg-surface text-muted-foreground hover:text-destructive hover:border-destructive/30 disabled:hover:text-muted-foreground disabled:hover:border-border transition-colors disabled:opacity-50 cursor-pointer"
+>>>>>>> ca7f2111c87963d2646163452effd381ef8a47d0
             >
-              <Trash2 className="size-3.5" /> Delete read
+              <Trash2 className="size-3.5" /> Delete selected {selectedIds.length > 0 && `(${selectedIds.length})`}
             </button>
             <button
               type="button"
+<<<<<<< HEAD
               onClick={onDeleteAll}
               disabled={deleteAll.isPending || grouped.length === 0}
               className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-xs font-medium border border-border bg-surface/50 hover:bg-surface text-muted-foreground hover:text-destructive hover:border-destructive/30 transition-colors disabled:opacity-50 cursor-pointer"
+=======
+              onClick={onMarkMultipleRead}
+              disabled={markMultipleRead.isPending || selectedIds.length === 0}
+              className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-xs font-medium border border-border bg-surface/50 hover:bg-surface text-muted-foreground hover:text-foreground disabled:hover:text-muted-foreground disabled:hover:border-border transition-colors disabled:opacity-50 cursor-pointer"
+>>>>>>> ca7f2111c87963d2646163452effd381ef8a47d0
             >
-              <Trash2 className="size-3.5" /> Delete all
+              <CheckCheck className="size-3.5" /> Mark selected read {selectedIds.length > 0 && `(${selectedIds.length})`}
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSelectAll(!isAllSelected)}
+              disabled={filteredNotifications.length === 0}
+              className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-xs font-medium border border-border bg-surface/50 hover:bg-surface text-foreground transition-colors disabled:opacity-50 cursor-pointer"
+            >
+              <Check className="size-3.5" />
+              {isAllSelected ? "Deselect all" : "Select all"}
             </button>
           </div>
         }
@@ -505,6 +690,7 @@ function NotificationsPage() {
           </div>
         </div>
 
+<<<<<<< HEAD
         <div className="divide-y divide-border -mx-6 flex flex-col min-h-[400px]">
           <div className="flex-1">
             {isLoading ? (
@@ -535,6 +721,115 @@ function NotificationsPage() {
                 </p>
               </div>
             )}
+=======
+        <div className="divide-y divide-border -mx-6">
+          {isLoading ? (
+            Array.from({ length: 4 }).map((_, idx) => (
+              <NotificationSkeleton key={idx} />
+            ))
+          ) : (
+            filteredNotifications.map((n) => {
+              const Icon = getNotificationIcon(n.uiType);
+              return (
+                <div
+                  key={n.id}
+                  role="button"
+                  onClick={() => {
+                    const target = getNotificationTarget(n);
+                    if (target) {
+                      navigate({ to: target });
+                    }
+                  }}
+                  className={`w-full flex items-start gap-4 px-6 py-4 text-left hover:bg-secondary/40 transition-colors cursor-pointer ${
+                    n.unread ? "bg-brand/5" : ""
+                  }`}
+                >
+                  <div
+                    className="self-center shrink-0"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Checkbox
+                      checked={selectedIds.includes(n.id)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setSelectedIds((prev) => [...prev, n.id]);
+                        } else {
+                          setSelectedIds((prev) => prev.filter((id) => id !== n.id));
+                        }
+                      }}
+                      aria-label="Select notification"
+                    />
+                  </div>
+                  <div
+                    className={`size-9 rounded-lg flex items-center justify-center shrink-0 ${
+                      n.unread ? "bg-brand/15 text-brand" : "bg-secondary text-muted-foreground"
+                    }`}
+                  >
+                    <Icon className="size-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-sm ${n.unread ? "font-semibold text-foreground" : "text-muted-foreground"}`}>
+                        {getNotificationTitle(n.uiType)}
+                      </span>
+                      {n.unread && <span className="size-1.5 rounded-full bg-brand" />}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">{n.message}</div>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0 self-center">
+                    <div className="text-[10px] font-mono text-muted-foreground shrink-0">
+                      {formatTime(n.createdAt)}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {n.unread && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onMarkOne(n.id);
+                          }}
+                          disabled={markOne.isPending}
+                          title="Mark as read"
+                          className="p-1.5 rounded-md border border-border bg-surface/50 hover:bg-surface text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                        >
+                          <Check className="size-3.5" />
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteOneClick(n);
+                        }}
+                        disabled={deleteOne.isPending || deleteMultiple.isPending}
+                        title="Delete"
+                        className="p-1.5 rounded-md border border-border bg-surface/50 hover:bg-surface text-muted-foreground hover:text-destructive hover:border-destructive/30 transition-colors cursor-pointer"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+
+          {isFetchingNextPage && (
+            Array.from({ length: 2 }).map((_, idx) => (
+              <NotificationSkeleton key={`next-page-${idx}`} />
+            ))
+          )}
+        </div>
+
+        {!isLoading && filteredNotifications.length === 0 && (
+          <div className="text-center py-12 text-muted-foreground">
+            <Bell className="size-8 mx-auto mb-2 opacity-50" />
+            {filter === "unread"
+              ? "No unread notifications"
+              : filter === "read"
+              ? "No read notifications"
+              : "No notifications"}
+>>>>>>> ca7f2111c87963d2646163452effd381ef8a47d0
           </div>
 
           <PaginationBar
@@ -545,11 +840,38 @@ function NotificationsPage() {
         </div>
       </Card>
 
+<<<<<<< HEAD
       <NotificationPaperModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         group={selectedGroup}
       />
+=======
+      <AlertDialog
+        open={Boolean(confirmDeleteTarget)}
+        onOpenChange={(open) => {
+          if (!open) setConfirmDeleteTarget(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Xác nhận xóa</AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmDeleteTarget?.message}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setConfirmDeleteTarget(null)}>Không</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+            >
+              Có
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+>>>>>>> ca7f2111c87963d2646163452effd381ef8a47d0
     </AppLayout>
   );
 }

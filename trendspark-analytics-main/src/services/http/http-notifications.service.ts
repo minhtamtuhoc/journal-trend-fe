@@ -63,23 +63,44 @@ export class HttpNotificationsService implements NotificationsService {
     return apiClient.patch<void>("/v1/notifications/read-all");
   }
 
+  markMultipleAsRead(ids: string[]) {
+    const persistedIds = ids.filter(isPersistedNotificationId);
+    if (persistedIds.length === 0) {
+      return Promise.resolve();
+    }
+    return apiClient.patch<void>("/v1/notifications/bulk-read", null, {
+      params: { ids: persistedIds.join(",") }
+    });
+  }
+
   delete(id: string) {
-    hideNotifications([id]);
-    return Promise.resolve();
+    if (!isPersistedNotificationId(id)) {
+      hideNotifications([id]);
+      return Promise.resolve();
+    }
+    return apiClient.delete<void>(`/v1/notifications/${id}`);
   }
 
-  async deleteAll() {
-    // Fetch up to 1000 items to hide them locally
-    const res = await this.list(0, 1000);
-    const ids = res.content.map((n) => n.id);
-    hideNotifications(ids);
+  deleteMultiple(ids: string[]) {
+    const persistedIds = ids.filter(isPersistedNotificationId);
+    const localIds = ids.filter((id) => !isPersistedNotificationId(id));
+    if (localIds.length > 0) {
+      hideNotifications(localIds);
+    }
+    if (persistedIds.length === 0) {
+      return Promise.resolve();
+    }
+    return apiClient.delete<void>("/v1/notifications/bulk", {
+      params: { ids: persistedIds.join(",") }
+    });
   }
 
-  async deleteAllRead() {
-    // Fetch up to 1000 items to find read ones and hide them
-    const res = await this.list(0, 1000);
-    const ids = res.content.filter((n) => !n.unread).map((n) => n.id);
-    hideNotifications(ids);
+  deleteAll() {
+    return apiClient.delete<void>("/v1/notifications/all");
+  }
+
+  deleteAllRead() {
+    return apiClient.delete<void>("/v1/notifications/all-read");
   }
 
   markMultipleAsRead(ids: string[]) {
