@@ -34,15 +34,30 @@ export class MockNotificationsService implements NotificationsService {
     items = items.map((n) => ({ ...n, unread: false, readStatus: "READ" }));
   }
 
+  async markMultipleAsRead(ids: string[]) {
+    await mockDelay(200);
+    items = items.map((n) =>
+      ids.includes(n.id) ? { ...n, unread: false, readStatus: "READ" } : n
+    );
+  }
+
   async delete(id: string) {
     await mockDelay(100);
+    items = items.filter((n) => n.id !== id);
     hideNotifications([id]);
+  }
+
+  async deleteMultiple(ids: string[]) {
+    await mockDelay(100);
+    items = items.filter((n) => !ids.includes(n.id));
+    hideNotifications(ids);
   }
 
   async deleteAll() {
     await mockDelay(100);
     const visible = await this.list(0, 1000);
     const ids = visible.content.map((n) => n.id);
+    items = items.filter((n) => !ids.includes(n.id));
     hideNotifications(ids);
   }
 
@@ -50,6 +65,7 @@ export class MockNotificationsService implements NotificationsService {
     await mockDelay(100);
     const visible = await this.list(0, 1000);
     const ids = visible.content.filter((n) => !n.unread).map((n) => n.id);
+    items = items.filter((n) => !ids.includes(n.id));
     hideNotifications(ids);
   }
 }
