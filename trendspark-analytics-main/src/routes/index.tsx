@@ -51,9 +51,7 @@ function Index() {
       {/* Nav */}
       <nav className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-3">
-          <div className="size-8 rounded-lg flex items-center justify-center glow-brand" style={{ background: "var(--gradient-brand)" }}>
-            <Sparkles className="size-4 text-brand-foreground" />
-          </div>
+          <img src="/logo.png?v=3" alt="Helix Analytics" className="size-8 rounded-lg object-contain glow-brand border border-border/40 shrink-0 bg-surface-elevated p-1" />
           <span className="font-bold uppercase tracking-tight">Helix Analytics</span>
         </Link>
         <div className="flex items-center gap-2">
