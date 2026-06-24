@@ -69,13 +69,4 @@ export class MockNotificationsService implements NotificationsService {
     hideNotifications(ids);
   }
 
-  async markMultipleAsRead(ids: string[]) {
-    await mockDelay(200);
-    items = items.map((n) => (ids.includes(n.id) ? { ...n, unread: false, readStatus: "READ" } : n));
-  }
-
-  async deleteMultiple(ids: string[]) {
-    await mockDelay(100);
-    hideNotifications(ids);
-  }
 }
