@@ -15,4 +15,6 @@ export interface NotificationsService {
   delete(id: string): Promise<void>;
   deleteAll(): Promise<void>;
   deleteAllRead(): Promise<void>;
+  markMultipleAsRead(ids: string[]): Promise<void>;
+  deleteMultiple(ids: string[]): Promise<void>;
 }

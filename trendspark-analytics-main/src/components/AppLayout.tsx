@@ -21,6 +21,7 @@ import { useEffect } from "react";
 import { useAuth, isAdminUser, isSuperAdminUser } from "@/auth";
 import { useTheme } from "@/theme";
 import { useNotifications } from "@/hooks/data/use-notifications";
+import { groupNotifications } from "@/utils/notification-grouper";
 import { motion } from "framer-motion";
 
 const nav = [
@@ -47,7 +48,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   if (initializing || !user) return null;
 
-  const unread = notifications.filter((n) => n.unread).length;
+  const grouped = groupNotifications(notifications);
+  const unread = grouped.filter((g) => g.unread).length;
 
   const handleLogout = () => {
     logout();
