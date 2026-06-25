@@ -82,9 +82,14 @@ export function useSavePaperToCollections() {
         qc.setQueryData<Collection[]>(queryKeys.collections.all, (old) => {
           if (!old) return old;
           return old.map((c) => {
-            if (!set.has(c.id)) return c;
-            if (c.paperIds.includes(paperId)) return c;
-            return { ...c, paperIds: [...c.paperIds, paperId], updatedAt: now };
+            const shouldHave = set.has(c.id);
+            const has = c.paperIds.includes(paperId);
+            if (shouldHave && !has) {
+              return { ...c, paperIds: [...c.paperIds, paperId], updatedAt: now };
+            } else if (!shouldHave && has) {
+              return { ...c, paperIds: c.paperIds.filter((id) => id !== paperId), updatedAt: now };
+            }
+            return c;
           });
         });
       }

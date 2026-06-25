@@ -3,6 +3,9 @@ import { AppLayout, PageHeader } from "@/components/AppLayout";
 import { Card } from "@/components/Card";
 import { useAnalyticsSnapshot } from "@/hooks/data/use-analytics";
 import { useFeaturedAuthors } from "@/hooks/data/use-authors";
+import { useQueries } from "@tanstack/react-query";
+import { getServices, queryKeys } from "@/services";
+import { mockQueryDefaults } from "@/hooks/data/query-options";
 
 import type { Author, FollowedAuthor } from "@/types/domain";
 import { useMemo, useState } from "react";
@@ -48,10 +51,23 @@ function BookmarksPage() {
   //const TRENDING_KEYWORDS = analytics.trendingKeywords;
   const TRENDING_AUTHORS = analytics?.trendingAuthors ?? [];
 
+  const followedAuthorsQueries = useQueries({
+    queries: followedAuthors.map((author) => {
+      const profileId = resolveStoredAuthorId(author, TRENDING_AUTHORS, featuredAuthors);
+      return {
+        queryKey: queryKeys.authors.detail(profileId ?? ""),
+        queryFn: () => getServices().authors.getById(profileId ?? ""),
+        enabled: Boolean(profileId),
+        ...mockQueryDefaults,
+      };
+    }),
+  });
 
   const savedAuthors = useMemo((): SavedAuthorCard[] => {
-    return followedAuthors.map((author) => {
+    return followedAuthors.map((author, index) => {
       const profileId = resolveStoredAuthorId(author, TRENDING_AUTHORS, featuredAuthors);
+      const query = followedAuthorsQueries[index];
+      const detail = query?.data;
       const needle = author.name.toLowerCase();
       const stats =
         featuredAuthors.find((a) => a.name.toLowerCase() === needle) ??
@@ -61,14 +77,14 @@ function BookmarksPage() {
         id: profileId ?? author.name,
         name: author.name,
         profileId,
-        affiliation: stats?.affiliation ?? "Academic Institute",
-        papers: stats?.papers ?? 3,
-        citations: stats?.citations ?? 245,
-        hIndex: stats?.hIndex ?? 8,
-        trendScore: stats?.trendScore ?? 12.4,
+        affiliation: detail?.affiliation ?? stats?.affiliation ?? "Academic Institute",
+        papers: detail?.papers ?? stats?.papers ?? 3,
+        citations: detail?.citations ?? stats?.citations ?? 245,
+        hIndex: detail?.hIndex ?? stats?.hIndex ?? 8,
+        trendScore: detail?.trendScore ?? stats?.trendScore ?? 12.4,
       };
     });
-  }, [followedAuthors, TRENDING_AUTHORS, featuredAuthors]);
+  }, [followedAuthors, followedAuthorsQueries, TRENDING_AUTHORS, featuredAuthors]);
 
 
   /** Map backend TopicTrend → keyword card shape for display. */

@@ -46,15 +46,19 @@ export function SaveToCollectionDialog({
 
   const save = async () => {
     try {
-      const targetIds = selected.filter((id) => !existingSelected.includes(id));
-      if (targetIds.length === 0) {
-        toast.info("Already saved to selected collections");
+      const hasChanges =
+        selected.length !== existingSelected.length ||
+        selected.some((id) => !existingSelected.includes(id)) ||
+        existingSelected.some((id) => !selected.includes(id));
+
+      if (!hasChanges) {
+        toast.info("No changes made");
         onOpenChange(false);
         return;
       }
 
-      await saveToCollections.mutateAsync({ paperId, collectionIds: targetIds });
-      toast.success(`Saved${paperTitle ? ` “${paperTitle}”` : ""} to ${targetIds.length} collection${targetIds.length === 1 ? "" : "s"}`);
+      await saveToCollections.mutateAsync({ paperId, collectionIds: selected });
+      toast.success(`Updated collections for${paperTitle ? ` “${paperTitle}”` : " paper"}`);
       onOpenChange(false);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to save to collections");
