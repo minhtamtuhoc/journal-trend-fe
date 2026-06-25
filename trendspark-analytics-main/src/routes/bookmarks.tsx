@@ -352,8 +352,8 @@ function BookmarksPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="font-mono text-sm text-success">
-                    +{k.trendScore.toFixed(1)}%
+                  <span className={`font-mono text-sm ${k.trendScore >= 0 ? "text-success" : "text-destructive"}`}>
+                    {k.trendScore > 0 ? "+" : ""}{k.trendScore.toFixed(1)}%
                   </span>
                   <button
                     onClick={() => {

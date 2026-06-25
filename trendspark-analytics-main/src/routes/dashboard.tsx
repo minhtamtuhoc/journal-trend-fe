@@ -168,8 +168,8 @@ function DashboardPage() {
                         {topic.topicName}
                       </div>
                     </div>
-                    <span className="text-xs font-bold text-success font-mono">
-                      +{topic.averageTrendScore.toFixed(1)}% avg
+                    <span className={`text-xs font-bold font-mono ${topic.averageTrendScore >= 0 ? "text-success" : "text-destructive"}`}>
+                      {topic.averageTrendScore > 0 ? "+" : ""}{topic.averageTrendScore.toFixed(1)}% avg
                     </span>
                   </div>
                   
@@ -181,7 +181,7 @@ function DashboardPage() {
                   <div className="flex flex-wrap gap-1">
                     {topic.topKeywords.map(kw => (
                       <span key={kw.term} className="text-[10px] px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground font-mono">
-                        {kw.term} (+{kw.trendScore.toFixed(0)}%)
+                        {kw.term} ({kw.trendScore > 0 ? "+" : ""}{kw.trendScore.toFixed(0)}%)
                       </span>
                     ))}
                   </div>
@@ -215,8 +215,8 @@ function DashboardPage() {
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
                     <span className="text-[10px] text-muted-foreground font-mono">{k.paperCount} papers</span>
-                    <span className="text-xs font-mono text-success font-bold">
-                      +{k.trendScore.toFixed(0)}%
+                    <span className={`text-xs font-mono font-bold ${k.trendScore >= 0 ? "text-success" : "text-destructive"}`}>
+                      {k.trendScore > 0 ? "+" : ""}{k.trendScore.toFixed(0)}%
                     </span>
                   </div>
                 </Link>
