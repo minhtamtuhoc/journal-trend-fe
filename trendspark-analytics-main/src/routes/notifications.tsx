@@ -140,7 +140,21 @@ interface NotificationPaperModalProps {
 }
 
 function NotificationPaperModal({ isOpen, onClose, group }: NotificationPaperModalProps) {
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
+
+  // Reset page when group changes or modal opens/closes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [group, isOpen]);
+
   if (!group) return null;
+
+  const totalPages = Math.ceil(group.papers.length / ITEMS_PER_PAGE);
+  const paginatedPapers = group.papers.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
@@ -158,15 +172,45 @@ function NotificationPaperModal({ isOpen, onClose, group }: NotificationPaperMod
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto space-y-3.5 py-4 min-h-0 pr-1">
+        <div className="flex-1 overflow-y-auto space-y-3.5 py-4 min-h-0 pr-1 flex flex-col justify-between">
           {group.papers.length === 0 ? (
             <div className="text-center py-8 text-sm text-muted-foreground">
               {group.keyword} has no detailed papers available.
             </div>
           ) : (
-            group.papers.map((paperSummary) => (
-              <PaperRow key={paperSummary.id} paper={paperSummary} />
-            ))
+            <div className="flex-1 flex flex-col justify-between">
+              <div className="space-y-3.5">
+                {paginatedPapers.map((paperSummary) => (
+                  <PaperRow key={paperSummary.id} paper={paperSummary} />
+                ))}
+              </div>
+
+              {totalPages > 1 && (
+                <div className="flex items-center justify-center gap-1.5 pt-4 border-t border-border mt-4 shrink-0">
+                  <button
+                    type="button"
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage((prev) => prev - 1)}
+                    className="h-8 px-3 rounded-lg text-xs font-medium border border-border hover:bg-secondary disabled:opacity-50 disabled:hover:bg-transparent transition-colors flex items-center gap-1 cursor-pointer"
+                  >
+                    <ChevronLeft className="size-3.5" /> Prev
+                  </button>
+
+                  <span className="text-xs font-medium text-muted-foreground px-2">
+                    Page {currentPage} of {totalPages}
+                  </span>
+
+                  <button
+                    type="button"
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage((prev) => prev + 1)}
+                    className="h-8 px-3 rounded-lg text-xs font-medium border border-border hover:bg-secondary disabled:opacity-50 disabled:hover:bg-transparent transition-colors flex items-center gap-1 cursor-pointer"
+                  >
+                    Next <ChevronRight className="size-3.5" />
+                  </button>
+                </div>
+              )}
+            </div>
           )}
         </div>
 
