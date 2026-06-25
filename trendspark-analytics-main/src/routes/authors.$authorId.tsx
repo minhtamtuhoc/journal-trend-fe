@@ -46,11 +46,10 @@ function AuthorProfilePage() {
         }
       />
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <Stat label="Bài báo" value={String(author.papers)} icon={<FileText className="size-4" />} />
         <Stat label="Trích dẫn" value={author.citations.toLocaleString()} icon={<TrendingUp className="size-4" />} />
         <Stat label="h-index" value={String(author.hIndex)} icon={<User className="size-4" />} />
-        <Stat label="Trend score" value={`${author.trendScore.toFixed(1)}`} icon={<TrendingUp className="size-4" />} accent />
       </div>
 
       {author.openAlexId ? (

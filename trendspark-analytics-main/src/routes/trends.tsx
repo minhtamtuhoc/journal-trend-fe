@@ -67,8 +67,6 @@ function TrendsPage() {
     trendingAuthors: TRENDING_AUTHORS = [],
   } = analytics ?? {};
 
-  const trending = TRENDING_KEYWORDS.filter((k) => k.trendScore >= 15 && k.monthsTrending >= 3);
-
   // Fetch Dashboard Top 10 Keywords History for Chart
   const { data: summary, isLoading: loadingSummary } = useDashboardSummary();
   const top10Keywords = useMemo(() => {
@@ -127,17 +125,6 @@ function TrendsPage() {
       <PageHeader
         title="Trend Analytics"
       />
-
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-6">
-        <KPI
-          label="Trending Keywords"
-          value={trending.length.toString()}
-          icon={<Flame className="size-4" />}
-        />
-        <KPI label="Trending Authors" value="142" icon={<TrendingUp className="size-4" />} />
-        <KPI label="Avg Trend Score" value="+21.4%" />
-        <KPI label="Peak Velocity" value="6,108/mo" />
-      </div>
 
       <div className="mb-6">
         <Card title="Historical Trend Scores of Top 10 Keywords (%)">
@@ -318,15 +305,4 @@ function TrendsPage() {
     </AppLayout>
   );
 }
-
-function KPI({ label, value, icon }: { label: string; value: string; icon?: React.ReactNode }) {
-  return (
-    <div className="glass rounded-2xl p-5">
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{label}</p>
-        {icon && <span className="text-brand">{icon}</span>}
-      </div>
-      <p className="text-2xl font-bold font-mono text-foreground">{value}</p>
-    </div>
-  );
-}
+
