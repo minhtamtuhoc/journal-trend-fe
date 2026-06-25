@@ -1,14 +1,18 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppLayout, PageHeader } from "@/components/AppLayout";
 import { Card } from "@/components/Card";
-import { Heatmap } from "@/components/Heatmap";
-import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, PolarAngleAxis, PolarGrid, Radar, RadarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useAnalyticsSnapshot } from "@/hooks/data/use-analytics";
 import { useFollowedTopics, useFollowTopic, useUnfollowTopic, useFollowedAuthors, useFollowAuthor, useUnfollowAuthor } from "@/hooks/data/use-follows";
 import { Flame, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/auth";
 import { ApiError } from "@/api/errors";
+import { useQueries } from "@tanstack/react-query";
+import { useDashboardSummary } from "@/hooks/data/use-dashboard";
+import { apiClient } from "@/api/client";
+import { mockQueryDefaults } from "@/hooks/data/query-options";
+import { useMemo, useState } from "react";
 
 export const Route = createFileRoute("/trends")({ component: TrendsPage });
 
@@ -19,6 +23,24 @@ const tooltipStyle = {
   color: "var(--popover-foreground)",
   fontSize: 12,
 } as const;
+
+const MONTH_NAMES = [
+  "", "Jan", "Feb", "Mar", "Apr", "May", "Jun", 
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+];
+
+const KEYWORD_COLORS = [
+  "#3b82f6", // Blue
+  "#10b981", // Green
+  "#f59e0b", // Amber
+  "#ef4444", // Red
+  "#8b5cf6", // Purple
+  "#ec4899", // Pink
+  "#06b6d4", // Cyan
+  "#f97316", // Orange
+  "#14b8a6", // Teal
+  "#a855f7", // Violet
+];
 
 function getPreviousMonthName() {
   const d = new Date();
@@ -40,23 +62,70 @@ function TrendsPage() {
   const isTopicFollowed = (topicId: string) => followedTopics.some((t) => t.id === topicId);
   const isAuthorFollowed = (authorId: string) => followedAuthors.some((a) => a.id === authorId);
 
-  // const { publicationVelocity: PUBLICATION_VELOCITY, radarFields: RADAR_FIELDS, trendingKeywords: TRENDING_KEYWORDS, trendingAuthors: TRENDING_AUTHORS } =
-  //   analytics;
-  // const trending = TRENDING_KEYWORDS.filter((k) => k.trendScore >= 15 && k.monthsTrending >= 3);
-  // Sửa từ dòng 25 - 28 thành:
   const {
-    publicationVelocity: PUBLICATION_VELOCITY = [],
-    radarFields: RADAR_FIELDS = [],
     trendingKeywords: TRENDING_KEYWORDS = [],
     trendingAuthors: TRENDING_AUTHORS = [],
   } = analytics ?? {};
 
   const trending = TRENDING_KEYWORDS.filter((k) => k.trendScore >= 15 && k.monthsTrending >= 3);
+
+  // Fetch Dashboard Top 10 Keywords History for Chart
+  const { data: summary, isLoading: loadingSummary } = useDashboardSummary();
+  const top10Keywords = useMemo(() => {
+    return (summary?.trendingKeywords ?? []).slice(0, 10);
+  }, [summary]);
+
+  const keywordChartsQueries = useQueries({
+    queries: top10Keywords.map((kw) => ({
+      queryKey: ["dashboard", "keyword-chart", kw.keywordId],
+      queryFn: async () => {
+        const res = await apiClient.get<{ data: any }>("/v1/dashboard/keyword-chart", {
+          params: { keywordId: kw.keywordId },
+        });
+        return res.data;
+      },
+      enabled: Boolean(kw.keywordId),
+      ...mockQueryDefaults,
+    })),
+  });
+
+  const isLoadingChart = loadingSummary || keywordChartsQueries.some((q) => q.isLoading);
+
+  const combinedChartData = useMemo(() => {
+    const timePointsMap: { [key: string]: { name: string; sortKey: number; [kwName: string]: any } } = {};
+
+    keywordChartsQueries.forEach((query) => {
+      const data = query.data;
+      if (!data || !data.history) return;
+
+      const keywordName = data.keyword;
+      data.history.forEach((pt: any) => {
+        const sortKey = pt.year * 100 + pt.month;
+        const key = `${pt.year}-${pt.month}`;
+
+        if (!timePointsMap[key]) {
+          const monthName = MONTH_NAMES[pt.month] || String(pt.month);
+          timePointsMap[key] = {
+            name: `${monthName} ${pt.year}`,
+            sortKey,
+          };
+        }
+
+        timePointsMap[key][keywordName] = pt.trendScore;
+      });
+    });
+
+    return Object.values(timePointsMap).sort((a, b) => a.sortKey - b.sortKey);
+  }, [keywordChartsQueries]);
+
+  const finalChartData = useMemo(() => {
+    return combinedChartData.slice(-4);
+  }, [combinedChartData]);
+
   return (
     <AppLayout>
       <PageHeader
         title="Trend Analytics"
-        subtitle="Trend score = ((current − previous) / previous) × 100. Trending when ≥15% for 3 consecutive months."
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-6">
@@ -70,70 +139,46 @@ function TrendsPage() {
         <KPI label="Peak Velocity" value="6,108/mo" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        <Card className="lg:col-span-2" title="Citation Growth vs Publication Volume">
-          <ResponsiveContainer width="100%" height={300}>
-            <AreaChart data={PUBLICATION_VELOCITY}>
-              <defs>
-                <linearGradient id="ga" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.4} />
-                  <stop offset="100%" stopColor="var(--chart-1)" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} />
-              <XAxis
-                dataKey="month"
-                stroke="var(--muted-foreground)"
-                fontSize={11}
-                tickLine={false}
-                axisLine={false}
-              />
-              <YAxis
-                stroke="var(--muted-foreground)"
-                fontSize={11}
-                tickLine={false}
-                axisLine={false}
-              />
-              <Tooltip contentStyle={tooltipStyle} />
-              <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Area
-                type="monotone"
-                dataKey="citations"
-                stroke="var(--chart-1)"
-                fill="url(#ga)"
-                strokeWidth={2}
-              />
-              <Line
-                type="monotone"
-                dataKey="papers"
-                stroke="var(--chart-2)"
-                strokeWidth={2}
-                dot={false}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </Card>
-
-        <Card title="Domain Radar">
-          <ResponsiveContainer width="100%" height={300}>
-            <RadarChart data={RADAR_FIELDS}>
-              <PolarGrid stroke="var(--border)" />
-              <PolarAngleAxis dataKey="field" stroke="var(--muted-foreground)" fontSize={11} />
-              <Radar
-                dataKey="current"
-                stroke="var(--chart-1)"
-                fill="var(--chart-1)"
-                fillOpacity={0.4}
-              />
-              <Radar
-                dataKey="previous"
-                stroke="var(--chart-2)"
-                fill="var(--chart-2)"
-                fillOpacity={0.15}
-              />
-              <Tooltip contentStyle={tooltipStyle} />
-            </RadarChart>
-          </ResponsiveContainer>
+      <div className="mb-6">
+        <Card title="Historical Trend Scores of Top 10 Keywords (%)">
+          {isLoadingChart ? (
+            <div className="h-[300px] flex items-center justify-center text-sm text-muted-foreground animate-pulse">
+              Đang tải dữ liệu biểu đồ xu hướng...
+            </div>
+          ) : finalChartData.length === 0 ? (
+            <div className="h-[300px] flex items-center justify-center text-sm text-muted-foreground">
+              Không có dữ liệu xu hướng lịch sử cho các từ khóa này.
+            </div>
+          ) : (
+            <>
+              <ResponsiveContainer width="100%" height={320}>
+                <LineChart data={finalChartData} margin={{ top: 10, right: 30, left: 10, bottom: 5 }}>
+                  <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="name" stroke="var(--muted-foreground)" fontSize={11} tickLine={false} axisLine={false} />
+                  <YAxis stroke="var(--muted-foreground)" fontSize={11} tickLine={false} axisLine={false} label={{ value: 'Trend Score (%)', angle: -90, position: 'insideLeft', style: { fill: 'var(--muted-foreground)', fontSize: 10 } }} />
+                  <Tooltip contentStyle={tooltipStyle} />
+                  <Legend wrapperStyle={{ fontSize: 11, paddingTop: 10 }} />
+                  {top10Keywords.map((kw, index) => {
+                    const color = KEYWORD_COLORS[index % KEYWORD_COLORS.length];
+                    return (
+                      <Line
+                        key={kw.keyword}
+                        type="monotone"
+                        dataKey={kw.keyword}
+                        stroke={color}
+                        strokeWidth={2}
+                        dot={{ r: 3 }}
+                        activeDot={{ r: 5 }}
+                      />
+                    );
+                  })}
+                </LineChart>
+              </ResponsiveContainer>
+              <p className="mt-4 text-[10px] text-muted-foreground text-center font-medium">
+                * Chú thích: Biểu đồ hiển thị điểm xu hướng (%) của Top 10 từ khóa thịnh hành trong 4 tháng gần nhất có dữ liệu.
+              </p>
+            </>
+          )}
         </Card>
       </div>
 
@@ -270,10 +315,6 @@ function TrendsPage() {
           </div>
         </Card>
       </div>
-
-      <Card title="Activity Heatmap (12 weeks)">
-        <Heatmap />
-      </Card>
     </AppLayout>
   );
 }
