@@ -209,8 +209,8 @@ function PaperDetailPage() {
             <div className="grid grid-cols-2 gap-4">
               <Metric
                 label="Related Topic Trend"
-                value={`+${(paper.trendScore ?? 0).toFixed(1)}%`}
-                accent
+                value={`${(paper.trendScore ?? 0) > 0 ? "+" : ""}${(paper.trendScore ?? 0).toFixed(1)}%`}
+                accent={(paper.trendScore ?? 0) >= 0 ? "success" : "destructive"}
                 tooltip="Mức tăng trưởng cao nhất trong số các chủ đề (keywords) gắn với bài viết này trong tháng hiện tại."
               />
               <Metric label="Citations" value={(paper.citations ?? 0).toLocaleString()} />
@@ -285,7 +285,12 @@ function PaperDetailPage() {
   );
 }
 
-function Metric({ label, value, accent = false, tooltip }: { label: string; value: string; accent?: boolean; tooltip?: string }) {
+function Metric({ label, value, accent = false, tooltip }: { label: string; value: string; accent?: boolean | "success" | "destructive"; tooltip?: string }) {
+  const colorClass = accent === "success" || accent === true
+    ? "text-success"
+    : accent === "destructive"
+    ? "text-destructive"
+    : "text-foreground";
   return (
     <div>
       <p className="text-[10px] uppercase tracking-widest text-muted-foreground flex items-center gap-1">
@@ -296,7 +301,7 @@ function Metric({ label, value, accent = false, tooltip }: { label: string; valu
           </span>
         )}
       </p>
-      <p className={`text-lg font-bold font-mono mt-1 ${accent ? "text-success" : "text-foreground"}`}>{value}</p>
+      <p className={`text-lg font-bold font-mono mt-1 ${colorClass}`}>{value}</p>
     </div>
   );
 }

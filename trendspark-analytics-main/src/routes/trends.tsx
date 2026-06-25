@@ -165,9 +165,9 @@ function TrendsPage() {
                     </td>
                     <td className="py-3 text-right font-mono text-muted-foreground">{k.count}</td>
                     <td
-                      className={`py-3 text-right font-mono ${k.trendScore >= 15 ? "text-success" : "text-muted-foreground"}`}
+                      className={`py-3 text-right font-mono ${k.trendScore >= 15 ? "text-success" : k.trendScore < 0 ? "text-destructive" : "text-muted-foreground"}`}
                     >
-                      +{k.trendScore.toFixed(1)}%
+                      {k.trendScore > 0 ? "+" : ""}{k.trendScore.toFixed(1)}%
                     </td>
                     <td className="py-3 text-right font-mono text-muted-foreground">
                       {k.monthsTrending}
@@ -228,8 +228,8 @@ function TrendsPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-xs font-mono text-success">
-                      +{a.trendScore.toFixed(1)}%
+                    <span className={`text-xs font-mono ${a.trendScore >= 0 ? "text-success" : "text-destructive"}`}>
+                      {a.trendScore > 0 ? "+" : ""}{a.trendScore.toFixed(1)}%
                     </span>
                     <button
                       disabled={followAuthorMut.isPending || unfollowAuthorMut.isPending}
