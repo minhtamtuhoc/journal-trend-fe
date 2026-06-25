@@ -39,12 +39,22 @@ function PaperDetailPage() {
   if (isLoading) {
     return (
       <AppLayout>
-        <div className="p-8 text-sm text-muted-foreground">Loading paper…</div>
+        <div className="p-8 text-sm text-muted-foreground animate-pulse">Loading paper…</div>
       </AppLayout>
     );
   }
 
-  if (isError || !paper) throw notFound();
+  if (isError) {
+    return (
+      <AppLayout>
+        <div className="p-8 text-sm text-destructive font-medium border border-destructive/20 rounded-xl bg-destructive/5 max-w-md mx-auto mt-12 text-center">
+          Failed to load paper details. The server might be busy. Please try again.
+        </div>
+      </AppLayout>
+    );
+  }
+
+  if (!paper) throw notFound();
 
   const authors = paper.authors?.length ? paper.authors : ["Unknown author"];
   const keywords = paper.keywords ?? [];
