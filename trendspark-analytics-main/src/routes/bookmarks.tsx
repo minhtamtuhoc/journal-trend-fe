@@ -166,7 +166,7 @@ function BookmarksPage() {
   return (
     <AppLayout>
       <PageHeader
-        title="Follow Center"
+        title="Bookmarks"
         subtitle="Authors · Keywords & Journals (synced with backend when signed in)"
         action={
           <button
