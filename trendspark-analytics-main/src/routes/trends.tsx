@@ -25,7 +25,7 @@ const tooltipStyle = {
 } as const;
 
 const MONTH_NAMES = [
-  "", "Jan", "Feb", "Mar", "Apr", "May", "Jun", 
+  "", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
 ];
 
@@ -90,7 +90,7 @@ function TrendsPage() {
   const isLoadingChart = loadingSummary || keywordChartsQueries.some((q) => q.isLoading);
 
   const combinedChartData = useMemo(() => {
-    const timePointsMap: { [key: string]: { name: string; sortKey: number; [kwName: string]: any } } = {};
+    const timePointsMap: { [key: string]: { name: string; sortKey: number;[kwName: string]: any } } = {};
 
     keywordChartsQueries.forEach((query) => {
       const data = query.data;
@@ -305,4 +305,4 @@ function TrendsPage() {
     </AppLayout>
   );
 }
-
+
