@@ -49,7 +49,7 @@ function BookmarksPage() {
 
   //const TRENDING_AUTHORS = analytics.trendingAuthors;
   //const TRENDING_KEYWORDS = analytics.trendingKeywords;
-  const TRENDING_AUTHORS = analytics?.trendingAuthors ?? [];
+  const TRENDING_AUTHORS = useMemo(() => analytics?.trendingAuthors ?? [], [analytics?.trendingAuthors]);
 
   const followedAuthorsQueries = useQueries({
     queries: followedAuthors.map((author) => {

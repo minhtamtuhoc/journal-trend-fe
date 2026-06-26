@@ -239,7 +239,7 @@ function DashboardPage() {
               onChange={(e) => setSelectedKeywordId(Number(e.target.value))}
             >
               {trendingKeywords.map(k => (
-                <option key={(k as any).keywordId || k.keyword} value={(k as any).keywordId}>
+                <option key={k.keywordId} value={k.keywordId}>
                   {k.keyword}
                 </option>
               ))}

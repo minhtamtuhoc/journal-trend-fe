@@ -8,16 +8,36 @@ export function isPersistedNotificationId(id: string): boolean {
   return /^\d+$/.test(id);
 }
 
+interface NotificationApiResponseItem {
+  id: number;
+  message: string;
+  createdAt: string;
+  readStatus?: "READ" | "UNREAD";
+  triggerType?: "NEW_PAPER" | "TRENDING_KEYWORD" | "SYSTEM";
+  paperId?: number;
+  keywordId?: number;
+  authorId?: number;
+  journalId?: number;
+}
+
+interface NotificationApiResponse {
+  content: NotificationApiResponseItem[];
+  page: number;
+  totalPages: number;
+  last: boolean;
+  totalElements: number;
+}
+
 export class HttpNotificationsService implements NotificationsService {
   async list(page = 0, size = 20): Promise<PaginatedNotifications> {
-    const response = await apiClient.get<any>("/v1/notifications", {
+    const response = await apiClient.get<NotificationApiResponse>("/v1/notifications", {
       params: { page, size }
     });
 
     const pageResponse = response?.data;
     const content = pageResponse?.content ?? [];
 
-    const mappedContent = content.map((res: any): NotificationItem => {
+    const mappedContent = content.map((res): NotificationItem => {
       let uiType: "paper" | "trend" | "system" = "system";
       if (res.triggerType === "NEW_PAPER") {
         uiType = "paper";

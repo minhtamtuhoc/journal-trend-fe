@@ -90,11 +90,11 @@ export function useApprovePaper() {
       getServices().admin.approveReview(id, note),
     onMutate: async ({ id }) => {
       await qc.cancelQueries({ queryKey: ["pending-review"] });
-      const previous = qc.getQueryData<unknown[]>(["pending-review"]);
+      const previous = qc.getQueryData<Array<{ id: string }>>(["pending-review"]);
       if (previous) {
         qc.setQueryData(
           ["pending-review"],
-          previous.filter((item: any) => item.id !== id)
+          previous.filter((item) => item.id !== id)
         );
       }
       return { previous };
@@ -107,7 +107,7 @@ export function useApprovePaper() {
     onSuccess: (data, { id }) => {
       qc.setQueryData(
         ["pending-review"],
-        (old: unknown[] | undefined) => old?.filter((item: any) => item.id !== id) ?? []
+        (old: Array<{ id: string }> | undefined) => old?.filter((item) => item.id !== id) ?? []
       );
       qc.invalidateQueries({ queryKey: queryKeys.admin.overview });
     },
@@ -121,11 +121,11 @@ export function useDeletePaper() {
       getServices().admin.deletePaper(id),
     onMutate: async (id) => {
       await qc.cancelQueries({ queryKey: ["pending-review"] });
-      const previous = qc.getQueryData<unknown[]>(["pending-review"]);
+      const previous = qc.getQueryData<Array<{ id: string }>>(["pending-review"]);
       if (previous) {
         qc.setQueryData(
           ["pending-review"],
-          previous.filter((item: any) => item.id !== id)
+          previous.filter((item) => item.id !== id)
         );
       }
       return { previous };
@@ -138,7 +138,7 @@ export function useDeletePaper() {
     onSuccess: (data, id) => {
       qc.setQueryData(
         ["pending-review"],
-        (old: unknown[] | undefined) => old?.filter((item: any) => item.id !== id) ?? []
+        (old: Array<{ id: string }> | undefined) => old?.filter((item) => item.id !== id) ?? []
       );
       qc.invalidateQueries({ queryKey: queryKeys.admin.overview });
       qc.invalidateQueries({ queryKey: queryKeys.papers.all });
