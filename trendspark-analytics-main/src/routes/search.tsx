@@ -228,18 +228,18 @@ function SearchPage() {
                         <div className="text-xs text-muted-foreground mt-1 line-clamp-2 break-words">
                           {p.authorRefs?.length
                             ? p.authorRefs.map((ref, i) => (
-                                <span key={ref.id}>
-                                  {i > 0 ? ", " : ""}
-                                  <Link
-                                    to="/authors/$authorId"
-                                    params={{ authorId: ref.id }}
-                                    className="hover:text-brand"
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
-                                    {ref.name}
-                                  </Link>
-                                </span>
-                              ))
+                              <span key={ref.id}>
+                                {i > 0 ? ", " : ""}
+                                <Link
+                                  to="/authors/$authorId"
+                                  params={{ authorId: ref.id }}
+                                  className="hover:text-brand"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  {ref.name}
+                                </Link>
+                              </span>
+                            ))
                             : p.authors.join(", ")}
                         </div>
                         <div className="flex flex-wrap gap-1.5 mt-3">
@@ -261,11 +261,10 @@ function SearchPage() {
                                     });
                                   }
                                 }}
-                                className={`text-[10px] px-2 py-0.5 rounded-full border flex items-center gap-1 transition-all cursor-pointer ${
-                                  followed
+                                className={`text-[10px] px-2 py-0.5 rounded-full border flex items-center gap-1 transition-all cursor-pointer ${followed
                                     ? "border-brand/40 bg-brand/10 text-brand font-medium hover:bg-brand/20"
                                     : "border-border bg-secondary/40 text-muted-foreground hover:border-brand/30 hover:text-foreground"
-                                }`}
+                                  }`}
                               >
                                 <span>{k.name}</span>
                                 <span className="text-[8px] opacity-75">{followed ? "✓" : "+"}</span>
@@ -306,7 +305,7 @@ function SearchPage() {
               >
                 Previous
               </button>
-              
+
               {getVisiblePages(page, totalPages).map((p, i) => (
                 p === "..." ? (
                   <span key={`dots-${i}`} className="px-1 text-muted-foreground">...</span>
@@ -314,11 +313,10 @@ function SearchPage() {
                   <button
                     key={p}
                     onClick={() => setPage(p as number)}
-                    className={`inline-flex items-center justify-center size-8 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
-                      page === p
+                    className={`inline-flex items-center justify-center size-8 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${page === p
                         ? "bg-brand/10 border-brand/45 text-brand"
                         : "border-border hover:border-brand/40"
-                    }`}
+                      }`}
                   >
                     {p}
                   </button>

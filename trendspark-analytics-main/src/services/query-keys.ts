@@ -16,6 +16,7 @@ export const queryKeys = {
     detail: (id: string) => ["topics", "detail", id] as const,
   },
   authors: {
+    list: (params: Record<string, any>) => ["authors", "list", params] as const,
     featured: ["authors", "featured"] as const,
     detail: (id: string) => ["authors", "detail", id] as const,
     papers: (id: string) => ["authors", "papers", id] as const,

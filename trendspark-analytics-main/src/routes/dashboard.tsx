@@ -139,8 +139,15 @@ function DashboardPage() {
         <KpiCard label="Trending Topics" value={kpi.trendingTopicsCount.toLocaleString()} hint="Derived from Keyword.domain" />
         <KpiCard 
           label="Last Sync Status" 
-          value={kpi.lastSyncStatus} 
-          accent={kpi.lastSyncStatus === "SUCCESS"} 
+          value={
+            kpi.lastSyncStatus === "SUCCESS" ? (
+              <span className="text-success">{kpi.lastSyncStatus}</span>
+            ) : kpi.lastSyncStatus === "RUNNING" ? (
+              <span className="text-blue-400 animate-pulse">{kpi.lastSyncStatus}</span>
+            ) : (
+              <span className="text-destructive">{kpi.lastSyncStatus}</span>
+            )
+          } 
           hint={kpi.lastSyncTime ? `At ${new Date(kpi.lastSyncTime).toLocaleDateString()}` : "No sync logs"} 
         />
       </div>
@@ -367,7 +374,13 @@ function DashboardPage() {
             </div>
             <div className="p-4 rounded-xl border border-border bg-secondary/5">
               <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mb-1">Status</p>
-              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-mono font-bold ${syncMonitor.syncStatus === 'SUCCESS' ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'}`}>
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-mono font-bold ${
+                syncMonitor.syncStatus === 'SUCCESS'
+                  ? 'bg-success/10 text-success'
+                  : syncMonitor.syncStatus === 'RUNNING'
+                    ? 'bg-blue-500/10 text-blue-400 animate-pulse'
+                    : 'bg-destructive/10 text-destructive'
+              }`}>
                 {syncMonitor.syncStatus}
               </span>
             </div>

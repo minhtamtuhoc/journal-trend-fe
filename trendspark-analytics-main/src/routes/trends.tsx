@@ -1,3 +1,4 @@
+
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppLayout, PageHeader } from "@/components/AppLayout";
 import { Card } from "@/components/Card";
@@ -305,4 +306,4 @@ function TrendsPage() {
     </AppLayout>
   );
 }
-
+
