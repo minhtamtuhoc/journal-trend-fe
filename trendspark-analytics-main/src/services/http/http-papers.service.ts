@@ -1,5 +1,5 @@
 import { apiClient } from "@/api/client";
-import type { Paper } from "@/types/domain";
+import type { Paper, PaperSource } from "@/types/domain";
 import type { PapersService, PageResponse } from "@/services/interfaces/papers.service";
 
 interface BackendPaperDetail {
@@ -56,7 +56,7 @@ export function toPaperDomainModel(p: BackendPaperDetail): Paper {
     impactFactor,
     doi: p.doi || "",
     abstract: p.abstractText || "",
-    source: (p.primarySource === "OPENALEX" ? "OpenAlex" : p.primarySource === "SEMANTIC_SCHOLAR" ? "Semantic Scholar" : "CrossRef") as any,
+    source: (p.primarySource === "OPENALEX" ? "OpenAlex" : p.primarySource === "SEMANTIC_SCHOLAR" ? "Semantic Scholar" : "CrossRef") as PaperSource,
   };
 }
 

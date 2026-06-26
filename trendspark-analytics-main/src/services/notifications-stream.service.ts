@@ -2,14 +2,14 @@ import { queryKeys } from "@/services/query-keys";
 import { useQueryClient } from "@tanstack/react-query";
 
 export class NotificationsStreamService {
-  private subscribers: Set<(event: any) => void> = new Set();
-  private sseConnection: any | null = null;
+  private subscribers: Set<(event: unknown) => void> = new Set();
+  private sseConnection: EventSource | null = null;
 
   /**
    * Subscribe to real-time notification stream events.
    * This is an architecture placeholder for future SSE/WebSocket implementation.
    */
-  subscribe(callback: (event: any) => void): () => void {
+  subscribe(callback: (event: unknown) => void): () => void {
     this.subscribers.add(callback);
     console.log("Subscribed to notifications stream. Active subscribers:", this.subscribers.size);
 
@@ -22,7 +22,7 @@ export class NotificationsStreamService {
   /**
    * Unsubscribe a listener from the stream.
    */
-  unsubscribe(callback: (event: any) => void): void {
+  unsubscribe(callback: (event: unknown) => void): void {
     this.subscribers.delete(callback);
     console.log("Unsubscribed from notifications stream. Active subscribers:", this.subscribers.size);
   }
