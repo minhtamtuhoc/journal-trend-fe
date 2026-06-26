@@ -16,10 +16,6 @@ function AdminPage() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isExactAdmin = pathname === "/admin" || pathname === "/admin/";
 
-  if (!isExactAdmin) {
-    return <Outlet />;
-  }
-
   const { user } = useAuth();
   const queryClient = useQueryClient();
   const { data: admin, isLoading: isLoadingAdmin, isError: isAdminError, refetch: refetchAdmin } = useAdminOverview();
@@ -28,9 +24,13 @@ function AdminPage() {
   const approvePaper = useApprovePaper();
   const deletePaper = useDeletePaper();
   const { data: PENDING_REVIEW = [] } = usePendingReview();
-  const AUDIT_LOGS = admin?.auditLogs ?? [];
   const [syncing, setSyncing] = useState(false);
 
+  if (!isExactAdmin) {
+    return <Outlet />;
+  }
+
+  const AUDIT_LOGS = admin?.auditLogs ?? [];
 
   if (!user) return null;
   if (!isAdminUser(user)) {
