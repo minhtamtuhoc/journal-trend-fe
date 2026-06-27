@@ -154,7 +154,7 @@ export type AuditLogEntry = {
   action: string;
   target: string;
   time: string;
-  status: "ok" | "warn" | "error";
+  status: "ok" | "warn" | "error" | "SUCCESS" | "success" | "RUNNING" | "running" | "FAILED" | "failed";
 };
 
 export type PendingReviewPaper = Paper & {

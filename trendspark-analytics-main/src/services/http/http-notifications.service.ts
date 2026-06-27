@@ -28,16 +28,23 @@ interface NotificationApiResponse {
   totalElements: number;
 }
 
+interface BackendApiResponse<T> {
+  success: boolean;
+  message: string;
+  data: T;
+  timestamp: string;
+}
+
 export class HttpNotificationsService implements NotificationsService {
   async list(page = 0, size = 20): Promise<PaginatedNotifications> {
-    const response = await apiClient.get<NotificationApiResponse>("/v1/notifications", {
+    const response = await apiClient.get<BackendApiResponse<NotificationApiResponse>>("/v1/notifications", {
       params: { page, size }
     });
 
     const pageResponse = response?.data;
     const content = pageResponse?.content ?? [];
 
-    const mappedContent = content.map((res): NotificationItem => {
+    const mappedContent = content.map((res: NotificationApiResponseItem): NotificationItem => {
       let uiType: "paper" | "trend" | "system" = "system";
       if (res.triggerType === "NEW_PAPER") {
         uiType = "paper";
