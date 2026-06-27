@@ -2,7 +2,7 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { AppLayout, PageHeader } from "@/components/AppLayout";
 import { Card } from "@/components/Card";
 import { usePaper, useRelatedPapers, usePaperReferences, usePaperCitations } from "@/hooks/data/use-papers";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { PaperGraph } from "@/components/PaperGraph";
 import { buildPaperCitationSeries } from "@/utils/paper-series";
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis } from "recharts";
@@ -40,6 +40,19 @@ function PaperDetailPage() {
     yearFrom: citeYearFrom,
     yearTo: citeYearTo,
   });
+
+  const [isAuthorDropdownOpen, setIsAuthorDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsAuthorDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const { user } = useAuth();
   const { data: followedAuthors = [] } = useFollowedAuthors();
@@ -148,19 +161,69 @@ function PaperDetailPage() {
                 {journalFollowed ? "Following journal" : "Follow journal"}
               </button>
             ) : null}
-            <button
-              disabled={followAuthorMut.isPending || unfollowAuthorMut.isPending || !mainAuthorId}
-              onClick={() => handleAuthorFollow(mainAuthorId, mainAuthorName)}
-              className={`inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-semibold transition-all ${
-                mainAuthorFollowed
-                  ? "bg-brand/10 border border-brand/45 text-brand"
-                  : "text-brand-foreground glow-brand"
-              }`}
-              style={mainAuthorFollowed ? undefined : { background: "var(--gradient-brand)" }}
-            >
-              {mainAuthorFollowed ? <UserCheck className="size-4" /> : <UserPlus className="size-4" />}
-              {mainAuthorFollowed ? "Following" : "Follow Author"}
-            </button>
+            <div className="relative" ref={dropdownRef}>
+              <button
+                type="button"
+                onClick={() => setIsAuthorDropdownOpen(!isAuthorDropdownOpen)}
+                className="inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-semibold text-brand-foreground glow-brand transition-all hover:scale-[1.02] cursor-pointer"
+                style={{ background: "var(--gradient-brand)" }}
+              >
+                <UserPlus className="size-4" />
+                Follow Authors
+              </button>
+
+              {isAuthorDropdownOpen && (
+                <div className="absolute right-0 mt-2 w-64 rounded-xl bg-popover border border-border shadow-2xl p-2 z-50 animate-fade-in">
+                  <p className="text-[9px] uppercase tracking-widest text-muted-foreground font-bold px-3 py-1.5 border-b border-border/50 mb-1">
+                    Danh sách tác giả
+                  </p>
+                  <div className="max-h-56 overflow-y-auto space-y-1">
+                    {(paper.authorRefs?.length
+                      ? paper.authorRefs.map((ref) => ({ id: ref.id, name: ref.name }))
+                      : paper.authors.map((name) => ({ id: null as string | null, name }))
+                    ).map((author) => {
+                      const followed = isAuthorFollowed(author.id);
+                      return (
+                        <div
+                          key={author.id ?? author.name}
+                          className="flex items-center justify-between gap-2 p-2 rounded-lg hover:bg-secondary/40 transition-colors"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-semibold text-foreground truncate" title={author.name}>
+                              {author.name}
+                            </p>
+                          </div>
+                          {author.id ? (
+                            <button
+                              type="button"
+                              disabled={followAuthorMut.isPending || unfollowAuthorMut.isPending}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleAuthorFollow(author.id, author.name);
+                              }}
+                              className={`text-[10px] font-bold px-2 py-1 rounded-md border transition-all cursor-pointer ${
+                                followed
+                                  ? "border-brand/40 bg-brand/10 text-brand"
+                                  : "border-border hover:border-brand/40 hover:text-brand"
+                              }`}
+                            >
+                              {followed ? "Following" : "Follow"}
+                            </button>
+                          ) : (
+                            <span
+                              className="text-[9px] text-muted-foreground px-2 py-1 bg-secondary/20 rounded border border-border/30 cursor-not-allowed"
+                              title="Tác giả chưa có trong hệ thống"
+                            >
+                              Mới
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         }
       />
