@@ -57,6 +57,7 @@ export function toPaperDomainModel(p: BackendPaperDetail): Paper {
     doi: p.doi || "",
     abstract: p.abstractText || "",
     source: (p.primarySource === "OPENALEX" ? "OpenAlex" : p.primarySource === "SEMANTIC_SCHOLAR" ? "Semantic Scholar" : "CrossRef") as PaperSource,
+    openAccess: p.openAccess,
   };
 }
 
@@ -138,5 +139,13 @@ export class HttpPapersService implements PapersService {
         limit: params.limit,
       }
     });
+  }
+
+  async getByIds(ids: string[]): Promise<Paper[]> {
+    if (ids.length === 0) return [];
+    const res = await apiClient.get<BackendApiResponse<BackendPaperDetail[]>>("/v1/papers/bulk", {
+      params: { ids: ids.join(",") }
+    });
+    return res.data.map(toPaperDomainModel);
   }
 }

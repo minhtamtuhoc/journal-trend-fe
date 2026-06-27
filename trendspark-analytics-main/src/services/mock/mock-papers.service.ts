@@ -135,4 +135,9 @@ export class MockPapersService implements PapersService {
       existsLocally: i < 2,
     }));
   }
+
+  async getByIds(ids: string[]): Promise<Paper[]> {
+    await mockDelay();
+    return MOCK_PAPERS.filter((p) => ids.includes(p.id));
+  }
 }

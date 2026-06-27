@@ -27,6 +27,7 @@ export type Paper = {
   doi: string;
   abstract: string;
   source: PaperSource;
+  openAccess?: boolean;
 };
 
 export type Author = {

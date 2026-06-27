@@ -15,6 +15,7 @@ export function useNotifications() {
     },
     enabled: isBrowser,
     retry: 1,
+    refetchInterval: 10000, // Poll every 10 seconds to auto-refresh notifications list
     ...mockQueryDefaults,
   });
 
@@ -51,6 +52,9 @@ export function useMarkNotificationRead() {
     onError: (_err, _id, ctx) => {
       if (ctx?.previous) qc.setQueryData(queryKeys.notifications.all, ctx.previous);
     },
+    onSettled: () => {
+      void qc.invalidateQueries({ queryKey: queryKeys.notifications.all });
+    },
   });
 }
 
@@ -75,6 +79,9 @@ export function useMarkAllNotificationsRead() {
     },
     onError: (_err, _vars, ctx) => {
       if (ctx?.previous) qc.setQueryData(queryKeys.notifications.all, ctx.previous);
+    },
+    onSettled: () => {
+      void qc.invalidateQueries({ queryKey: queryKeys.notifications.all });
     },
   });
 }
@@ -103,9 +110,11 @@ export function useMarkMultipleNotificationsRead() {
     onError: (_err, _ids, ctx) => {
       if (ctx?.previous) qc.setQueryData(queryKeys.notifications.all, ctx.previous);
     },
+    onSettled: () => {
+      void qc.invalidateQueries({ queryKey: queryKeys.notifications.all });
+    },
   });
 }
-
 
 export function useDeleteMultipleNotifications() {
   const qc = useQueryClient();
@@ -129,9 +138,11 @@ export function useDeleteMultipleNotifications() {
     onError: (_err, _ids, ctx) => {
       if (ctx?.previous) qc.setQueryData(queryKeys.notifications.all, ctx.previous);
     },
+    onSettled: () => {
+      void qc.invalidateQueries({ queryKey: queryKeys.notifications.all });
+    },
   });
 }
-
 
 export function useDeleteNotification() {
   const qc = useQueryClient();
@@ -155,9 +166,11 @@ export function useDeleteNotification() {
     onError: (_err, _id, ctx) => {
       if (ctx?.previous) qc.setQueryData(queryKeys.notifications.all, ctx.previous);
     },
+    onSettled: () => {
+      void qc.invalidateQueries({ queryKey: queryKeys.notifications.all });
+    },
   });
 }
-
 
 export function useDeleteAllNotifications() {
   const qc = useQueryClient();
@@ -180,6 +193,9 @@ export function useDeleteAllNotifications() {
     },
     onError: (_err, _vars, ctx) => {
       if (ctx?.previous) qc.setQueryData(queryKeys.notifications.all, ctx.previous);
+    },
+    onSettled: () => {
+      void qc.invalidateQueries({ queryKey: queryKeys.notifications.all });
     },
   });
 }
@@ -205,6 +221,9 @@ export function useDeleteAllReadNotifications() {
     },
     onError: (_err, _vars, ctx) => {
       if (ctx?.previous) qc.setQueryData(queryKeys.notifications.all, ctx.previous);
+    },
+    onSettled: () => {
+      void qc.invalidateQueries({ queryKey: queryKeys.notifications.all });
     },
   });
 }

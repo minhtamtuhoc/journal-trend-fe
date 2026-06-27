@@ -60,8 +60,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = useCallback(async (email: string, password: string) => {
     const credentials: LoginCredentials = { email, password };
     const session = await getServices().auth.login(credentials);
+    qc.clear();
     setUser(normalizeUser(session.user));
-  }, []);
+  }, [qc]);
 
     const register = useCallback(async (name: string, email: string, password: string, role: RegisterRole) => {
     const credentials: RegisterCredentials = { name, email, password, role };

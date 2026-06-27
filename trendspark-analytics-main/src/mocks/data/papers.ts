@@ -22,6 +22,7 @@ export const MOCK_PAPERS: Paper[] = [
     abstract:
       "We demonstrate a scalable lipid-nanoparticle delivery system enabling efficient CRISPR-Cas9 editing in primary human T cells with minimal off-target effects, opening new pathways for adoptive cell therapy.",
     source: "OpenAlex",
+    openAccess: true,
   },
   {
     id: "p2",
@@ -44,6 +45,7 @@ export const MOCK_PAPERS: Paper[] = [
     abstract:
       "A novel quantized transformer family that runs sub-50ms inference on commodity micro-controllers while maintaining 92% of full-precision accuracy on multi-sensor fusion tasks.",
     source: "Semantic Scholar",
+    openAccess: false,
   },
   {
     id: "p3",
@@ -66,6 +68,7 @@ export const MOCK_PAPERS: Paper[] = [
     abstract:
       "Longitudinal single-cell profiling reveals a stereotyped mitochondrial fission cascade preceding cognitive decline by 4-6 years in primate models.",
     source: "CrossRef",
+    openAccess: true,
   },
   {
     id: "p4",
