@@ -79,3 +79,24 @@ export function useAvailableYears() {
     staleTime: 5 * 60 * 1000,
   });
 }
+
+export function usePaperReferences(id: string, limit?: number) {
+  return useQuery({
+    queryKey: ["papers-references", id, limit],
+    queryFn: () => getServices().papers.getReferences(id, limit),
+    enabled: isBrowser && Boolean(id),
+    ...mockQueryDefaults,
+  });
+}
+
+export function usePaperCitations(
+  id: string,
+  params: { sort?: string; yearFrom?: number; yearTo?: number; limit?: number }
+) {
+  return useQuery({
+    queryKey: ["papers-citations", id, params],
+    queryFn: () => getServices().papers.getCitations(id, params),
+    enabled: isBrowser && Boolean(id),
+    ...mockQueryDefaults,
+  });
+}

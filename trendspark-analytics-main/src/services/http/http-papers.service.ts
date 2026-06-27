@@ -1,6 +1,6 @@
 import { apiClient } from "@/api/client";
 import type { Paper, PaperSource } from "@/types/domain";
-import type { PapersService, PageResponse } from "@/services/interfaces/papers.service";
+import type { PapersService, PageResponse, GraphPaperNode } from "@/services/interfaces/papers.service";
 
 interface BackendPaperDetail {
   id: number;
@@ -118,5 +118,25 @@ export class HttpPapersService implements PapersService {
   async getAvailableYears(): Promise<number[]> {
     const res = await apiClient.get<BackendApiResponse<number[]>>("/v1/papers/years");
     return res.data;
+  }
+
+  getReferences(id: string, limit = 50) {
+    return apiClient.get<GraphPaperNode[]>(`/papers/${id}/references`, {
+      params: { limit }
+    });
+  }
+
+  getCitations(
+    id: string,
+    params: { sort?: string; yearFrom?: number; yearTo?: number; limit?: number }
+  ) {
+    return apiClient.get<GraphPaperNode[]>(`/papers/${id}/citations`, {
+      params: {
+        sort: params.sort,
+        yearFrom: params.yearFrom,
+        yearTo: params.yearTo,
+        limit: params.limit,
+      }
+    });
   }
 }

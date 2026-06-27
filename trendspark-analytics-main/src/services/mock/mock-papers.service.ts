@@ -1,4 +1,4 @@
-import type { PapersService, PageResponse } from "@/services/interfaces/papers.service";
+import type { PapersService, PageResponse, GraphPaperNode } from "@/services/interfaces/papers.service";
 import type { Paper } from "@/types/domain";
 import { MOCK_PAPERS } from "@/mocks/data/papers";
 import { mockDelay } from "@/services/utils";
@@ -104,5 +104,35 @@ export class MockPapersService implements PapersService {
     await mockDelay();
     const years = new Set(MOCK_PAPERS.map(p => p.year));
     return Array.from(years).sort((a, b) => b - a);
+  }
+
+  async getReferences(id: string, limit = 50): Promise<GraphPaperNode[]> {
+    await mockDelay();
+    return Array.from({ length: 8 }).map((_, i) => ({
+      openAlexId: `W_ref_${id}_${i}`,
+      title: `Reference Paper ${i + 1} for Paper ${id}`,
+      year: 2018 + (i % 5),
+      doi: `10.1000/ref.doi.${id}.${i}`,
+      citations: 100 * (i + 1),
+      localPaperId: i < 3 ? MOCK_PAPERS[i % MOCK_PAPERS.length].id : null,
+      existsLocally: i < 3,
+    }));
+  }
+
+  async getCitations(
+    id: string,
+    params: { sort?: string; yearFrom?: number; yearTo?: number; limit?: number }
+  ): Promise<GraphPaperNode[]> {
+    await mockDelay();
+    const limit = params.limit ?? 20;
+    return Array.from({ length: 5 }).map((_, i) => ({
+      openAlexId: `W_cite_${id}_${i}`,
+      title: `Citing Work ${i + 1} for Paper ${id}`,
+      year: params.yearFrom ? params.yearFrom + (i % (Math.max(1, (params.yearTo ?? 2026) - params.yearFrom + 1))) : 2024,
+      doi: `10.1000/cite.doi.${id}.${i}`,
+      citations: 50 * (i + 1),
+      localPaperId: i < 2 ? MOCK_PAPERS[(i + 3) % MOCK_PAPERS.length].id : null,
+      existsLocally: i < 2,
+    }));
   }
 }

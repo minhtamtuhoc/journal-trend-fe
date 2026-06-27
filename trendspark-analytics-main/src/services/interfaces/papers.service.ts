@@ -10,6 +10,16 @@ export interface PageResponse<T> {
   last: boolean;
 }
 
+export interface GraphPaperNode {
+  openAlexId: string;
+  title: string;
+  year: number;
+  doi: string;
+  citations: number;
+  localPaperId: string | null;
+  existsLocally: boolean;
+}
+
 export interface PapersService {
   list(): Promise<Paper[]>;
   getById(id: string): Promise<Paper | null>;
@@ -27,4 +37,9 @@ export interface PapersService {
     minCitations?: number;
   }): Promise<PageResponse<Paper>>;
   getAvailableYears(): Promise<number[]>;
+  getReferences(id: string, limit?: number): Promise<GraphPaperNode[]>;
+  getCitations(
+    id: string,
+    params: { sort?: string; yearFrom?: number; yearTo?: number; limit?: number }
+  ): Promise<GraphPaperNode[]>;
 }
