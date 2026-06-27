@@ -24,11 +24,13 @@ import { Route as CollectionsRouteImport } from './routes/collections'
 import { Route as BookmarksRouteImport } from './routes/bookmarks'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as NotificationsIndexRouteImport } from './routes/notifications.index'
 import { Route as CollectionsIndexRouteImport } from './routes/collections.index'
 import { Route as AuthorsIndexRouteImport } from './routes/authors.index'
 import { Route as TopicsDomainRouteImport } from './routes/topics.domain'
 import { Route as TopicsTopicIdRouteImport } from './routes/topics.$topicId'
 import { Route as PapersIdRouteImport } from './routes/papers.$id'
+import { Route as NotificationsGroupIdRouteImport } from './routes/notifications.$groupId'
 import { Route as CollectionsCollectionIdRouteImport } from './routes/collections.$collectionId'
 import { Route as AuthorsAuthorIdRouteImport } from './routes/authors.$authorId'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
@@ -109,6 +111,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const NotificationsIndexRoute = NotificationsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => NotificationsRoute,
+} as any)
 const CollectionsIndexRoute = CollectionsIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -133,6 +140,11 @@ const PapersIdRoute = PapersIdRouteImport.update({
   id: '/papers/$id',
   path: '/papers/$id',
   getParentRoute: () => rootRouteImport,
+} as any)
+const NotificationsGroupIdRoute = NotificationsGroupIdRouteImport.update({
+  id: '/$groupId',
+  path: '/$groupId',
+  getParentRoute: () => NotificationsRoute,
 } as any)
 const CollectionsCollectionIdRoute = CollectionsCollectionIdRouteImport.update({
   id: '/$collectionId',
@@ -163,7 +175,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
-  '/notifications': typeof NotificationsRoute
+  '/notifications': typeof NotificationsRouteWithChildren
   '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
   '/reports': typeof ReportsRoute
@@ -174,11 +186,13 @@ export interface FileRoutesByFullPath {
   '/admin/users': typeof AdminUsersRoute
   '/authors/$authorId': typeof AuthorsAuthorIdRoute
   '/collections/$collectionId': typeof CollectionsCollectionIdRoute
+  '/notifications/$groupId': typeof NotificationsGroupIdRoute
   '/papers/$id': typeof PapersIdRoute
   '/topics/$topicId': typeof TopicsTopicIdRoute
   '/topics/domain': typeof TopicsDomainRouteWithChildren
   '/authors/': typeof AuthorsIndexRoute
   '/collections/': typeof CollectionsIndexRoute
+  '/notifications/': typeof NotificationsIndexRoute
   '/topics/domain/$domain': typeof TopicsDomainDomainRoute
 }
 export interface FileRoutesByTo {
@@ -188,7 +202,6 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
-  '/notifications': typeof NotificationsRoute
   '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
   '/reports': typeof ReportsRoute
@@ -199,11 +212,13 @@ export interface FileRoutesByTo {
   '/admin/users': typeof AdminUsersRoute
   '/authors/$authorId': typeof AuthorsAuthorIdRoute
   '/collections/$collectionId': typeof CollectionsCollectionIdRoute
+  '/notifications/$groupId': typeof NotificationsGroupIdRoute
   '/papers/$id': typeof PapersIdRoute
   '/topics/$topicId': typeof TopicsTopicIdRoute
   '/topics/domain': typeof TopicsDomainRouteWithChildren
   '/authors': typeof AuthorsIndexRoute
   '/collections': typeof CollectionsIndexRoute
+  '/notifications': typeof NotificationsIndexRoute
   '/topics/domain/$domain': typeof TopicsDomainDomainRoute
 }
 export interface FileRoutesById {
@@ -215,7 +230,7 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
-  '/notifications': typeof NotificationsRoute
+  '/notifications': typeof NotificationsRouteWithChildren
   '/profile': typeof ProfileRoute
   '/register': typeof RegisterRoute
   '/reports': typeof ReportsRoute
@@ -226,11 +241,13 @@ export interface FileRoutesById {
   '/admin/users': typeof AdminUsersRoute
   '/authors/$authorId': typeof AuthorsAuthorIdRoute
   '/collections/$collectionId': typeof CollectionsCollectionIdRoute
+  '/notifications/$groupId': typeof NotificationsGroupIdRoute
   '/papers/$id': typeof PapersIdRoute
   '/topics/$topicId': typeof TopicsTopicIdRoute
   '/topics/domain': typeof TopicsDomainRouteWithChildren
   '/authors/': typeof AuthorsIndexRoute
   '/collections/': typeof CollectionsIndexRoute
+  '/notifications/': typeof NotificationsIndexRoute
   '/topics/domain/$domain': typeof TopicsDomainDomainRoute
 }
 export interface FileRouteTypes {
@@ -254,11 +271,13 @@ export interface FileRouteTypes {
     | '/admin/users'
     | '/authors/$authorId'
     | '/collections/$collectionId'
+    | '/notifications/$groupId'
     | '/papers/$id'
     | '/topics/$topicId'
     | '/topics/domain'
     | '/authors/'
     | '/collections/'
+    | '/notifications/'
     | '/topics/domain/$domain'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -268,7 +287,6 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/forgot-password'
     | '/login'
-    | '/notifications'
     | '/profile'
     | '/register'
     | '/reports'
@@ -279,11 +297,13 @@ export interface FileRouteTypes {
     | '/admin/users'
     | '/authors/$authorId'
     | '/collections/$collectionId'
+    | '/notifications/$groupId'
     | '/papers/$id'
     | '/topics/$topicId'
     | '/topics/domain'
     | '/authors'
     | '/collections'
+    | '/notifications'
     | '/topics/domain/$domain'
   id:
     | '__root__'
@@ -305,11 +325,13 @@ export interface FileRouteTypes {
     | '/admin/users'
     | '/authors/$authorId'
     | '/collections/$collectionId'
+    | '/notifications/$groupId'
     | '/papers/$id'
     | '/topics/$topicId'
     | '/topics/domain'
     | '/authors/'
     | '/collections/'
+    | '/notifications/'
     | '/topics/domain/$domain'
   fileRoutesById: FileRoutesById
 }
@@ -321,7 +343,7 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   LoginRoute: typeof LoginRoute
-  NotificationsRoute: typeof NotificationsRoute
+  NotificationsRoute: typeof NotificationsRouteWithChildren
   ProfileRoute: typeof ProfileRoute
   RegisterRoute: typeof RegisterRoute
   ReportsRoute: typeof ReportsRoute
@@ -443,6 +465,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/notifications/': {
+      id: '/notifications/'
+      path: '/'
+      fullPath: '/notifications/'
+      preLoaderRoute: typeof NotificationsIndexRouteImport
+      parentRoute: typeof NotificationsRoute
+    }
     '/collections/': {
       id: '/collections/'
       path: '/'
@@ -477,6 +506,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/papers/$id'
       preLoaderRoute: typeof PapersIdRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/notifications/$groupId': {
+      id: '/notifications/$groupId'
+      path: '/$groupId'
+      fullPath: '/notifications/$groupId'
+      preLoaderRoute: typeof NotificationsGroupIdRouteImport
+      parentRoute: typeof NotificationsRoute
     }
     '/collections/$collectionId': {
       id: '/collections/$collectionId'
@@ -533,6 +569,20 @@ const CollectionsRouteWithChildren = CollectionsRoute._addFileChildren(
   CollectionsRouteChildren,
 )
 
+interface NotificationsRouteChildren {
+  NotificationsGroupIdRoute: typeof NotificationsGroupIdRoute
+  NotificationsIndexRoute: typeof NotificationsIndexRoute
+}
+
+const NotificationsRouteChildren: NotificationsRouteChildren = {
+  NotificationsGroupIdRoute: NotificationsGroupIdRoute,
+  NotificationsIndexRoute: NotificationsIndexRoute,
+}
+
+const NotificationsRouteWithChildren = NotificationsRoute._addFileChildren(
+  NotificationsRouteChildren,
+)
+
 interface TopicsDomainRouteChildren {
   TopicsDomainDomainRoute: typeof TopicsDomainDomainRoute
 }
@@ -553,7 +603,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,
-  NotificationsRoute: NotificationsRoute,
+  NotificationsRoute: NotificationsRouteWithChildren,
   ProfileRoute: ProfileRoute,
   RegisterRoute: RegisterRoute,
   ReportsRoute: ReportsRoute,

@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { ArrowLeft, ArrowUpRight, Trash2, FolderOpen } from "lucide-react";
 
 import { useCollection, useRemovePaperFromCollection } from "@/hooks/data/use-collections";
-import { usePapers } from "@/hooks/data/use-papers";
+import { usePapersByIds } from "@/hooks/data/use-papers";
 import { SaveToCollectionButton } from "@/components/SaveToCollectionButton";
 import { formatTimeAgo } from "@/lib/time";
 import type { Paper } from "@/types/domain";
@@ -21,7 +21,7 @@ type SortMode = "recent" | "newest" | "oldest";
 function CollectionDetailPage() {
   const { collectionId } = Route.useParams();
   const { data: collection, isLoading: isLoadingCollection } = useCollection(collectionId);
-  const { data: papers = [], isLoading: isLoadingPapers } = usePapers();
+  const { data: papers = [], isLoading: isLoadingPapers } = usePapersByIds(collection?.paperIds ?? []);
   const removeMutation = useRemovePaperFromCollection();
 
   const [sort, setSort] = useState<SortMode>("recent");

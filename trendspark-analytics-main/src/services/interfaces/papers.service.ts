@@ -42,4 +42,5 @@ export interface PapersService {
     id: string,
     params: { sort?: string; yearFrom?: number; yearTo?: number; limit?: number }
   ): Promise<GraphPaperNode[]>;
+  getByIds(ids: string[]): Promise<Paper[]>;
 }

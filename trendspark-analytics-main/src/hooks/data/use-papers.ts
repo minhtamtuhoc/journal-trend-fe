@@ -100,3 +100,12 @@ export function usePaperCitations(
     ...mockQueryDefaults,
   });
 }
+
+export function usePapersByIds(ids: string[]) {
+  return useQuery({
+    queryKey: ["papers-bulk", ids],
+    queryFn: () => getServices().papers.getByIds(ids),
+    enabled: isBrowser && ids.length > 0,
+    ...mockQueryDefaults,
+  });
+}
