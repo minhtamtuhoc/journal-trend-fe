@@ -19,6 +19,7 @@ import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as ForecastRouteImport } from './routes/forecast'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CollectionsRouteImport } from './routes/collections'
 import { Route as BookmarksRouteImport } from './routes/bookmarks'
@@ -84,6 +85,11 @@ const LoginRoute = LoginRouteImport.update({
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
   id: '/forgot-password',
   path: '/forgot-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForecastRoute = ForecastRouteImport.update({
+  id: '/forecast',
+  path: '/forecast',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -173,6 +179,7 @@ export interface FileRoutesByFullPath {
   '/bookmarks': typeof BookmarksRoute
   '/collections': typeof CollectionsRouteWithChildren
   '/dashboard': typeof DashboardRoute
+  '/forecast': typeof ForecastRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/notifications': typeof NotificationsRouteWithChildren
@@ -200,6 +207,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRouteWithChildren
   '/bookmarks': typeof BookmarksRoute
   '/dashboard': typeof DashboardRoute
+  '/forecast': typeof ForecastRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
@@ -228,6 +236,7 @@ export interface FileRoutesById {
   '/bookmarks': typeof BookmarksRoute
   '/collections': typeof CollectionsRouteWithChildren
   '/dashboard': typeof DashboardRoute
+  '/forecast': typeof ForecastRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/login': typeof LoginRoute
   '/notifications': typeof NotificationsRouteWithChildren
@@ -258,6 +267,7 @@ export interface FileRouteTypes {
     | '/bookmarks'
     | '/collections'
     | '/dashboard'
+    | '/forecast'
     | '/forgot-password'
     | '/login'
     | '/notifications'
@@ -285,6 +295,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/bookmarks'
     | '/dashboard'
+    | '/forecast'
     | '/forgot-password'
     | '/login'
     | '/profile'
@@ -312,6 +323,7 @@ export interface FileRouteTypes {
     | '/bookmarks'
     | '/collections'
     | '/dashboard'
+    | '/forecast'
     | '/forgot-password'
     | '/login'
     | '/notifications'
@@ -341,6 +353,7 @@ export interface RootRouteChildren {
   BookmarksRoute: typeof BookmarksRoute
   CollectionsRoute: typeof CollectionsRouteWithChildren
   DashboardRoute: typeof DashboardRoute
+  ForecastRoute: typeof ForecastRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   LoginRoute: typeof LoginRoute
   NotificationsRoute: typeof NotificationsRouteWithChildren
@@ -428,6 +441,13 @@ declare module '@tanstack/react-router' {
       path: '/forgot-password'
       fullPath: '/forgot-password'
       preLoaderRoute: typeof ForgotPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forecast': {
+      id: '/forecast'
+      path: '/forecast'
+      fullPath: '/forecast'
+      preLoaderRoute: typeof ForecastRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -601,6 +621,7 @@ const rootRouteChildren: RootRouteChildren = {
   BookmarksRoute: BookmarksRoute,
   CollectionsRoute: CollectionsRouteWithChildren,
   DashboardRoute: DashboardRoute,
+  ForecastRoute: ForecastRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   LoginRoute: LoginRoute,
   NotificationsRoute: NotificationsRouteWithChildren,
