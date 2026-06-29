@@ -6,6 +6,9 @@ export const queryKeys = {
   analytics: {
     snapshot: ["analytics", "snapshot"] as const,
   },
+  dashboard: {
+    summary: ["dashboard", "summary"] as const,
+  },
   papers: {
     all: ["papers", "list"] as const,
     detail: (id: string) => ["papers", "detail", id] as const,

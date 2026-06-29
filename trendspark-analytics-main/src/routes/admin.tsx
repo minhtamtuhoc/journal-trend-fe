@@ -56,6 +56,7 @@ function AdminPage() {
       queryClient.invalidateQueries({ queryKey: queryKeys.analytics.snapshot }),
       queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all }),
       queryClient.invalidateQueries({ queryKey: queryKeys.collections.all }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.summary }),
     ]);
 
   const pollSyncUntilDone = async () => {
