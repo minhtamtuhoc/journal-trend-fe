@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/api/client";
 import { isBrowser } from "@/hooks/data/client-only";
+import { queryKeys } from "@/services";
 
 export type KpiCardsDto = {
   totalPapers: number;
@@ -83,7 +84,7 @@ export type KeywordChartResponse = {
 
 export function useDashboardSummary() {
   return useQuery({
-    queryKey: ["dashboard", "summary"],
+    queryKey: queryKeys.dashboard.summary,
     queryFn: async () => {
       const res = await apiClient.get<{ data: DashboardSummaryResponse }>("/v1/dashboard/summary");
       return res.data;
