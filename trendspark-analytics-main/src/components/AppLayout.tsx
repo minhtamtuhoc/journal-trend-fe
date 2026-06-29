@@ -27,6 +27,7 @@ import { motion } from "framer-motion";
 const nav = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/trends", label: "Trend Analytics", icon: TrendingUp },
+  { to: "/forecast", label: "Hot Topic Forecast", icon: Sparkles },
   { to: "/search", label: "Search Explorer", icon: Search },
   { to: "/authors", label: "Researchers", icon: Users },
   { to: "/collections", label: "Collections", icon: Library },
