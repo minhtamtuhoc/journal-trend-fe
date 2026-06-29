@@ -15,7 +15,7 @@ export interface GraphPaperNode {
   title: string;
   year: number;
   doi: string;
-  citations: number;
+  citations: number | null;
   localPaperId: string | null;
   existsLocally: boolean;
 }
