@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { AppLayout, PageHeader } from "@/components/AppLayout";
 import { Card } from "@/components/Card";
-import { useNotifications } from "@/hooks/data/use-notifications";
+import { useNotificationsBulk } from "@/hooks/data/use-notifications";
 import { usePapersByIds } from "@/hooks/data/use-papers";
 import type { Paper } from "@/types/domain";
 import { SaveToCollectionButton } from "@/components/SaveToCollectionButton";
@@ -159,7 +159,7 @@ function NotificationGroupDetailPage() {
   const { groupId } = Route.useParams();
   const { filter: quickFilter = "all", sort: sortBy = "default", page: currentPage = 1 } = Route.useSearch();
   const navigate = useNavigate();
-  const { notifications, isLoading: isNotificationsLoading } = useNotifications();
+  const { data: notifications = [], isLoading: isNotificationsLoading } = useNotificationsBulk(1000);
 
   const ITEMS_PER_PAGE = 10;
 

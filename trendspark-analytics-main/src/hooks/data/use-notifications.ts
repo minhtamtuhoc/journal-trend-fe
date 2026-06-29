@@ -1,9 +1,23 @@
-import { useMutation, useQueryClient, useInfiniteQuery, type InfiniteData } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useInfiniteQuery, useQuery, type InfiniteData } from "@tanstack/react-query";
 import { getServices, queryKeys } from "@/services";
 import { mockQueryDefaults } from "@/hooks/data/query-options";
 import { isBrowser } from "@/hooks/data/client-only";
 import type { NotificationItem } from "@/types/domain";
 import type { PaginatedNotifications } from "@/services/interfaces/notifications.service";
+
+export function useNotificationsBulk(size = 1000) {
+  return useQuery<NotificationItem[]>({
+    queryKey: [...queryKeys.notifications.all, "bulk", size],
+    queryFn: async () => {
+      const res = await getServices().notifications.list(0, size);
+      return res.content;
+    },
+    enabled: isBrowser,
+    retry: 1,
+    ...mockQueryDefaults,
+  });
+}
+
 
 export function useNotifications() {
   const query = useInfiniteQuery<PaginatedNotifications>({

@@ -3,7 +3,7 @@ import { AppLayout, PageHeader } from "@/components/AppLayout";
 import { Card } from "@/components/Card";
 import {
   useMarkAllNotificationsRead,
-  useNotifications,
+  useNotificationsBulk,
   useDeleteAllNotifications,
   useDeleteAllReadNotifications,
   useMarkMultipleNotificationsRead,
@@ -222,7 +222,7 @@ function PaginationBar({ currentPage, totalPages, onPageChange }: PaginationProp
 
 function NotificationsPage() {
   const { page = 1 } = Route.useSearch();
-  const { notifications, isLoading } = useNotifications();
+  const { data: notifications = [], isLoading } = useNotificationsBulk(1000);
 
   const navigate = useNavigate();
   const markAll = useMarkAllNotificationsRead();
