@@ -81,6 +81,7 @@ export class HttpPapersService implements PapersService {
 
   async search(params: {
     q?: string;
+    searchType?: "papers" | "authors" | "keywords";
     topicId?: number;
     page: number;
     size: number;
@@ -93,6 +94,7 @@ export class HttpPapersService implements PapersService {
     const res = await apiClient.get<BackendApiResponse<PageResponse<BackendPaperDetail>>>("/v1/papers", {
       params: {
         q: params.q || undefined,
+        searchType: params.searchType || undefined,
         topicId: params.topicId,
         page: params.page,
         size: params.size,

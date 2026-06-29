@@ -26,6 +26,7 @@ export class MockPapersService implements PapersService {
 
   async search(params: {
     q?: string;
+    searchType?: "papers" | "authors" | "keywords";
     page: number;
     size: number;
     sort?: string;
@@ -39,13 +40,21 @@ export class MockPapersService implements PapersService {
 
     if (params.q) {
       const q = params.q.toLowerCase();
-      results = results.filter(
-        (p) =>
-          p.title.toLowerCase().includes(q) ||
-          p.authors.some((a) => a.toLowerCase().includes(q)) ||
-          p.keywords.some((k) => k.name.toLowerCase().includes(q)) ||
-          p.doi.toLowerCase().includes(q)
-      );
+      if (params.searchType === "papers") {
+        results = results.filter((p) => p.title.toLowerCase().includes(q));
+      } else if (params.searchType === "authors") {
+        results = results.filter((p) => p.authors.some((a) => a.toLowerCase().includes(q)));
+      } else if (params.searchType === "keywords") {
+        results = results.filter((p) => p.keywords.some((k) => k.name.toLowerCase() === q));
+      } else {
+        results = results.filter(
+          (p) =>
+            p.title.toLowerCase().includes(q) ||
+            p.authors.some((a) => a.toLowerCase().includes(q)) ||
+            p.keywords.some((k) => k.name.toLowerCase().includes(q)) ||
+            p.doi.toLowerCase().includes(q)
+        );
+      }
     }
 
     if (params.category && params.category !== "all") {
