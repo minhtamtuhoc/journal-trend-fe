@@ -80,24 +80,27 @@ export function useAvailableYears() {
   });
 }
 
-export function usePaperReferences(id: string, limit?: number) {
+export function usePaperReferences(id: string, limit?: number, enabled = true) {
   return useQuery({
+    ...mockQueryDefaults,
     queryKey: ["papers-references", id, limit],
     queryFn: () => getServices().papers.getReferences(id, limit),
-    enabled: isBrowser && Boolean(id),
-    ...mockQueryDefaults,
+    enabled: isBrowser && Boolean(id) && enabled,
+    staleTime: 10 * 60 * 1000,
   });
 }
 
 export function usePaperCitations(
   id: string,
-  params: { sort?: string; yearFrom?: number; yearTo?: number; limit?: number }
+  params: { sort?: string; yearFrom?: number; yearTo?: number; limit?: number },
+  enabled = true
 ) {
   return useQuery({
+    ...mockQueryDefaults,
     queryKey: ["papers-citations", id, params],
     queryFn: () => getServices().papers.getCitations(id, params),
-    enabled: isBrowser && Boolean(id),
-    ...mockQueryDefaults,
+    enabled: isBrowser && Boolean(id) && enabled,
+    staleTime: 10 * 60 * 1000,
   });
 }
 

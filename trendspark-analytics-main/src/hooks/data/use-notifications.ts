@@ -8,14 +8,14 @@ import type { PaginatedNotifications } from "@/services/interfaces/notifications
 export function useNotifications() {
   const query = useInfiniteQuery<PaginatedNotifications>({
     queryKey: queryKeys.notifications.all,
-    queryFn: ({ pageParam = 0 }) => getServices().notifications.list(pageParam as number, 1000),
+    queryFn: ({ pageParam = 0 }) => getServices().notifications.list(pageParam as number, 20),
     initialPageParam: 0,
     getNextPageParam: (lastPage) => {
       return lastPage.last ? undefined : lastPage.page + 1;
     },
     enabled: isBrowser,
     retry: 1,
-    refetchInterval: 10000, // Poll every 10 seconds to auto-refresh notifications list
+    refetchInterval: 60000, // Poll every 60 seconds to auto-refresh notifications list
     ...mockQueryDefaults,
   });
 
