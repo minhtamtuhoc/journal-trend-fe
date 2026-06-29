@@ -27,19 +27,27 @@ function PaperDetailPage() {
 
   // References configuration
   const [refLimit, setRefLimit] = useState(50);
-  const { data: references = [], isLoading: isLoadingRefs } = usePaperReferences(id, refLimit);
+  const { data: references = [], isLoading: isLoadingRefs } = usePaperReferences(
+    id,
+    refLimit,
+    activeTab === "references"
+  );
 
   // Citations configuration
   const [citeLimit, setCiteLimit] = useState(20);
   const [citeSort, setCiteSort] = useState<"citations" | "recent">("citations");
   const [citeYearFrom, setCiteYearFrom] = useState<number | undefined>(undefined);
   const [citeYearTo, setCiteYearTo] = useState<number | undefined>(undefined);
-  const { data: citations = [], isLoading: isLoadingCites } = usePaperCitations(id, {
-    limit: citeLimit,
-    sort: citeSort,
-    yearFrom: citeYearFrom,
-    yearTo: citeYearTo,
-  });
+  const { data: citations = [], isLoading: isLoadingCites } = usePaperCitations(
+    id,
+    {
+      limit: citeLimit,
+      sort: citeSort,
+      yearFrom: citeYearFrom,
+      yearTo: citeYearTo,
+    },
+    activeTab === "citations"
+  );
 
   const [isAuthorDropdownOpen, setIsAuthorDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);

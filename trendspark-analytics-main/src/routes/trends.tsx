@@ -261,8 +261,8 @@ function TrendsPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className={`text-xs font-mono ${a.trendScore >= 0 ? "text-success" : "text-destructive"}`}>
-                      {a.trendScore > 0 ? "+" : ""}{a.trendScore.toFixed(1)}%
+                    <span className="text-xs font-mono text-muted-foreground">
+                      {(a.citations ?? 0).toLocaleString()} citations
                     </span>
                     <button
                       disabled={followAuthorMut.isPending || unfollowAuthorMut.isPending}

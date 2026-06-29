@@ -165,19 +165,19 @@ function NotificationGroupDetailPage() {
 
   const setQuickFilter = (val: "all" | "openAccess" | "highImpact" | "latest") => {
     void navigate({
-      search: (prev) => ({ ...prev, filter: val, page: 1 }),
+      search: { filter: val, sort: sortBy, page: 1 } as any,
     });
   };
 
   const setSortBy = (val: "default" | "trendScore" | "citations" | "latestYear") => {
     void navigate({
-      search: (prev) => ({ ...prev, sort: val, page: 1 }),
+      search: { filter: quickFilter, sort: val, page: 1 } as any,
     });
   };
 
   const setCurrentPage = (val: number) => {
     void navigate({
-      search: (prev) => ({ ...prev, page: val }),
+      search: { filter: quickFilter, sort: sortBy, page: val } as any,
     });
   };
 

@@ -89,6 +89,7 @@ export function useDashboardSummary() {
       return res.data;
     },
     enabled: isBrowser,
+    staleTime: 5 * 60 * 1000,
   });
 }
 
