@@ -24,8 +24,8 @@ import { formatDistanceToNow, parseISO, isValid } from "date-fns";
 import { groupNotifications, type NotificationGroup } from "@/utils/notification-grouper";
 
 const groupDetailSearchSchema = z.object({
-  filter: z.enum(["all", "openAccess", "highImpact", "latest"]).catch("all").optional(),
-  sort: z.enum(["default", "trendScore", "citations", "latestYear"]).catch("default").optional(),
+  filter: z.enum(["all", "openAccess", "highImpact"]).catch("all").optional(),
+  sort: z.enum(["default", "trendScore", "citations"]).catch("default").optional(),
   page: z.coerce.number().catch(1).optional(),
 });
 
@@ -163,13 +163,13 @@ function NotificationGroupDetailPage() {
 
   const ITEMS_PER_PAGE = 10;
 
-  const setQuickFilter = (val: "all" | "openAccess" | "highImpact" | "latest") => {
+  const setQuickFilter = (val: "all" | "openAccess" | "highImpact") => {
     void navigate({
       search: { filter: val, sort: sortBy, page: 1 } as any,
     });
   };
 
-  const setSortBy = (val: "default" | "trendScore" | "citations" | "latestYear") => {
+  const setSortBy = (val: "default" | "trendScore" | "citations") => {
     void navigate({
       search: { filter: quickFilter, sort: val, page: 1 } as any,
     });
@@ -256,8 +256,6 @@ function NotificationGroupDetailPage() {
       result = result.filter((p) => p.openAccess);
     } else if (quickFilter === "highImpact") {
       result = result.filter((p) => p.citations >= 10 || (p.trendScore !== undefined && p.trendScore >= 300));
-    } else if (quickFilter === "latest") {
-      result = result.filter((p) => p.year >= new Date().getFullYear() - 1);
     }
 
     // Apply sorting
@@ -267,8 +265,6 @@ function NotificationGroupDetailPage() {
       result.sort((a, b) => (b.trendScore || 0) - (a.trendScore || 0));
     } else if (sortBy === "citations") {
       result.sort((a, b) => (b.citations || 0) - (a.citations || 0));
-    } else if (sortBy === "latestYear") {
-      result.sort((a, b) => b.year - a.year);
     }
 
     return result;
@@ -409,7 +405,6 @@ function NotificationGroupDetailPage() {
                       { key: "all", label: "Tất cả" },
                       { key: "openAccess", label: "Open Access 🔓" },
                       { key: "highImpact", label: "High Impact ⚡" },
-                      { key: "latest", label: "Mới nhất 📅" },
                     ] as const
                   ).map((f) => (
                     <button
@@ -437,7 +432,6 @@ function NotificationGroupDetailPage() {
                     <option value="default">Default Order</option>
                     <option value="trendScore">Trend Score</option>
                     <option value="citations">Citations</option>
-                    <option value="latestYear">Latest Year</option>
                   </select>
                 </div>
               </div>
