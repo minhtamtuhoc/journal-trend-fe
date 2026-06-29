@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/auth";
 import { ApiError } from "@/api/errors";
 import { useQueries } from "@tanstack/react-query";
-import { useDashboardSummary } from "@/hooks/data/use-dashboard";
+import { useDashboardSummary, KeywordChartResponse, KeywordChartPointDto } from "@/hooks/data/use-dashboard";
 import { apiClient } from "@/api/client";
 import { mockQueryDefaults } from "@/hooks/data/query-options";
 import { useMemo, useState } from "react";
@@ -25,7 +25,7 @@ const tooltipStyle = {
 } as const;
 
 const MONTH_NAMES = [
-  "", "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "", "Jan", "Feb", "Mar", "Apr", "May", "Jun", 
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
 ];
 
@@ -77,7 +77,7 @@ function TrendsPage() {
     queries: top10Keywords.map((kw) => ({
       queryKey: ["dashboard", "keyword-chart", kw.keywordId],
       queryFn: async () => {
-        const res = await apiClient.get<{ data: any }>("/v1/dashboard/keyword-chart", {
+        const res = await apiClient.get<{ data: KeywordChartResponse }>("/v1/dashboard/keyword-chart", {
           params: { keywordId: kw.keywordId },
         });
         return res.data;
@@ -90,14 +90,14 @@ function TrendsPage() {
   const isLoadingChart = loadingSummary || keywordChartsQueries.some((q) => q.isLoading);
 
   const combinedChartData = useMemo(() => {
-    const timePointsMap: { [key: string]: { name: string; sortKey: number;[kwName: string]: any } } = {};
+    const timePointsMap: { [key: string]: { name: string; sortKey: number; [kwName: string]: string | number } } = {};
 
     keywordChartsQueries.forEach((query) => {
       const data = query.data;
       if (!data || !data.history) return;
 
       const keywordName = data.keyword;
-      data.history.forEach((pt: any) => {
+      data.history.forEach((pt: KeywordChartPointDto) => {
         const sortKey = pt.year * 100 + pt.month;
         const key = `${pt.year}-${pt.month}`;
 
@@ -305,4 +305,3 @@ function TrendsPage() {
     </AppLayout>
   );
 }
-
