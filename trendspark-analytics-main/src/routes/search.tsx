@@ -4,8 +4,8 @@ import { Card } from "@/components/Card";
 import { useSearchPapers, useAvailableYears } from "@/hooks/data/use-papers";
 import { useFollowedTopics, useFollowTopic, useUnfollowTopic } from "@/hooks/data/use-follows";
 import type { Paper } from "@/types/domain";
-import { useEffect, useState } from "react";
-import { Search as SearchIcon, Download, SlidersHorizontal, ArrowUpRight } from "lucide-react";
+import { useEffect, useState, useRef } from "react";
+import { Search as SearchIcon, Download, SlidersHorizontal, ArrowUpRight, Check, ChevronDown } from "lucide-react";
 import { z } from "zod";
 import { toast } from "sonner";
 import { SaveToCollectionButton } from "@/components/SaveToCollectionButton";
@@ -13,6 +13,7 @@ import { SaveToCollectionButton } from "@/components/SaveToCollectionButton";
 const searchSchema = z.object({
   q: z.string().optional(),
   topicId: z.coerce.number().optional(),
+  searchType: z.enum(["papers", "authors", "keywords"]).optional(),
 });
 
 export const Route = createFileRoute("/search")({
@@ -45,9 +46,11 @@ function getVisiblePages(current: number, total: number) {
 }
 
 function SearchPage() {
-  const { q: initial, topicId: initialTopicId } = Route.useSearch();
+  const { q: initial, topicId: initialTopicId, searchType: initialSearchType } = Route.useSearch();
   const navigate = useNavigate();
   const [q, setQ] = useState(initial ?? "");
+  const [searchType, setSearchType] = useState<"papers" | "authors" | "keywords">(initialSearchType ?? "papers");
+  const [showDropdown, setShowDropdown] = useState(false);
   const [sort, setSort] = useState<"citations" | "year">("citations");
   const [fromYear, setFromYear] = useState<string>("all");
   const [toYear, setToYear] = useState<string>("all");
@@ -66,11 +69,31 @@ function SearchPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [q, sort, fromYear, toYear, category, minCitations]);
+  }, [initial, initialSearchType, sort, fromYear, toYear, category, minCitations]);
 
   useEffect(() => {
     setQ(initial ?? "");
   }, [initial]);
+
+  useEffect(() => {
+    if (initialSearchType) {
+      setSearchType(initialSearchType);
+    }
+  }, [initialSearchType]);
+
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   const sortParam =
     sort === "year"
@@ -80,7 +103,8 @@ function SearchPage() {
   const { data, isLoading } = useSearchPapers({
     ...(initialTopicId != null
       ? { topicId: initialTopicId }
-      : { q: q || undefined }),
+      : { q: initial || undefined }),
+    searchType: initialSearchType || undefined,
     page: page - 1,
     size: PAGE_SIZE,
     sort: sortParam,
@@ -155,6 +179,7 @@ function SearchPage() {
                       to: "/search",
                       search: {
                         q: s,
+                        searchType,
                         topicId: undefined,
                       },
                       replace: true,
@@ -170,25 +195,79 @@ function SearchPage() {
         </aside>
 
         <div className="space-y-4">
-          <div className="relative">
-            <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-            <input
-              value={q}
-              onChange={(e) => {
-                const val = e.target.value;
-                setQ(val);
-                navigate({
-                  to: "/search",
-                  search: {
-                    q: val || undefined,
-                    topicId: undefined,
-                  },
-                  replace: true,
-                });
-              }}
-              placeholder="Search papers, authors, keywords, DOIs..."
-              className="w-full h-12 pl-11 pr-4 rounded-xl bg-surface/60 border border-border focus:outline-none focus:ring-2 focus:ring-brand/40 text-sm"
-            />
+          <div className="relative w-full" ref={dropdownRef}>
+            <div className="relative flex items-center bg-surface/60 border border-border rounded-xl focus-within:ring-2 focus-within:ring-brand/40 h-12 w-full pl-4 pr-3">
+              <SearchIcon className="size-4 text-muted-foreground shrink-0" />
+              <input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    setShowDropdown(false);
+                    navigate({
+                      to: "/search",
+                      search: {
+                        q: q || undefined,
+                        searchType,
+                        topicId: undefined,
+                      },
+                      replace: true,
+                    });
+                  }
+                }}
+                placeholder={
+                  searchType === "papers"
+                    ? "Search papers..."
+                    : searchType === "authors"
+                    ? "Search authors..."
+                    : "Search keywords..."
+                }
+                className="flex-1 h-full pl-3 pr-2 bg-transparent border-none focus:outline-none text-sm placeholder:text-muted-foreground"
+              />
+              <button
+                type="button"
+                onClick={() => setShowDropdown((prev) => !prev)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-secondary/45 hover:bg-secondary/70 hover:text-foreground text-[11px] font-semibold text-muted-foreground transition-all cursor-pointer select-none shrink-0"
+              >
+                <span>{searchType === "papers" ? "Papers" : searchType === "authors" ? "Authors" : "Keywords"}</span>
+                <ChevronDown className="size-3.5 opacity-75" />
+              </button>
+            </div>
+
+            {showDropdown && (
+              <div className="absolute right-0 top-[calc(100%+6px)] w-48 bg-popover border border-border rounded-xl shadow-lg p-1.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-3 py-1.5 mb-1 border-b border-border/40">
+                  Search Option
+                </div>
+                {(["papers", "authors", "keywords"] as const).map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() => {
+                      setSearchType(type);
+                      setShowDropdown(false);
+                      navigate({
+                        to: "/search",
+                        search: {
+                          q: q || undefined,
+                          searchType: type,
+                          topicId: undefined,
+                        },
+                        replace: true,
+                      });
+                    }}
+                    className={`w-full flex items-center justify-between px-3 py-2 text-xs font-medium rounded-lg transition-colors cursor-pointer text-left ${
+                      searchType === type
+                        ? "bg-brand/10 text-brand font-semibold"
+                        : "text-muted-foreground hover:bg-secondary/40 hover:text-foreground"
+                    }`}
+                  >
+                    <span className="capitalize">{type}</span>
+                    {searchType === type && <Check className="size-3.5" />}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="flex items-center justify-between text-xs text-muted-foreground">

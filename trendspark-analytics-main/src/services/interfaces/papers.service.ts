@@ -27,6 +27,7 @@ export interface PapersService {
   listByTopic(topicId: string, limit?: number): Promise<Paper[]>;
   search(params: {
     q?: string;
+    searchType?: "papers" | "authors" | "keywords";
     topicId?: number;
     page: number;
     size: number;
