@@ -341,7 +341,7 @@ export function PaperGraph({ currentPaperTitle, nodes, isLoading, graphType }: P
           <div className="flex flex-wrap gap-x-2 gap-y-1 text-[10px] font-mono text-muted-foreground">
             <span>Năm: <strong className="text-foreground">{hoveredNode.year}</strong></span>
             <span>•</span>
-            <span>Trích dẫn: <strong className="text-brand font-bold">{hoveredNode.citations.toLocaleString()}</strong></span>
+            <span>Trích dẫn: <strong className="text-brand font-bold">{(hoveredNode.citations ?? 0).toLocaleString()}</strong></span>
           </div>
           {hoveredNode.existsLocally && (
             <div className="mt-2 text-[9px] text-brand font-bold flex items-center gap-0.5">
@@ -367,7 +367,7 @@ export function PaperGraph({ currentPaperTitle, nodes, isLoading, graphType }: P
             </div>
             <h4 className="text-sm font-bold text-foreground line-clamp-1 leading-snug">{selectedNode.title}</h4>
             <p className="text-[10px] text-muted-foreground font-mono mt-1">
-              Năm: <span className="text-foreground font-bold">{selectedNode.year}</span> · Trích dẫn: <span className="text-brand font-bold">{selectedNode.citations.toLocaleString()}</span> {selectedNode.doi && `· DOI: ${selectedNode.doi}`}
+              Năm: <span className="text-foreground font-bold">{selectedNode.year}</span> · Trích dẫn: <span className="text-brand font-bold">{(selectedNode.citations ?? 0).toLocaleString()}</span> {selectedNode.doi && `· DOI: ${selectedNode.doi}`}
             </p>
           </div>
 
