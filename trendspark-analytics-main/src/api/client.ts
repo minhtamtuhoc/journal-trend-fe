@@ -126,7 +126,7 @@ export class ApiClient {
           }
         }
 
-        if ((res.status === 401 || res.status === 403) && !isPublicAuthPath(path)) {
+        if (res.status === 401 && !isPublicAuthPath(path)) {
           authStorage.clearSession();
         }
         throw await ApiError.fromResponse(res);
