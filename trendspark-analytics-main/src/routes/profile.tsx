@@ -47,8 +47,8 @@ function ProfilePage() {
         <Card title="Account" className="lg:col-span-2">
           <form onSubmit={onSubmit} className="space-y-4">
             <Field label="Full name" value={name} onChange={setName} />
-            <Field label="Email" value={user.email} onChange={() => {}} type="email" disabled hint="Email không thể đổi qua hệ thống" />
-            <Field label="Role" value={user.role} onChange={() => {}} disabled />
+            <Field label="Email" value={user.email} onChange={() => { }} type="email" disabled hint="Email không thể đổi qua hệ thống" />
+            <Field label="Role" value={user.role} onChange={() => { }} disabled />
             <button
               type="submit"
               disabled={saving}

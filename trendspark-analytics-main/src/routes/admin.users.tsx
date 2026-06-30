@@ -153,11 +153,10 @@ function SuperAdminUsersPage() {
                       <TableCell className="font-medium text-foreground">{admin.fullName}</TableCell>
                       <TableCell className="text-muted-foreground text-sm">{admin.email}</TableCell>
                       <TableCell>
-                        <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-0.5 rounded-full font-semibold ${
-                          admin.role === "SUPER_ADMIN"
+                        <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-0.5 rounded-full font-semibold ${admin.role === "SUPER_ADMIN"
                             ? "bg-rose-500/10 text-rose-500 border border-rose-500/25"
                             : "bg-amber-500/10 text-amber-500 border border-amber-500/25"
-                        }`}>
+                          }`}>
                           {admin.role}
                         </span>
                       </TableCell>
@@ -257,13 +256,12 @@ function SuperAdminUsersPage() {
                         <TableCell className="font-medium text-foreground">{u.fullName}</TableCell>
                         <TableCell className="text-muted-foreground text-sm">{u.email}</TableCell>
                         <TableCell>
-                          <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-0.5 rounded-full font-medium ${
-                            u.role === "SUPER_ADMIN"
+                          <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-0.5 rounded-full font-medium ${u.role === "SUPER_ADMIN"
                               ? "bg-rose-500/10 text-rose-500 border border-rose-500/25 font-bold"
                               : u.role === "ADMIN"
-                              ? "bg-amber-500/10 text-amber-500 border border-amber-500/25 font-bold"
-                              : "bg-blue-500/10 text-blue-400 border border-blue-500/25"
-                          }`}>
+                                ? "bg-amber-500/10 text-amber-500 border border-amber-500/25 font-bold"
+                                : "bg-blue-500/10 text-blue-400 border border-blue-500/25"
+                            }`}>
                             {u.role}
                           </span>
                         </TableCell>

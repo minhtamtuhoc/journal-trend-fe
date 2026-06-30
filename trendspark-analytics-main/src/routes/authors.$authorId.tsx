@@ -23,7 +23,7 @@ function AuthorProfilePage() {
   if (isLoading) {
     return (
       <AppLayout>
-        <div className="p-8 text-sm text-muted-foreground">Đang tải hồ sơ tác giả…</div>
+        <div className="p-8 text-sm text-muted-foreground">Loading author profile...</div>
       </AppLayout>
     );
   }
@@ -34,29 +34,29 @@ function AuthorProfilePage() {
     <AppLayout>
       <PageHeader
         title={author.name}
-        subtitle={`${author.affiliation} · nguồn: ${author.source ?? "OpenAlex / DB"}`}
+        subtitle={`${author.affiliation} · source: ${author.source ?? "OpenAlex / DB"}`}
         action={
           <div className="flex gap-2">
             <Link
               to="/authors"
               className="inline-flex items-center gap-2 h-9 px-3 rounded-lg text-sm font-medium border border-border hover:bg-secondary/50"
             >
-              <ArrowLeft className="size-4" /> Danh sách tác giả
+              <ArrowLeft className="size-4" /> Author List
             </Link>
             <Link
               to="/search"
               search={{ q: author.name }}
               className="inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-medium border border-border hover:bg-secondary/50"
             >
-              Tìm bài báo
+              Search Papers
             </Link>
           </div>
         }
       />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <Stat label="Bài báo" value={String(author.papers)} icon={<FileText className="size-4" />} />
-        <Stat label="Trích dẫn" value={author.citations.toLocaleString()} icon={<TrendingUp className="size-4" />} />
+        <Stat label="Papers" value={String(author.papers)} icon={<FileText className="size-4" />} />
+        <Stat label="Citations" value={author.citations.toLocaleString()} icon={<TrendingUp className="size-4" />} />
         <Stat label="h-index" value={String(author.hIndex)} icon={<User className="size-4" />} />
       </div>
 
@@ -67,12 +67,12 @@ function AuthorProfilePage() {
         </div>
       ) : null}
 
-      <Card title={`Bài báo của tác giả (${papers.length})`}>
+      <Card title={`Author's Papers (${papers.length})`}>
         {loadingPapers ? (
-          <p className="text-sm text-muted-foreground p-4">Đang tải danh sách bài báo…</p>
+          <p className="text-sm text-muted-foreground p-4">Loading papers list...</p>
         ) : papers.length === 0 ? (
           <p className="text-sm text-muted-foreground p-4">
-            Chưa có bài báo liên kết trong hệ thống. Chạy sync từ Admin để đồng bộ metadata từ OpenAlex.
+            No papers linked in the system. Run sync from Admin to sync metadata from OpenAlex.
           </p>
         ) : (
           <>
@@ -115,16 +115,15 @@ function AuthorProfilePage() {
                 >
                   Previous
                 </button>
-                
+
                 {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
                   <button
                     key={p}
                     onClick={() => setCurrentPage(p)}
-                    className={`inline-flex items-center justify-center size-8 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
-                      currentPage === p
-                        ? "bg-brand/10 border-brand/45 text-brand"
-                        : "border-border hover:border-brand/40"
-                    }`}
+                    className={`inline-flex items-center justify-center size-8 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${currentPage === p
+                      ? "bg-brand/10 border-brand/45 text-brand"
+                      : "border-border hover:border-brand/40"
+                      }`}
                   >
                     {p}
                   </button>

@@ -27,9 +27,9 @@ function buildUrl(path: string, params?: RequestOptions["params"]): string {
   const url = isAbsoluteBase
     ? new URL(`${base}${normalized}`)
     : new URL(
-        `${base}${normalized}`,
-        typeof window !== "undefined" ? window.location.origin : "http://localhost",
-      );
+      `${base}${normalized}`,
+      typeof window !== "undefined" ? window.location.origin : "http://localhost",
+    );
 
   if (params) {
     for (const [key, value] of Object.entries(params)) {
@@ -44,7 +44,7 @@ function buildUrl(path: string, params?: RequestOptions["params"]): string {
 let refreshPromise: Promise<string | null> | null = null;
 
 export class ApiClient {
-  constructor(private readonly baseUrl = apiConfig.baseUrl) {}
+  constructor(private readonly baseUrl = apiConfig.baseUrl) { }
 
   private async request<T>(path: string, options: RequestOptions = {}, retryCount = 0): Promise<T> {
     const { body, params, headers, timeoutMs = DEFAULT_TIMEOUT_MS, ...init } = options;

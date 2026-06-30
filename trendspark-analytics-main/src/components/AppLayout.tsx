@@ -29,7 +29,7 @@ const nav = [
   { to: "/trends", label: "Trend Analytics", icon: TrendingUp },
   { to: "/forecast", label: "Hot Topic Forecast", icon: Sparkles },
   { to: "/search", label: "Search Explorer", icon: Search },
-  { to: "/authors", label: "Researchers", icon: Users },
+  { to: "/authors", label: "Authors", icon: Users },
   { to: "/collections", label: "Collections", icon: Library },
   { to: "/bookmarks", label: "Bookmarks", icon: Bookmark },
   { to: "/notifications", label: "Notifications", icon: Bell },
@@ -62,7 +62,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Sidebar */}
       <aside className="w-64 shrink-0 border-r border-border glass flex flex-col min-h-screen max-h-screen sticky top-0">
         <Link to="/dashboard" className="p-6 flex items-center gap-3">
-          <img src="/logo.png?v=3" alt="Helix Analytics" className="size-9 rounded-lg object-contain glow-brand border border-border/40 shrink-0 bg-surface-elevated p-1.5" />
+          <img
+            src="/logo.png?v=3"
+            alt="Helix Analytics"
+            className="size-9 rounded-lg object-contain glow-brand border border-border/40 shrink-0 bg-surface-elevated p-1.5"
+            style={theme === "light" ? { background: "var(--gradient-brand)" } : undefined}
+          />
           <div>
             <div className="font-bold tracking-tight text-foreground text-sm uppercase">Helix Analytics</div>
             <div className="text-[10px] text-muted-foreground font-mono">v4.0 · intelligence</div>
@@ -78,11 +83,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               <Link
                 key={item.to}
                 to={item.to}
-                className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                  active
+                className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${active
                     ? "bg-brand/10 text-brand border border-brand/30"
                     : "text-muted-foreground hover:text-foreground hover:bg-secondary/50 border border-transparent"
-                }`}
+                  }`}
               >
                 <Icon className="size-4 shrink-0" />
                 <span className="flex-1">{item.label}</span>
@@ -96,9 +100,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <div className="px-3 pt-6 pb-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Account</div>
           <Link
             to="/profile"
-            className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-              pathname === "/profile" ? "bg-brand/10 text-brand border border-brand/30" : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-            }`}
+            className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${pathname === "/profile" ? "bg-brand/10 text-brand border border-brand/30" : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+              }`}
           >
             <Settings className="size-4" />
             Profile Settings
@@ -106,11 +109,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           {isAdminUser(user) && (
             <Link
               to="/admin"
-              className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                pathname.startsWith("/admin") && !pathname.startsWith("/admin/users")
+              className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${pathname.startsWith("/admin") && !pathname.startsWith("/admin/users")
                   ? "bg-brand/10 text-brand border border-brand/30"
                   : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-              }`}
+                }`}
             >
               <Shield className="size-4" />
               <span className="flex-1">Admin Panel</span>
@@ -119,11 +121,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           {isSuperAdminUser(user) && (
             <Link
               to="/admin/users"
-              className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                pathname.startsWith("/admin/users")
+              className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${pathname.startsWith("/admin/users")
                   ? "bg-brand/10 text-brand border border-brand/30"
                   : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-              }`}
+                }`}
             >
               <Shield className="size-4 text-rose-400" />
               <span className="flex-1 text-rose-400">User & Admin Management</span>

@@ -41,7 +41,7 @@ function VerifyEmailPage() {
           clearInterval(interval);
           setVerified(true);
           toast.success("Xác thực email thành công!");
-          
+
           // Wait 2 seconds and redirect to login
           setTimeout(() => {
             navigate({ to: "/login" });

@@ -57,9 +57,8 @@ function TopicPapersPage() {
                     },
                   });
                 }}
-                className={`inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-semibold border transition-colors ${
-                  isFollowing ? "border-brand/45 bg-brand/10 text-brand" : "text-brand-foreground glow-brand border-transparent"
-                }`}
+                className={`inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-semibold border transition-colors ${isFollowing ? "border-brand/45 bg-brand/10 text-brand" : "text-brand-foreground glow-brand border-transparent"
+                  }`}
                 style={isFollowing ? undefined : { background: "var(--gradient-brand)" }}
               >
                 {isFollowing ? <BellOff className="size-4" /> : <Bell className="size-4" />}

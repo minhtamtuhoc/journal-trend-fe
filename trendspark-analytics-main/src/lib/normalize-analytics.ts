@@ -23,42 +23,42 @@ function buildHighlights(snapshot: AnalyticsSnapshot, topics: TopicTrend[]): Das
   return {
     topKeyword: topKw
       ? {
-          id: topKw.id,
-          title: topKw.term,
-          subtitle: "Top trending keyword",
-          metric: topKw.trendScore,
-          metricLabel: "trend %",
-        }
+        id: topKw.id,
+        title: topKw.term,
+        subtitle: "Top trending keyword",
+        metric: topKw.trendScore,
+        metricLabel: "trend %",
+      }
       : topTopic
         ? {
-            id: topTopic.id,
-            title: topTopic.name,
-            subtitle: "Top topic trend",
-            metric: topTopic.trendScore,
-            metricLabel: "trend %",
-          }
+          id: topTopic.id,
+          title: topTopic.name,
+          subtitle: "Top topic trend",
+          metric: topTopic.trendScore,
+          metricLabel: "trend %",
+        }
         : emptyHighlight("Chưa có keyword", "Chạy sync từ Admin"),
 
     topAuthor: topAuthor
       ? {
-          id: topAuthor.id,
-          title: topAuthor.name,
-          subtitle: topAuthor.affiliation,
-          metric: topAuthor.citations,
-          metricLabel: "citations",
-        }
+        id: topAuthor.id,
+        title: topAuthor.name,
+        subtitle: topAuthor.affiliation,
+        metric: topAuthor.citations,
+        metricLabel: "citations",
+      }
       : emptyHighlight("Chưa có tác giả", "Cần dữ liệu từ sync"),
 
     topPaper: emptyHighlight("Chưa có bài nổi bật", "Cần dữ liệu từ sync"),
 
     topFollowedTopic: topTopic
       ? {
-          id: topTopic.id,
-          title: topTopic.name,
-          subtitle: "Top topic trend",
-          metric: topTopic.paperCount,
-          metricLabel: "papers",
-        }
+        id: topTopic.id,
+        title: topTopic.name,
+        subtitle: "Top topic trend",
+        metric: topTopic.paperCount,
+        metricLabel: "papers",
+      }
       : emptyHighlight("Chưa có topic", "Follow topic sau khi sync"),
   };
 }
@@ -77,11 +77,11 @@ export function normalizeAnalyticsSnapshot(raw: AnalyticsSnapshot): AnalyticsSna
 
   const highlights = hasServerHighlights
     ? {
-        topKeyword: raw.highlights!.topKeyword ?? emptyHighlight("—", ""),
-        topAuthor: raw.highlights!.topAuthor ?? emptyHighlight("—", ""),
-        topPaper: raw.highlights!.topPaper ?? emptyHighlight("—", ""),
-        topFollowedTopic: raw.highlights!.topFollowedTopic ?? emptyHighlight("—", ""),
-      }
+      topKeyword: raw.highlights!.topKeyword ?? emptyHighlight("—", ""),
+      topAuthor: raw.highlights!.topAuthor ?? emptyHighlight("—", ""),
+      topPaper: raw.highlights!.topPaper ?? emptyHighlight("—", ""),
+      topFollowedTopic: raw.highlights!.topFollowedTopic ?? emptyHighlight("—", ""),
+    }
     : buildHighlights(raw, topics);
 
   return {

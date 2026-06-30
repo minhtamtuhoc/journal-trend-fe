@@ -84,7 +84,7 @@ export function PaperGraph({ currentPaperTitle, nodes, isLoading }: PaperGraphPr
       );
 
       const stagger = (ringIndex % 2) * (0.15 * Math.PI / currentRingCapacity);
-      
+
       let angle = minAngle + (maxAngle - minAngle) / 2;
       if (totalNodesInThisRing > 1) {
         const angleStep = (maxAngle - minAngle) / (totalNodesInThisRing - 1);
@@ -185,7 +185,7 @@ export function PaperGraph({ currentPaperTitle, nodes, isLoading }: PaperGraphPr
   const handleNodeHover = (e: MouseEvent<SVGGElement>, node: CombinedGraphNode) => {
     if (isDragging) return;
     setHoveredNode(node);
-    
+
     // Position tooltip relative to container
     if (containerRef.current) {
       const rect = containerRef.current.getBoundingClientRect();
@@ -198,7 +198,7 @@ export function PaperGraph({ currentPaperTitle, nodes, isLoading }: PaperGraphPr
 
   return (
     <div className="relative flex flex-col w-full h-[520px] rounded-2xl border border-border bg-secondary/5 overflow-hidden glass select-none" ref={containerRef}>
-      
+
       {/* Zoom Controls */}
       <div className="absolute top-4 right-4 z-10 flex flex-col gap-1.5 p-1 rounded-xl bg-popover/80 border border-border backdrop-blur">
         <button onClick={zoomIn} title="Zoom In" className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors cursor-pointer">
@@ -424,11 +424,10 @@ export function PaperGraph({ currentPaperTitle, nodes, isLoading }: PaperGraphPr
         <div className="absolute bottom-4 right-4 left-4 z-10 p-4 rounded-xl bg-popover/95 border border-brand/30 backdrop-blur shadow-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 animate-slide-up">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 mb-1">
-              <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded ${
-                selectedNode.relationType === "reference"
+              <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded ${selectedNode.relationType === "reference"
                   ? "bg-chart-2/10 text-chart-2"
                   : "bg-chart-5/10 text-chart-5"
-              }`}>
+                }`}>
                 {selectedNode.relationType === "reference" ? "Bài viết được trích dẫn (Reference)" : "Bài viết trích dẫn (Citation)"}
               </span>
               {selectedNode.existsLocally ? (

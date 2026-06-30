@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
+import { useTheme } from "@/theme";
 import { motion } from "framer-motion";
 import { Sparkles, ArrowRight, TrendingUp, Search, Bell, Bookmark, BarChart3, ShieldCheck } from "lucide-react";
 
@@ -27,11 +28,12 @@ const features = [
   { icon: Search, title: "Smart Search", body: "Filter across journals, authors, citations, impact factor & trend score." },
   { icon: Bookmark, title: "Follow Center", body: "Follow authors and keywords to keep signals on your radar." },
   { icon: Bell, title: "Signal Alerts", body: "Gmail-style notifications when followed signals move." },
-  { icon: BarChart3, title: "Live Dashboards", body: "Line, area, pie, radar, and heatmap visualizations." },
+  { icon: BarChart3, title: "Live Dashboards", body: "Live, area, pie, radar, and heatmap visualizations." },
   { icon: ShieldCheck, title: "Open metadata APIs", body: "Synced from OpenAlex, Crossref, and Semantic Scholar with DOI dedup." },
 ];
 
 function Index() {
+  const { theme } = useTheme();
   return (
     <div className="min-h-screen text-foreground">
       {/* Ticker */}
@@ -51,7 +53,12 @@ function Index() {
       {/* Nav */}
       <nav className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-3">
-          <img src="/logo.png?v=3" alt="Helix Analytics" className="size-8 rounded-lg object-contain glow-brand border border-border/40 shrink-0 bg-surface-elevated p-1" />
+          <img
+            src="/logo.png?v=3"
+            alt="Helix Analytics"
+            className="size-8 rounded-lg object-contain glow-brand border border-border/40 shrink-0 bg-surface-elevated p-1"
+            style={theme === "light" ? { background: "var(--gradient-brand)" } : undefined}
+          />
           <span className="font-bold uppercase tracking-tight">Helix Analytics</span>
         </Link>
         <div className="flex items-center gap-2">

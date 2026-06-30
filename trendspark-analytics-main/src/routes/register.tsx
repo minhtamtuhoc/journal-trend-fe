@@ -73,7 +73,7 @@ function RegisterPage() {
     if (TAKEN.includes(email)) return setErr("Email already in use");
     setErr(null);
     setLoading(true);
-    
+
     const data = { name, email, password, role };
     console.log("FORM DATA", data);
 
@@ -88,7 +88,7 @@ function RegisterPage() {
           : error instanceof Error
             ? error.message
             : "Registration failed";
-      
+
       if (message.toLowerCase().includes("role")) {
         setRoleErr(message);
       } else {
@@ -110,7 +110,7 @@ function RegisterPage() {
         <Field label="Full name" value={name} onChange={setName} placeholder="Dr. Jane Doe" />
         <Field label="Email" type="email" value={email} onChange={setEmail} placeholder="you@lab.edu" />
         <Field label="Password" type="password" value={password} onChange={setPassword} placeholder="At least 8 characters" />
-        
+
         <div>
           <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Role</label>
           <Select value={role} onValueChange={(val) => { setRole(val); setRoleErr(null); }}>

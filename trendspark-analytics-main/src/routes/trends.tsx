@@ -90,7 +90,7 @@ function TrendsPage() {
   const isLoadingChart = loadingSummary || keywordChartsQueries.some((q) => q.isLoading);
 
   const combinedChartData = useMemo(() => {
-    const timePointsMap: { [key: string]: { name: string; sortKey: number; [kwName: string]: string | number } } = {};
+    const timePointsMap: { [key: string]: { name: string; sortKey: number;[kwName: string]: string | number } } = {};
 
     keywordChartsQueries.forEach((query) => {
       const data = query.data;

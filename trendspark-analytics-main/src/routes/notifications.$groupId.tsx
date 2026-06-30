@@ -275,7 +275,7 @@ function NotificationGroupDetailPage() {
     if (uniquePapers.length === 0) return null;
     const oaCount = uniquePapers.filter(p => p.openAccess).length;
     const hiCount = uniquePapers.filter(p => p.citations >= 10 || (p.trendScore !== undefined && p.trendScore >= 300)).length;
-    
+
     // Source counts
     const sources: Record<string, number> = {};
     uniquePapers.forEach(p => {
@@ -411,11 +411,10 @@ function NotificationGroupDetailPage() {
                       key={f.key}
                       type="button"
                       onClick={() => setQuickFilter(f.key)}
-                      className={`px-3 py-1.5 text-xs font-semibold rounded-md border transition-all cursor-pointer ${
-                        quickFilter === f.key
+                      className={`px-3 py-1.5 text-xs font-semibold rounded-md border transition-all cursor-pointer ${quickFilter === f.key
                           ? "bg-brand/10 border-brand/30 text-brand font-bold"
                           : "bg-surface text-muted-foreground border-border hover:bg-secondary"
-                      }`}
+                        }`}
                     >
                       {f.label}
                     </button>

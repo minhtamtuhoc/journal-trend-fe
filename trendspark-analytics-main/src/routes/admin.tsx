@@ -311,15 +311,14 @@ function AdminPage() {
           {AUDIT_LOGS.map((l) => (
             <div key={l.id} className="px-6 py-3 flex items-center gap-4 text-sm">
               <span
-                className={`size-1.5 rounded-full ${
-                  l.status === "ok" || l.status === "SUCCESS" || l.status === "success"
+                className={`size-1.5 rounded-full ${l.status === "ok" || l.status === "SUCCESS" || l.status === "success"
                     ? "bg-success"
                     : l.status === "RUNNING" || l.status === "running"
                       ? "bg-blue-400 animate-pulse"
                       : l.status === "FAILED" || l.status === "failed" || l.status === "error"
                         ? "bg-destructive"
                         : "bg-warning"
-                }`}
+                  }`}
                 title={l.status}
               />
               <span className="font-mono text-[11px] text-muted-foreground w-24 shrink-0">

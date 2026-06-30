@@ -171,9 +171,8 @@ function PaperDetailPage() {
                     },
                   });
                 }}
-                className={`inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-semibold border transition-all ${
-                  journalFollowed ? "bg-brand/10 border-brand/45 text-brand" : "border-border hover:border-brand/40"
-                }`}
+                className={`inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-semibold border transition-all ${journalFollowed ? "bg-brand/10 border-brand/45 text-brand" : "border-border hover:border-brand/40"
+                  }`}
               >
                 <BookMarked className="size-4" />
                 {journalFollowed ? "Following journal" : "Follow journal"}
@@ -219,11 +218,10 @@ function PaperDetailPage() {
                                 e.stopPropagation();
                                 handleAuthorFollow(author.id, author.name);
                               }}
-                              className={`text-[10px] font-bold px-2 py-1 rounded-md border transition-all cursor-pointer ${
-                                followed
+                              className={`text-[10px] font-bold px-2 py-1 rounded-md border transition-all cursor-pointer ${followed
                                   ? "border-brand/40 bg-brand/10 text-brand"
                                   : "border-border hover:border-brand/40 hover:text-brand"
-                              }`}
+                                }`}
                             >
                               {followed ? "Following" : "Follow"}
                             </button>
@@ -252,21 +250,19 @@ function PaperDetailPage() {
           <div className="flex gap-2 border-b border-border pb-3">
             <button
               onClick={() => setActiveTab("overview")}
-              className={`px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer ${
-                activeTab === "overview"
+              className={`px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer ${activeTab === "overview"
                   ? "bg-brand/10 border border-brand/40 text-brand"
                   : "text-muted-foreground hover:text-foreground"
-              }`}
+                }`}
             >
               Overview
             </button>
             <button
               onClick={() => setActiveTab("graph")}
-              className={`px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer ${
-                activeTab === "graph"
+              className={`px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer ${activeTab === "graph"
                   ? "bg-brand/10 border border-brand/40 text-brand"
                   : "text-muted-foreground hover:text-foreground"
-              }`}
+                }`}
             >
               Interactive Network Graph
             </button>
@@ -293,11 +289,10 @@ function PaperDetailPage() {
                             });
                           }
                         }}
-                        className={`text-xs px-2.5 py-1 rounded-full border flex items-center gap-1 transition-all cursor-pointer ${
-                          followed
+                        className={`text-xs px-2.5 py-1 rounded-full border flex items-center gap-1 transition-all cursor-pointer ${followed
                             ? "border-brand/40 bg-brand/10 text-brand font-medium hover:bg-brand/20"
                             : "border-border bg-secondary/40 text-foreground hover:border-brand/30"
-                        }`}
+                          }`}
                       >
                         <span>{k.name}</span>
                         <span className="text-[9px] opacity-75">{followed ? "✓" : "+"}</span>
@@ -487,11 +482,10 @@ function PaperDetailPage() {
                       <button
                         disabled={followAuthorMut.isPending || unfollowAuthorMut.isPending}
                         onClick={() => handleAuthorFollow(author.id, a)}
-                        className={`text-[10px] px-2 py-1 rounded-md border transition-all ${
-                          followed
+                        className={`text-[10px] px-2 py-1 rounded-md border transition-all ${followed
                             ? "border-brand/40 bg-brand/10 text-brand"
                             : "border-border hover:border-brand/40 hover:text-brand"
-                        }`}
+                          }`}
                       >
                         {followed ? "Following" : "Follow"}
                       </button>
@@ -531,8 +525,8 @@ function Metric({ label, value, accent = false, tooltip }: { label: string; valu
   const colorClass = accent === "success" || accent === true
     ? "text-success"
     : accent === "destructive"
-    ? "text-destructive"
-    : "text-foreground";
+      ? "text-destructive"
+      : "text-foreground";
   return (
     <div>
       <p className="text-[10px] uppercase tracking-widest text-muted-foreground flex items-center gap-1">

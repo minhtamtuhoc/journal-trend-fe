@@ -50,22 +50,24 @@ function AuthorsIndexPage() {
   return (
     <AppLayout>
       <PageHeader
-        title="Researchers"
-        subtitle="Tác giả từ OpenAlex · nhấn để xem hồ sơ và danh sách bài báo"
+        title="Authors"
+        subtitle="Authors from OpenAlex · click to view profiles and list of papers"
       />
 
       <div className="flex flex-col md:flex-row items-stretch gap-4 mb-6">
-        <div className="relative flex-1">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search researchers by name..."
-            className="w-full h-14 pl-11 pr-4 rounded-2xl bg-surface/60 border border-border focus:outline-none focus:ring-2 focus:ring-brand/40 text-sm placeholder:text-muted-foreground"
-          />
+        <div className="flex-1">
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search Authors by name..."
+              className="w-full h-14 pl-11 pr-4 rounded-2xl bg-surface/60 border border-border focus:outline-none focus:ring-2 focus:ring-brand/40 text-sm placeholder:text-muted-foreground"
+            />
+          </div>
         </div>
-        
+
         <div className="flex gap-4 shrink-0">
           <button
             onClick={() => {
@@ -75,7 +77,7 @@ function AuthorsIndexPage() {
             className="glass rounded-2xl p-4 flex flex-col justify-between min-w-32 border border-border hover:border-brand/40 hover:bg-brand/5 transition-all text-left group cursor-pointer"
             title="Click to reset search"
           >
-            <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mb-1">Total Researchers</div>
+            <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mb-1">Total Authors</div>
             <div className="text-2xl font-bold font-mono text-foreground group-hover:text-brand">
               {isLoading && !pageData ? "..." : (pageData?.totalElements ?? 0).toLocaleString()}
             </div>
@@ -181,11 +183,10 @@ function AuthorsIndexPage() {
                         });
                       }
                     }}
-                    className={`absolute top-4 right-4 z-10 p-1.5 rounded-md border transition-colors cursor-pointer ${
-                      followed
-                        ? "border-brand/40 bg-brand/10 text-brand"
-                        : "border-border text-muted-foreground hover:border-brand/40 hover:text-brand"
-                    }`}
+                    className={`absolute top-4 right-4 z-10 p-1.5 rounded-md border transition-colors cursor-pointer ${followed
+                      ? "border-brand/40 bg-brand/10 text-brand"
+                      : "border-border text-muted-foreground hover:border-brand/40 hover:text-brand"
+                      }`}
                     title={followed ? "Unfollow author" : "Follow author"}
                   >
                     <Bookmark className="size-3" fill={followed ? "currentColor" : "none"} />
@@ -205,7 +206,7 @@ function AuthorsIndexPage() {
               >
                 Previous
               </button>
-              
+
               {getVisiblePages(page, totalPages).map((p, i) => (
                 p === "..." ? (
                   <span key={`dots-${i}`} className="px-1 text-muted-foreground">...</span>
@@ -213,11 +214,10 @@ function AuthorsIndexPage() {
                   <button
                     key={p}
                     onClick={() => setPage(p as number)}
-                    className={`inline-flex items-center justify-center size-8 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
-                      page === p
-                        ? "bg-brand/10 border-brand/45 text-brand"
-                        : "border-border hover:border-brand/40"
-                    }`}
+                    className={`inline-flex items-center justify-center size-8 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${page === p
+                      ? "bg-brand/10 border-brand/45 text-brand"
+                      : "border-border hover:border-brand/40"
+                      }`}
                   >
                     {p}
                   </button>

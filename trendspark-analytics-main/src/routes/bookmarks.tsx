@@ -277,7 +277,7 @@ function BookmarksPage() {
               </div>
               <h3 className="font-semibold text-sm text-foreground">No followed authors</h3>
               <p className="text-xs text-muted-foreground mt-1 max-w-xs mx-auto px-4">
-                Follow researchers from paper detail views or trending authors lists to monitor
+                Follow authors from paper detail views or trending authors lists to monitor
                 their velocity.
               </p>
               <Link
