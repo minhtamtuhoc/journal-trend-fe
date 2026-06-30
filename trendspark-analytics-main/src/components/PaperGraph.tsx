@@ -3,21 +3,24 @@ import { Link } from "@tanstack/react-router";
 import { ZoomIn, ZoomOut, Maximize2, ExternalLink, HelpCircle, ArrowUpRight, FileText } from "lucide-react";
 import type { GraphPaperNode } from "@/services/interfaces/papers.service";
 
-interface PaperGraphProps {
-  currentPaperTitle: string;
-  nodes: GraphPaperNode[];
-  isLoading: boolean;
-  graphType: "references" | "citations";
+export interface CombinedGraphNode extends GraphPaperNode {
+  relationType: "reference" | "citation";
 }
 
-export function PaperGraph({ currentPaperTitle, nodes, isLoading, graphType }: PaperGraphProps) {
+interface PaperGraphProps {
+  currentPaperTitle: string;
+  nodes: CombinedGraphNode[];
+  isLoading: boolean;
+}
+
+export function PaperGraph({ currentPaperTitle, nodes, isLoading }: PaperGraphProps) {
   const [zoom, setZoom] = useState<number>(0.8);
   const [panX, setPanX] = useState<number>(0);
   const [panY, setPanY] = useState<number>(0);
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const [hoveredNode, setHoveredNode] = useState<GraphPaperNode | null>(null);
-  const [selectedNode, setSelectedNode] = useState<GraphPaperNode | null>(null);
+  const [hoveredNode, setHoveredNode] = useState<CombinedGraphNode | null>(null);
+  const [selectedNode, setSelectedNode] = useState<CombinedGraphNode | null>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -47,49 +50,79 @@ export function PaperGraph({ currentPaperTitle, nodes, isLoading, graphType }: P
         <HelpCircle className="size-8 text-muted-foreground/50 mb-3" />
         <p className="font-semibold text-foreground mb-1">Không tìm thấy dữ liệu liên kết</p>
         <p className="text-xs text-muted-foreground max-w-sm">
-          {graphType === "references"
-            ? "Bài báo này chưa đồng bộ danh sách bài tham chiếu hoặc OpenAlex chưa cập nhật."
-            : "Chưa tìm thấy bài viết nào trích dẫn bài báo này trên OpenAlex."}
+          Chưa tìm thấy bài viết nào tham chiếu hoặc trích dẫn bài báo này trên OpenAlex.
         </p>
       </div>
     );
   }
 
-  // Calculate node positions deterministically
-  const positionedNodes = nodes.map((node, index) => {
-    let ringIndex = 0;
-    let nodeInRingIndex = index;
-    let currentRingCapacity = 8;
-    let totalCapacitySoFar = 0;
+  // Distribute nodes in concentric rings within their respective sectors:
+  // References on the left, Citations on the right
+  const positionNodesInSector = (
+    subNodes: CombinedGraphNode[],
+    minAngle: number,
+    maxAngle: number,
+    startIndex: number
+  ) => {
+    return subNodes.map((node, index) => {
+      let ringIndex = 0;
+      let nodeInRingIndex = index;
+      let currentRingCapacity = 4;
+      let totalCapacitySoFar = 0;
 
-    // Distribute nodes in concentric rings: Ring 0 (cap 8), Ring 1 (cap 16), Ring 2 (cap 24)...
-    while (nodeInRingIndex >= currentRingCapacity) {
-      nodeInRingIndex -= currentRingCapacity;
-      totalCapacitySoFar += currentRingCapacity;
-      ringIndex++;
-      currentRingCapacity = 8 + ringIndex * 8;
-    }
+      while (nodeInRingIndex >= currentRingCapacity) {
+        nodeInRingIndex -= currentRingCapacity;
+        totalCapacitySoFar += currentRingCapacity;
+        ringIndex++;
+        currentRingCapacity = 4 + ringIndex * 4;
+      }
 
-    const ringRadius = 140 + ringIndex * 100;
-    const totalNodesInThisRing = Math.min(
-      currentRingCapacity,
-      nodes.length - totalCapacitySoFar
-    );
-    
-    // Add offset for alternate rings to look staggered
-    const angleOffset = (ringIndex % 2) * (Math.PI / currentRingCapacity);
-    const angle = (nodeInRingIndex / totalNodesInThisRing) * 2 * Math.PI + angleOffset;
+      const ringRadius = 130 + ringIndex * 90;
+      const totalNodesInThisRing = Math.min(
+        currentRingCapacity,
+        subNodes.length - totalCapacitySoFar
+      );
 
-    const x = ringRadius * Math.cos(angle);
-    const y = ringRadius * Math.sin(angle);
+      const stagger = (ringIndex % 2) * (0.15 * Math.PI / currentRingCapacity);
+      
+      let angle = minAngle + (maxAngle - minAngle) / 2;
+      if (totalNodesInThisRing > 1) {
+        const angleStep = (maxAngle - minAngle) / (totalNodesInThisRing - 1);
+        angle = minAngle + nodeInRingIndex * angleStep + stagger;
+      } else {
+        angle = angle + stagger;
+      }
 
-    return {
-      ...node,
-      x,
-      y,
-      index,
-    };
-  });
+      const x = ringRadius * Math.cos(angle);
+      const y = ringRadius * Math.sin(angle);
+
+      return {
+        ...node,
+        x,
+        y,
+        index: startIndex + index,
+      };
+    });
+  };
+
+  const refNodes = nodes.filter((n) => n.relationType === "reference");
+  const citeNodes = nodes.filter((n) => n.relationType === "citation");
+
+  const positionedRefNodes = positionNodesInSector(
+    refNodes,
+    Math.PI / 2 + 0.15,
+    (3 * Math.PI) / 2 - 0.15,
+    0
+  );
+
+  const positionedCiteNodes = positionNodesInSector(
+    citeNodes,
+    -Math.PI / 2 + 0.15,
+    Math.PI / 2 - 0.15,
+    refNodes.length
+  );
+
+  const positionedNodes = [...positionedRefNodes, ...positionedCiteNodes];
 
   // Pan handlers
   const handleMouseDown = (e: MouseEvent<SVGSVGElement>) => {
@@ -149,7 +182,7 @@ export function PaperGraph({ currentPaperTitle, nodes, isLoading, graphType }: P
   };
 
   // Node hover handler
-  const handleNodeHover = (e: MouseEvent<SVGGElement>, node: GraphPaperNode) => {
+  const handleNodeHover = (e: MouseEvent<SVGGElement>, node: CombinedGraphNode) => {
     if (isDragging) return;
     setHoveredNode(node);
     
@@ -186,14 +219,22 @@ export function PaperGraph({ currentPaperTitle, nodes, isLoading, graphType }: P
           <span className="text-foreground font-semibold">Bài viết hiện tại</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="size-2.5 rounded-full border border-brand bg-brand/10" />
-          <span>Bài viết có sẵn trong hệ thống (Xem chi tiết được)</span>
+          <span className="size-2.5 rounded-full border border-chart-2 bg-chart-2/20" />
+          <span>Nửa bên trái: Bài viết được trích dẫn (References)</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="size-2.5 rounded-full border border-muted-foreground/30 bg-muted/20" />
-          <span>Bài viết ngoài hệ thống (Chỉ xem metadata)</span>
+          <span className="size-2.5 rounded-full border border-chart-5 bg-chart-5/20" />
+          <span>Nửa bên phải: Bài viết trích dẫn (Citations)</span>
         </div>
-        <div className="text-[9px] text-muted-foreground/60 border-t border-border/50 pt-1.5 mt-1.5">
+        <div className="flex items-center gap-2 border-t border-border/50 pt-1 mt-1">
+          <span className="size-2 rounded-full bg-foreground" />
+          <span>Đường nét liền: Có sẵn trong hệ thống (Xem chi tiết)</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="size-2 rounded-full bg-muted-foreground/40" />
+          <span>Đường nét đứt: Ngoài hệ thống (Chỉ xem metadata)</span>
+        </div>
+        <div className="text-[9px] text-muted-foreground/60 border-t border-border/50 pt-1 mt-1">
           * Lăn chuột để zoom · Nhấp kéo để di chuyển sơ đồ
         </div>
       </div>
@@ -213,29 +254,44 @@ export function PaperGraph({ currentPaperTitle, nodes, isLoading, graphType }: P
       >
         <g transform={`translate(${400 + panX}, ${250 + panY}) scale(${zoom})`}>
           {/* Connection Lines */}
-          {positionedNodes.map((node) => (
-            <line
-              key={`line-${node.openAlexId}`}
-              x1={0}
-              y1={0}
-              x2={node.x}
-              y2={node.y}
-              stroke={node.existsLocally ? "url(#line-brand-gradient)" : "url(#line-muted-gradient)"}
-              strokeWidth={node.existsLocally ? 1.5 : 1}
-              strokeDasharray={node.existsLocally ? "0" : "4 4"}
-              className="opacity-60"
-            />
-          ))}
+          {positionedNodes.map((node) => {
+            const isRef = node.relationType === "reference";
+            const isLocal = node.existsLocally;
+            const strokeVal = isRef
+              ? (isLocal ? "url(#line-ref-local-gradient)" : "url(#line-ref-external-gradient)")
+              : (isLocal ? "url(#line-cite-local-gradient)" : "url(#line-cite-external-gradient)");
+            return (
+              <line
+                key={`line-${node.openAlexId}`}
+                x1={0}
+                y1={0}
+                x2={node.x}
+                y2={node.y}
+                stroke={strokeVal}
+                strokeWidth={isLocal ? 1.8 : 1.2}
+                strokeDasharray={isLocal ? "0" : "3 3"}
+                className="opacity-70"
+              />
+            );
+          })}
 
           {/* Background Gradients Definition */}
           <defs>
-            <linearGradient id="line-brand-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="var(--brand)" stopOpacity={0.8} />
-              <stop offset="100%" stopColor="var(--brand)" stopOpacity={0.2} />
+            <linearGradient id="line-ref-local-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="var(--chart-2)" stopOpacity={0.9} />
+              <stop offset="100%" stopColor="var(--chart-2)" stopOpacity={0.3} />
             </linearGradient>
-            <linearGradient id="line-muted-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="var(--muted-foreground)" stopOpacity={0.5} />
-              <stop offset="100%" stopColor="var(--border)" stopOpacity={0.1} />
+            <linearGradient id="line-ref-external-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="var(--chart-2)" stopOpacity={0.4} />
+              <stop offset="100%" stopColor="var(--chart-2)" stopOpacity={0.1} />
+            </linearGradient>
+            <linearGradient id="line-cite-local-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="var(--chart-5)" stopOpacity={0.9} />
+              <stop offset="100%" stopColor="var(--chart-5)" stopOpacity={0.3} />
+            </linearGradient>
+            <linearGradient id="line-cite-external-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="var(--chart-5)" stopOpacity={0.4} />
+              <stop offset="100%" stopColor="var(--chart-5)" stopOpacity={0.1} />
             </linearGradient>
           </defs>
 
@@ -304,21 +360,33 @@ export function PaperGraph({ currentPaperTitle, nodes, isLoading, graphType }: P
                 <circle
                   r={16}
                   fill="var(--surface)"
-                  stroke={node.existsLocally ? "var(--brand)" : "var(--border)"}
+                  stroke={
+                    node.existsLocally
+                      ? (node.relationType === "reference" ? "var(--chart-2)" : "var(--chart-5)")
+                      : "var(--border)"
+                  }
                   strokeWidth={node.existsLocally ? 2.5 : 1.5}
-                  className="transition-all duration-300 group-hover:scale-115 group-hover:stroke-brand"
+                  className="transition-all duration-300 group-hover:scale-115"
                 />
                 {/* Node Center Fill */}
                 <circle
                   r={9}
-                  fill={node.existsLocally ? "var(--brand)" : "var(--muted)"}
+                  fill={
+                    node.existsLocally
+                      ? (node.relationType === "reference" ? "var(--chart-2)" : "var(--chart-5)")
+                      : "var(--muted)"
+                  }
                   className="opacity-70 group-hover:opacity-100 transition-opacity"
                 />
                 {/* Node Label (Number index) */}
                 <text
                   textAnchor="middle"
                   y={3}
-                  fill={node.existsLocally ? "var(--brand-foreground)" : "var(--muted-foreground)"}
+                  fill={
+                    node.existsLocally
+                      ? "var(--background)"
+                      : "var(--muted-foreground)"
+                  }
                   fontSize={8}
                   fontWeight="bold"
                   className="pointer-events-none select-none font-mono group-hover:fill-foreground"
@@ -356,8 +424,12 @@ export function PaperGraph({ currentPaperTitle, nodes, isLoading, graphType }: P
         <div className="absolute bottom-4 right-4 left-4 z-10 p-4 rounded-xl bg-popover/95 border border-brand/30 backdrop-blur shadow-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 animate-slide-up">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 mb-1">
-              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-brand/10 text-brand">
-                {graphType === "references" ? "Bài viết được trích dẫn" : "Bài viết trích dẫn"} #{positionedNodes.find(n => n.openAlexId === selectedNode.openAlexId)?.index! + 1}
+              <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded ${
+                selectedNode.relationType === "reference"
+                  ? "bg-chart-2/10 text-chart-2"
+                  : "bg-chart-5/10 text-chart-5"
+              }`}>
+                {selectedNode.relationType === "reference" ? "Bài viết được trích dẫn (Reference)" : "Bài viết trích dẫn (Citation)"}
               </span>
               {selectedNode.existsLocally ? (
                 <span className="text-[9px] font-mono bg-success/10 text-success px-1.5 py-0.5 rounded border border-success/20">Có sẵn trong hệ thống</span>
