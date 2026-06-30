@@ -23,14 +23,14 @@ function PaperDetailPage() {
   const category = paper?.category ?? "General";
   const { data: related = [] } = useRelatedPapers(id, category);
 
-  const [activeTab, setActiveTab] = useState<"overview" | "references" | "citations">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "graph">("overview");
 
   // References configuration
   const [refLimit, setRefLimit] = useState(50);
   const { data: references = [], isLoading: isLoadingRefs } = usePaperReferences(
     id,
     refLimit,
-    activeTab === "references"
+    activeTab === "graph"
   );
 
   // Citations configuration
@@ -46,8 +46,18 @@ function PaperDetailPage() {
       yearFrom: citeYearFrom,
       yearTo: citeYearTo,
     },
-    activeTab === "citations"
+    activeTab === "graph"
   );
+
+  // Filter toggles to show/hide references or citations dynamically on client-side
+  const [showRefs, setShowRefs] = useState(true);
+  const [showCites, setShowCites] = useState(true);
+
+  // Combine and format nodes
+  const combinedNodes = [
+    ...(showRefs ? references.map((n) => ({ ...n, relationType: "reference" as const })) : []),
+    ...(showCites ? citations.map((n) => ({ ...n, relationType: "citation" as const })) : []),
+  ];
 
   const [isAuthorDropdownOpen, setIsAuthorDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -251,24 +261,14 @@ function PaperDetailPage() {
               Overview
             </button>
             <button
-              onClick={() => setActiveTab("references")}
+              onClick={() => setActiveTab("graph")}
               className={`px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer ${
-                activeTab === "references"
+                activeTab === "graph"
                   ? "bg-brand/10 border border-brand/40 text-brand"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              References Graph
-            </button>
-            <button
-              onClick={() => setActiveTab("citations")}
-              className={`px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer ${
-                activeTab === "citations"
-                  ? "bg-brand/10 border border-brand/40 text-brand"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Citation Graph
+              Interactive Network Graph
             </button>
           </div>
 
@@ -342,93 +342,105 @@ function PaperDetailPage() {
             </>
           )}
 
-          {activeTab === "references" && (
+          {activeTab === "graph" && (
             <Card
-              title="References Graph"
+              title="Interactive Network Map"
               action={
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground font-medium">Giới hạn:</span>
-                  <select
-                    className="bg-background text-foreground border border-border rounded-lg text-xs px-2 py-1 focus:border-brand focus:outline-none"
-                    value={refLimit}
-                    onChange={(e) => setRefLimit(Number(e.target.value))}
-                  >
-                    <option value={20}>20 nodes</option>
-                    <option value={50}>50 nodes</option>
-                    <option value={100}>100 nodes</option>
-                  </select>
+                <div className="flex flex-wrap items-center gap-4 bg-secondary/20 p-2 rounded-xl border border-border/40">
+                  {/* Toggle References / Citations */}
+                  <div className="flex items-center gap-3 pr-3 border-r border-border/50">
+                    <label className="flex items-center gap-1.5 text-xs text-muted-foreground font-semibold cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={showRefs}
+                        onChange={(e) => setShowRefs(e.target.checked)}
+                        className="rounded border-border bg-background text-chart-2 focus:ring-chart-2 size-3.5"
+                      />
+                      <span className={showRefs ? "text-chart-2" : ""}>References ({references.length})</span>
+                    </label>
+                    <label className="flex items-center gap-1.5 text-xs text-muted-foreground font-semibold cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={showCites}
+                        onChange={(e) => setShowCites(e.target.checked)}
+                        className="rounded border-border bg-background text-chart-5 focus:ring-chart-5 size-3.5"
+                      />
+                      <span className={showCites ? "text-chart-5" : ""}>Citations ({citations.length})</span>
+                    </label>
+                  </div>
+
+                  {/* References Limit */}
+                  {showRefs && (
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <span className="font-semibold">Ref Max:</span>
+                      <select
+                        className="bg-background text-foreground border border-border rounded-lg text-xs px-2 py-0.5 focus:border-brand focus:outline-none"
+                        value={refLimit}
+                        onChange={(e) => setRefLimit(Number(e.target.value))}
+                      >
+                        <option value={20}>20</option>
+                        <option value={50}>50</option>
+                        <option value={100}>100</option>
+                      </select>
+                    </div>
+                  )}
+
+                  {/* Citations Limit & Filters */}
+                  {showCites && (
+                    <div className="flex flex-wrap items-center gap-3 pl-1">
+                      <div className="flex items-center gap-1">
+                        <span className="text-[11px] text-muted-foreground font-semibold">Cite Sort:</span>
+                        <select
+                          className="bg-background text-foreground border border-border rounded-lg text-[11px] px-1.5 py-0.5 focus:border-brand focus:outline-none"
+                          value={citeSort}
+                          onChange={(e) => setCiteSort(e.target.value as "citations" | "recent")}
+                        >
+                          <option value="citations">Citations</option>
+                          <option value="recent">Recent</option>
+                        </select>
+                      </div>
+
+                      <div className="flex items-center gap-1 text-[11px] text-muted-foreground font-semibold font-mono">
+                        <span>Year:</span>
+                        <input
+                          type="number"
+                          placeholder="From"
+                          className="w-12 bg-background border border-border rounded px-1.5 py-0.5 text-[11px] focus:outline-none focus:border-brand text-center font-mono"
+                          value={citeYearFrom || ""}
+                          onChange={(e) => setCiteYearFrom(e.target.value ? Number(e.target.value) : undefined)}
+                        />
+                        <span>-</span>
+                        <input
+                          type="number"
+                          placeholder="To"
+                          className="w-12 bg-background border border-border rounded px-1.5 py-0.5 text-[11px] focus:outline-none focus:border-brand text-center font-mono"
+                          value={citeYearTo || ""}
+                          onChange={(e) => setCiteYearTo(e.target.value ? Number(e.target.value) : undefined)}
+                        />
+                      </div>
+
+                      <div className="flex items-center gap-1">
+                        <span className="text-[11px] text-muted-foreground font-semibold">Cite Max:</span>
+                        <select
+                          className="bg-background text-foreground border border-border rounded-lg text-[11px] px-1.5 py-0.5 focus:border-brand focus:outline-none"
+                          value={citeLimit}
+                          onChange={(e) => setCiteLimit(Number(e.target.value))}
+                        >
+                          <option value={10}>10</option>
+                          <option value={20}>20</option>
+                          <option value={50}>50</option>
+                          <option value={100}>100</option>
+                        </select>
+                      </div>
+                    </div>
+                  )}
                 </div>
               }
             >
               <PaperGraph
                 currentPaperTitle={paper.title}
-                nodes={references}
-                isLoading={isLoadingRefs}
-                graphType="references"
-              />
-            </Card>
-          )}
-
-          {activeTab === "citations" && (
-            <Card
-              title="Citation Graph"
-              action={
-                <div className="flex flex-wrap items-center gap-3">
-                  {/* Sort Selection */}
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] text-muted-foreground font-medium">Xếp:</span>
-                    <select
-                      className="bg-background text-foreground border border-border rounded-lg text-[11px] px-2 py-1 focus:border-brand focus:outline-none"
-                      value={citeSort}
-                      onChange={(e) => setCiteSort(e.target.value as "citations" | "recent")}
-                    >
-                      <option value="citations">Lượt trích dẫn</option>
-                      <option value="recent">Mới nhất</option>
-                    </select>
-                  </div>
-
-                  {/* Year Range */}
-                  <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                    <span>Năm:</span>
-                    <input
-                      type="number"
-                      placeholder="Từ"
-                      className="w-12 bg-background border border-border rounded px-1.5 py-0.5 text-[11px] focus:outline-none focus:border-brand text-center font-mono"
-                      value={citeYearFrom || ""}
-                      onChange={(e) => setCiteYearFrom(e.target.value ? Number(e.target.value) : undefined)}
-                    />
-                    <span>-</span>
-                    <input
-                      type="number"
-                      placeholder="Đến"
-                      className="w-12 bg-background border border-border rounded px-1.5 py-0.5 text-[11px] focus:outline-none focus:border-brand text-center font-mono"
-                      value={citeYearTo || ""}
-                      onChange={(e) => setCiteYearTo(e.target.value ? Number(e.target.value) : undefined)}
-                    />
-                  </div>
-
-                  {/* Limit Selection */}
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] text-muted-foreground font-medium">Max:</span>
-                    <select
-                      className="bg-background text-foreground border border-border rounded-lg text-[11px] px-2 py-1 focus:border-brand focus:outline-none"
-                      value={citeLimit}
-                      onChange={(e) => setCiteLimit(Number(e.target.value))}
-                    >
-                      <option value={10}>10 nodes</option>
-                      <option value={20}>20 nodes</option>
-                      <option value={50}>50 nodes</option>
-                      <option value={100}>100 nodes</option>
-                    </select>
-                  </div>
-                </div>
-              }
-            >
-              <PaperGraph
-                currentPaperTitle={paper.title}
-                nodes={citations}
-                isLoading={isLoadingCites}
-                graphType="citations"
+                nodes={combinedNodes}
+                isLoading={isLoadingRefs || isLoadingCites}
               />
             </Card>
           )}
