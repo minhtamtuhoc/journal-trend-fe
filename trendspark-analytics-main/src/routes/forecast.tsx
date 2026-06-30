@@ -5,7 +5,8 @@ import { HotTopicForecastCard } from "@/components/HotTopicForecastCard";
 import { ForecastLineChart } from "@/components/ForecastLineChart";
 import { useForecastList, useForecastDetail, useRunForecast } from "@/hooks/data/use-forecast";
 import { useState, useEffect } from "react";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, AlertTriangle } from "lucide-react";
+import { useAuth, isStudentUser } from "@/auth";
 import { toast } from "sonner";
 import { ApiError } from "@/api/errors";
 
@@ -14,6 +15,24 @@ export const Route = createFileRoute("/forecast")({
 });
 
 function ForecastPage() {
+  const { user } = useAuth();
+
+  if (isStudentUser(user)) {
+    return (
+      <AppLayout>
+        <Card>
+          <div className="text-center py-12">
+            <AlertTriangle className="size-8 mx-auto text-warning mb-2" />
+            <h2 className="font-semibold text-lg">Không có quyền truy cập</h2>
+            <p className="text-muted-foreground text-sm mt-1">
+              Tính năng Hot Topic Forecast chỉ dành cho Lecturer, Researcher và Admin.
+            </p>
+          </div>
+        </Card>
+      </AppLayout>
+    );
+  }
+
   const [selectedKeywordId, setSelectedKeywordId] = useState<number | null>(null);
   const { data: forecastList = [], isLoading: loadingList } = useForecastList(10);
   const { data: forecastDetail, isLoading: loadingDetail } = useForecastDetail(selectedKeywordId);
