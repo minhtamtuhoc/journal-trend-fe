@@ -27,5 +27,10 @@ export function isSuperAdminUser(user: Pick<User, "role"> | null | undefined): b
 }
 
 export function normalizeUser(user: User): User {
-  return { ...user, role: normalizeRole(user.role) };
+  return { ...user, rawRole: user.rawRole ?? user.role, role: normalizeRole(user.role) };
+}
+
+export function isStudentUser(user: Pick<User, "rawRole" | "role"> | null | undefined): boolean {
+  const raw = (user?.rawRole ?? user?.role ?? "").toUpperCase();
+  return raw === "STUDENT";
 }

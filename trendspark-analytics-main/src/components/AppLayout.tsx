@@ -18,7 +18,7 @@ import {
   Sun,
 } from "lucide-react";
 import { useEffect } from "react";
-import { useAuth, isAdminUser, isSuperAdminUser } from "@/auth";
+import { useAuth, isAdminUser, isSuperAdminUser, isStudentUser } from "@/auth";
 import { useTheme } from "@/theme";
 import { useNotifications } from "@/hooks/data/use-notifications";
 import { groupNotifications } from "@/utils/notification-grouper";
@@ -71,27 +71,29 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
         <nav className="flex-1 min-h-0 overflow-y-auto px-3 py-2 space-y-1">
           <div className="px-3 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Intelligence</div>
-          {nav.map((item) => {
-            const active = pathname === item.to || (item.to !== "/dashboard" && pathname.startsWith(item.to));
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.to}
-                to={item.to}
-                className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                  active
-                    ? "bg-brand/10 text-brand border border-brand/30"
-                    : "text-muted-foreground hover:text-foreground hover:bg-secondary/50 border border-transparent"
-                }`}
-              >
-                <Icon className="size-4 shrink-0" />
-                <span className="flex-1">{item.label}</span>
-                {item.to === "/notifications" && unread > 0 && (
-                  <span className="text-[10px] font-mono bg-brand/20 text-brand px-1.5 py-0.5 rounded">{unread}</span>
-                )}
-              </Link>
-            );
-          })}
+          {nav
+            .filter((item) => item.to !== "/forecast" || !isStudentUser(user))
+            .map((item) => {
+              const active = pathname === item.to || (item.to !== "/dashboard" && pathname.startsWith(item.to));
+              const Icon = item.icon;
+              return (
+                <Link
+                  key={item.to}
+                  to={item.to}
+                  className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                    active
+                      ? "bg-brand/10 text-brand border border-brand/30"
+                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/50 border border-transparent"
+                  }`}
+                >
+                  <Icon className="size-4 shrink-0" />
+                  <span className="flex-1">{item.label}</span>
+                  {item.to === "/notifications" && unread > 0 && (
+                    <span className="text-[10px] font-mono bg-brand/20 text-brand px-1.5 py-0.5 rounded">{unread}</span>
+                  )}
+                </Link>
+              );
+            })}
 
           <div className="px-3 pt-6 pb-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Account</div>
           <Link

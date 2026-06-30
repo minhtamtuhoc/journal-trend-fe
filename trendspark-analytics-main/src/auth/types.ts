@@ -4,6 +4,7 @@ export type User = {
   name: string;
   email: string;
   role: UserRole;
+  rawRole?: string; // giá trị gốc từ backend: STUDENT | LECTURER | RESEARCHER | ADMIN | SUPER_ADMIN
 };
 
 export type AuthSession = {
