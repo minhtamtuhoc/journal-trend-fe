@@ -1,3 +1,4 @@
+import { useState, useEffect, useRef, useMemo } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppLayout, PageHeader } from "@/components/AppLayout";
 import { Card } from "@/components/Card";
@@ -6,6 +7,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { SaveToCollectionButton } from "@/components/SaveToCollectionButton";
 import { usePersonalReport } from "@/hooks/data/use-personal-report";
 import { useCollections } from "@/hooks/data/use-collections";
+import { useAuthor, useAuthorPapers } from "@/hooks/data/use-authors";
+import { useFollowedTopics, useFollowedAuthors, useFollowAuthor, useUnfollowAuthor } from "@/hooks/data/use-follows";
+import { useAuth } from "@/auth";
+import { toast } from "sonner";
+import { ApiError } from "@/api/errors";
 import {
   Bar,
   BarChart,
@@ -25,58 +31,437 @@ import {
   AlertTriangle,
   Lightbulb,
   ExternalLink,
+  ChevronDown,
+  Check,
+  ArrowLeft,
+  FileText,
+  TrendingUp,
+  ArrowUpRight,
+  Bookmark,
+  Building2,
 } from "lucide-react";
 import type { KeywordTrendPoint } from "@/types/report";
 
-export const Route = createFileRoute("/reports")({ component: ReportsPage });
+export const Route = createFileRoute("/reports")({
+  component: ReportsPage,
+  validateSearch: (search: Record<string, unknown>) => search,
+});
 
 // Transformer helper for Recharts LineChart
 function transformLineChartData(points: KeywordTrendPoint[]) {
-  const uniqueYears = Array.from(new Set(points.map(p => p.year)));
-  let processedPoints = [...points];
-
-  if (uniqueYears.length === 1 && uniqueYears[0] === 2026) {
-    const simulatedPoints: KeywordTrendPoint[] = [];
-    points.forEach(p => {
-      // Calculate a stable hash for the term to make factors look deterministic but varied
-      const hash = Math.abs(p.term.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0));
-      const factor2022 = 0.3 + (hash % 20) / 100.0;
-      const factor2023 = 0.45 + (hash % 15) / 100.0;
-      const factor2024 = 0.6 + (hash % 20) / 100.0;
-      const factor2025 = 0.8 + (hash % 15) / 100.0;
-
-      simulatedPoints.push({ term: p.term, year: 2022, paperCount: Math.round(p.paperCount * factor2022) });
-      simulatedPoints.push({ term: p.term, year: 2023, paperCount: Math.round(p.paperCount * factor2023) });
-      simulatedPoints.push({ term: p.term, year: 2024, paperCount: Math.round(p.paperCount * factor2024) });
-      simulatedPoints.push({ term: p.term, year: 2025, paperCount: Math.round(p.paperCount * factor2025) });
-    });
-    processedPoints = [...simulatedPoints, ...points];
-  }
-
-  const yearMap: Record<number, Record<string, number>> = {};
+  const periodMap: Record<string, { label: string; sortKey: number; values: Record<string, number> }> = {};
   const terms = new Set<string>();
 
-  processedPoints.forEach((p) => {
-    terms.add(p.term);
-    if (!yearMap[p.year]) {
-      yearMap[p.year] = {};
+  // 1. Gather all unique terms
+  points.forEach((p) => terms.add(p.term));
+
+  // 2. Generate expected last 3 months dynamically
+  const generateLast3Months = () => {
+    const list: { label: string; sortKey: number }[] = [];
+    const now = new Date();
+    for (let i = 3; i >= 1; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const year = d.getFullYear();
+      const month = d.getMonth() + 1;
+      const paddedMonth = String(month).padStart(2, "0");
+      list.push({
+        label: `${paddedMonth}/${year}`,
+        sortKey: year * 100 + month
+      });
     }
-    yearMap[p.year][p.term] = p.paperCount;
+    return list;
+  };
+
+  const periods = generateLast3Months();
+  periods.forEach((p) => {
+    periodMap[p.label] = {
+      label: p.label,
+      sortKey: p.sortKey,
+      values: {}
+    };
+    // Initialize count to 0 for all terms
+    terms.forEach((term) => {
+      periodMap[p.label].values[term] = 0;
+    });
   });
 
-  const chartData = Object.entries(yearMap)
-    .map(([year, values]) => ({
-      year: Number(year),
-      ...values,
-    }))
-    .sort((a, b) => a.year - b.year);
+  // 3. Populate with actual values from points
+  points.forEach((p) => {
+    if (p.month !== undefined && p.month !== null) {
+      const paddedMonth = String(p.month).padStart(2, "0");
+      const label = `${paddedMonth}/${p.year}`;
+      if (periodMap[label]) {
+        periodMap[label].values[p.term] = p.paperCount;
+      }
+    }
+  });
+
+  const chartData = Object.values(periodMap)
+    .sort((a, b) => a.sortKey - b.sortKey)
+    .map((item) => ({
+      period: item.label,
+      ...item.values,
+    }));
 
   return { chartData, terms: Array.from(terms) };
 }
 
+const translateReason = (reason: string) => {
+  if (!reason) return "";
+  const mapping: Record<string, string> = {
+    "Bài viết mới nhất từ tác giả bạn đang theo dõi": "Latest paper from followed authors",
+    "Bài viết có tầm ảnh hưởng (trích dẫn cao) trong chủ đề quan tâm": "Highly cited paper in your topics of interest",
+    "Nghiên cứu thịnh hành nổi bật trên hệ thống": "Trending research highlighted in the system"
+  };
+  
+  if (mapping[reason]) {
+    return mapping[reason];
+  }
+  
+  if (reason.includes("Khớp tác giả follow & trùng khớp")) {
+    const matchCount = reason.match(/\d+/)?.[0] ?? "";
+    return `Matches followed author & overlaps with ${matchCount} keywords`;
+  }
+  
+  if (reason.includes("Trùng khớp") && reason.includes("từ khóa nghiên cứu bạn đang follow")) {
+    const matchCount = reason.match(/\d+/)?.[0] ?? "";
+    return `Overlaps with ${matchCount} of your followed keywords`;
+  }
+  
+  return reason;
+};
+
+function CustomReportStat({
+  label,
+  value,
+  icon,
+  accent,
+  subtext,
+}: {
+  label: string;
+  value: string;
+  icon: React.ReactNode;
+  accent?: boolean;
+  subtext?: React.ReactNode;
+}) {
+  return (
+    <div className="glass rounded-2xl p-5 flex flex-col justify-between min-h-[110px]">
+      <div>
+        <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">
+          {icon}
+          {label}
+        </div>
+        <div className={`text-2xl font-bold font-mono ${accent ? "text-brand" : ""}`}>{value}</div>
+      </div>
+      {subtext}
+    </div>
+  );
+}
+
+function CustomAuthorReportView({ authorId }: { authorId: string }) {
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 14;
+  
+  const { data: author, isLoading: loadingAuthor, isError } = useAuthor(authorId);
+  const { data: papers = [], isLoading: loadingPapers } = useAuthorPapers(authorId);
+  const { data: followedTopics = [] } = useFollowedTopics();
+  const { data: followedAuthors = [] } = useFollowedAuthors();
+  const { user } = useAuth();
+  
+  const followAuthorMut = useFollowAuthor();
+  const unfollowAuthorMut = useUnfollowAuthor();
+  const followed = followedAuthors.some((a) => a.id === authorId);
+
+  const followedTerms = useMemo(() => new Set(followedTopics.map(t => t.name.toLowerCase())), [followedTopics]);
+
+  const matchedPapers = useMemo(() => {
+    return papers.filter(p => p.keywords?.some(k => followedTerms.has(k.name.toLowerCase())));
+  }, [papers, followedTerms]);
+
+  const matchedFollowedKeywords = useMemo(() => {
+    const matches = new Set<string>();
+    papers.forEach(p => {
+      p.keywords?.forEach(k => {
+        const kwLower = k.name.toLowerCase();
+        if (followedTerms.has(kwLower)) {
+          const original = followedTopics.find(t => t.name.toLowerCase() === kwLower);
+          matches.add(original ? original.name : k.name);
+        }
+      });
+    });
+    return Array.from(matches);
+  }, [papers, followedTerms, followedTopics]);
+
+  const hasPagination = matchedPapers.length > 14;
+  const totalPages = Math.ceil(matchedPapers.length / itemsPerPage);
+  const paginatedPapers = hasPagination
+    ? matchedPapers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+    : matchedPapers;
+
+  if (loadingAuthor || loadingPapers) {
+    return (
+      <div className="p-8 text-sm text-muted-foreground animate-pulse flex items-center justify-center min-h-[300px]">
+        Loading custom author analysis report...
+      </div>
+    );
+  }
+
+  if (isError || !author) {
+    return (
+      <div className="p-8 text-sm text-destructive flex items-center gap-2 justify-center min-h-[300px]">
+        <AlertTriangle className="size-4" />
+        Failed to load author report details.
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 mt-6">
+      <PageHeader
+        title={author.name}
+        subtitle={`${author.affiliation} · source: ${author.source ?? "OpenAlex / DB"}`}
+        action={
+          <div className="flex gap-2">
+            <Link
+              to="/reports"
+              search={(prev: any) => ({})}
+              className="inline-flex items-center gap-2 h-9 px-3 rounded-lg text-sm font-medium border border-border hover:bg-secondary/50 cursor-pointer"
+            >
+              <ArrowLeft className="size-4" /> Back to Reports
+            </Link>
+            <Link
+              to="/authors/$authorId"
+              params={{ authorId }}
+              search={(prev: any) => ({ ...prev, fromReport: true })}
+              className="inline-flex items-center gap-2 h-9 px-3 rounded-lg text-sm font-medium border border-border hover:bg-secondary/50 text-foreground bg-secondary/10 cursor-pointer"
+            >
+              <User className="size-4" /> Author
+            </Link>
+            <button
+              type="button"
+              disabled={followAuthorMut.isPending || unfollowAuthorMut.isPending}
+              onClick={() => {
+                if (!user) {
+                  toast.error("Please login to follow authors");
+                  return;
+                }
+                if (followed) {
+                  unfollowAuthorMut.mutate(author.id, {
+                    onSuccess: () => toast.info(`Unfollowed ${author.name}`),
+                    onError: (err) => {
+                      const msg = err instanceof ApiError ? err.message : "Unfollow failed";
+                      toast.error(msg);
+                    },
+                  });
+                } else {
+                  followAuthorMut.mutate(author.id, {
+                    onSuccess: () => toast.success(`Following ${author.name}`),
+                    onError: (err) => {
+                      const msg = err instanceof ApiError ? err.message : "Follow failed. Max 20 authors.";
+                      toast.error(msg);
+                    },
+                  });
+                }
+              }}
+              className={`inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-medium border transition-colors cursor-pointer ${
+                followed
+                  ? "border-brand/40 bg-brand/10 text-brand"
+                  : "border-border hover:bg-secondary/50 text-foreground"
+              }`}
+            >
+              <Bookmark className="size-4" fill={followed ? "currentColor" : "none"} />
+              {followed ? "Followed" : "Follow"}
+            </button>
+          </div>
+        }
+      />
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <CustomReportStat
+          label="Papers with Followed Keywords"
+          value={String(matchedPapers.length)}
+          icon={<FileText className="size-4" />}
+          accent
+        />
+        <CustomReportStat
+          label="Matched Keywords"
+          value={String(matchedFollowedKeywords.length)}
+          icon={<Sparkles className="size-4" />}
+          subtext={
+            matchedFollowedKeywords.length > 0 ? (
+              <div className="flex flex-wrap gap-1 mt-2">
+                {matchedFollowedKeywords.map(k => (
+                  <span key={k} className="text-[9px] px-1.5 py-0.5 rounded bg-brand/10 border border-brand/20 text-brand font-mono font-medium">
+                    {k}
+                  </span>
+                ))}
+              </div>
+            ) : null
+          }
+        />
+        <CustomReportStat
+          label="h-index"
+          value={String(author.hIndex)}
+          icon={<User className="size-4" />}
+        />
+      </div>
+
+      {author.openAlexId ? (
+        <div className="mb-6 text-xs text-muted-foreground font-mono flex items-center gap-2">
+          <Building2 className="size-3.5" />
+          OpenAlex ID: {author.openAlexId}
+        </div>
+      ) : null}
+
+      <Card title={`Papers with Followed Keywords (${matchedPapers.length})`}>
+        {matchedPapers.length === 0 ? (
+          <p className="text-sm text-muted-foreground p-4">
+            No papers containing followed keywords found.
+          </p>
+        ) : (
+          <>
+            <div className="space-y-3">
+              {paginatedPapers.map((p) => {
+                const paperMatchedKws = p.keywords
+                  ? p.keywords
+                      .filter(k => followedTerms.has(k.name.toLowerCase()))
+                      .map(k => k.name)
+                  : [];
+                return (
+                  <div
+                    key={p.id}
+                    className="flex items-start justify-between gap-4 p-3 rounded-lg border border-border bg-secondary/20 hover:bg-secondary/40 transition-colors"
+                  >
+                    <Link to="/papers/$id" params={{ id: p.id }} className="min-w-0 flex-1">
+                      <div className="text-[10px] font-mono text-muted-foreground mb-1 flex items-center gap-2">
+                        <span>{p.journal}</span>
+                        <span className="text-brand">{p.source}</span>
+                        <span className="text-success">+{(p.trendScore ?? 0).toFixed(1)}%</span>
+                      </div>
+                      <div className="text-sm font-semibold text-foreground hover:text-brand">{p.title}</div>
+                      {p.doi ? <div className="text-[10px] font-mono text-muted-foreground mt-1">DOI: {p.doi}</div> : null}
+                      
+                      {paperMatchedKws.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {paperMatchedKws.map(k => (
+                            <span key={k} className="text-[8px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-mono">
+                              {k}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </Link>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <SaveToCollectionButton paperId={p.id} paperTitle={p.title} />
+                      <Link
+                        to="/papers/$id"
+                        params={{ id: p.id }}
+                        className="p-1.5 rounded-md border border-border hover:border-brand/40 hover:text-brand"
+                      >
+                        <ArrowUpRight className="size-3.5" />
+                      </Link>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {hasPagination && totalPages > 1 && (
+              <div className="flex flex-wrap items-center justify-center gap-1.5 mt-6 py-4 border-t border-border">
+                <button
+                  type="button"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                  className="inline-flex items-center justify-center h-8 px-3 rounded-lg text-xs font-medium border border-border hover:border-brand/40 disabled:opacity-50 disabled:pointer-events-none transition-colors cursor-pointer"
+                >
+                  Previous
+                </button>
+                
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setCurrentPage(p)}
+                    className={`inline-flex items-center justify-center size-8 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                      currentPage === p
+                        ? "bg-brand/10 border-brand/45 text-brand"
+                        : "border-border hover:border-brand/40"
+                    }`}
+                  >
+                    {p}
+                  </button>
+                ))}
+
+                <button
+                  type="button"
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+                  className="inline-flex items-center justify-center h-8 px-3 rounded-lg text-xs font-medium border border-border hover:border-brand/40 disabled:opacity-50 disabled:pointer-events-none transition-colors cursor-pointer"
+                >
+                  Next
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </Card>
+    </div>
+  );
+}
+
 function ReportsPage() {
+  const { authorId } = Route.useSearch() as { authorId?: string };
   const { data: report, isLoading, error } = usePersonalReport();
   const { data: collections = [] } = useCollections();
+
+  // Render CustomAuthorReportView conditionally at the end to satisfy rules of hooks
+
+  const { chartData, terms: allTerms } = useMemo(() => {
+    return transformLineChartData(report?.trends?.lineChart ?? []);
+  }, [report?.trends?.lineChart]);
+
+  const [selectedKeywords, setSelectedKeywords] = useState<string[]>([]);
+  const hasInitialized = useRef(false);
+  const allTermsSerialized = allTerms.join(",");
+
+  useEffect(() => {
+    if (allTerms.length > 0) {
+      if (!hasInitialized.current) {
+        setSelectedKeywords(allTerms);
+        hasInitialized.current = true;
+      } else {
+        setSelectedKeywords((prev) => prev.filter((k) => allTerms.includes(k)));
+      }
+    }
+  }, [allTermsSerialized]);
+
+  const handleToggleKeyword = (term: string) => {
+    setSelectedKeywords((prev) =>
+      prev.includes(term) ? prev.filter((t) => t !== term) : [...prev, term]
+    );
+  };
+
+  const handleToggleAll = () => {
+    if (selectedKeywords.length === allTerms.length) {
+      setSelectedKeywords([]);
+    } else {
+      setSelectedKeywords(allTerms);
+    }
+  };
+
+  const [showKeywordDropdown, setShowKeywordDropdown] = useState(false);
+  const trendDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (trendDropdownRef.current && !trendDropdownRef.current.contains(event.target as Node)) {
+        setShowKeywordDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   // Filter out recommended papers that the user has already bookmarked (optimistic reactive update)
   const visibleRecommendations = report?.recommendations?.filter(
@@ -129,6 +514,14 @@ function ReportsPage() {
     return colors[index % colors.length];
   };
 
+  if (authorId) {
+    return (
+      <AppLayout>
+        <CustomAuthorReportView authorId={authorId} />
+      </AppLayout>
+    );
+  }
+
   return (
     <AppLayout>
       <PageHeader
@@ -165,17 +558,81 @@ function ReportsPage() {
               {/* PHẦN 1: XU HƯỚNG LĨNH VỰC (TRENDS) */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* 1.1 Line Chart */}
-                <Card className="lg:col-span-2" title="Keyword Trends by Year">
+                <Card
+                  className="lg:col-span-2"
+                  title="Keyword Trends by Month"
+                  action={
+                    allTerms.length > 0 && (
+                      <div className="relative" ref={trendDropdownRef}>
+                        <button
+                          onClick={() => setShowKeywordDropdown(!showKeywordDropdown)}
+                          className="inline-flex items-center justify-between gap-1.5 h-8 px-3 rounded-lg border border-border bg-secondary/40 hover:bg-secondary/70 hover:text-foreground text-xs font-semibold text-muted-foreground transition-all cursor-pointer min-w-[180px] text-left"
+                        >
+                          <span className="truncate">
+                            {selectedKeywords.length === allTerms.length
+                              ? "All followed keywords"
+                              : selectedKeywords.length === 0
+                              ? "No keywords selected"
+                              : selectedKeywords.length === 1
+                              ? selectedKeywords[0]
+                              : `${selectedKeywords.length} keywords selected`}
+                          </span>
+                          <ChevronDown className="size-3.5 opacity-75 shrink-0" />
+                        </button>
+
+                        {showKeywordDropdown && (
+                          <div className="absolute right-0 top-[calc(100%+6px)] w-56 max-h-60 overflow-y-auto bg-popover border border-border rounded-xl shadow-lg p-1.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                            <div
+                              onClick={handleToggleAll}
+                              className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-lg text-muted-foreground hover:bg-secondary/40 hover:text-foreground transition-colors cursor-pointer select-none text-left"
+                            >
+                              <div className={`size-3.5 rounded border flex items-center justify-center shrink-0 transition-all ${
+                                selectedKeywords.length === allTerms.length
+                                  ? "bg-brand border-brand text-brand-foreground"
+                                  : "border-border hover:border-brand/40 bg-background"
+                              }`}>
+                                {selectedKeywords.length === allTerms.length && <Check className="size-2.5 stroke-[3]" />}
+                              </div>
+                              <span className="font-semibold text-foreground">All followed keywords</span>
+                            </div>
+                            
+                            <div className="h-px bg-border my-1" />
+
+                            {allTerms.map((t) => {
+                              const isSelected = selectedKeywords.includes(t);
+                              return (
+                                <div
+                                  key={t}
+                                  onClick={() => handleToggleKeyword(t)}
+                                  className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-lg text-muted-foreground hover:bg-secondary/40 hover:text-foreground transition-colors cursor-pointer select-none text-left"
+                                >
+                                  <div className={`size-3.5 rounded border flex items-center justify-center shrink-0 transition-all ${
+                                    isSelected
+                                      ? "bg-brand border-brand text-brand-foreground"
+                                      : "border-border hover:border-brand/40 bg-background"
+                                  }`}>
+                                    {isSelected && <Check className="size-2.5 stroke-[3]" />}
+                                  </div>
+                                  <span className="truncate text-foreground">{t}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  }
+                >
                   {report.trends?.lineChart?.length === 0 ? (
                     <div className="h-[300px] flex items-center justify-center text-muted-foreground text-sm">
                       No followed keywords to display trends.
                     </div>
                   ) : (
                     <ResponsiveContainer width="100%" height={300}>
-                      <LineChart data={transformLineChartData(report.trends.lineChart).chartData}>
+                      <LineChart data={chartData}>
                         <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} />
                         <XAxis
-                          dataKey="year"
+                          dataKey="period"
                           stroke="var(--muted-foreground)"
                           fontSize={11}
                           tickLine={false}
@@ -196,16 +653,18 @@ function ReportsPage() {
                           }}
                         />
                         <Legend wrapperStyle={{ fontSize: 11 }} />
-                        {transformLineChartData(report.trends.lineChart).terms.map((term, index) => (
-                          <Line
-                            key={term}
-                            type="monotone"
-                            dataKey={term}
-                            stroke={getLineColor(index)}
-                            strokeWidth={2}
-                            activeDot={{ r: 6 }}
-                          />
-                        ))}
+                        {allTerms
+                          .filter((term) => selectedKeywords.includes(term))
+                          .map((term) => (
+                            <Line
+                              key={term}
+                              type="monotone"
+                              dataKey={term}
+                              stroke={getLineColor(allTerms.indexOf(term))}
+                              strokeWidth={2}
+                              activeDot={{ r: 6 }}
+                            />
+                          ))}
                       </LineChart>
                     </ResponsiveContainer>
                   )}
@@ -288,7 +747,7 @@ function ReportsPage() {
 
                           <div className="bg-secondary/40 border border-border/30 rounded-lg p-2.5 mb-4 text-[11px] text-foreground/80 flex items-start gap-2">
                             <Lightbulb className="size-3.5 text-brand shrink-0 mt-0.5" />
-                            <span className="italic">{paper.recommendationReason}</span>
+                            <span className="italic">{translateReason(paper.recommendationReason)}</span>
                           </div>
                         </div>
 
@@ -326,14 +785,14 @@ function ReportsPage() {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2 space-y-6">
                   {/* 3.1 Leader Authors Cards Grid */}
-                  <Card title="Leading Authors in Followed Topics">
+                  <Card title="Leading Authors by Followed Keywords">
                     {report.landscape?.bubbleChart?.length === 0 ? (
                       <div className="text-muted-foreground text-sm p-4">
                         No prominent authors found in these topics.
                       </div>
                     ) : (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {report.landscape.bubbleChart.map((author) => {
+                        {report.landscape.bubbleChart.slice(0, 6).map((author) => {
                           const cardContent = (
                             <div className="flex items-center gap-3 p-4 rounded-xl border border-border/45 bg-surface-elevated/40 hover:bg-secondary/20 hover:border-brand/40 transition-all cursor-pointer h-full">
                               <div className="size-10 rounded-full bg-brand/10 border border-brand/20 flex items-center justify-center text-brand shrink-0">
@@ -360,8 +819,8 @@ function ReportsPage() {
                             return (
                               <Link
                                 key={author.authorName}
-                                to="/authors/$authorId"
-                                params={{ authorId: String(author.authorId) }}
+                                to="/reports"
+                                search={(prev: any) => ({ ...prev, authorId: String(author.authorId) })}
                                 className="block no-underline group"
                               >
                                 {cardContent}
@@ -428,33 +887,35 @@ function ReportsPage() {
                 {/* 3.2 Tag Cloud (Word Cloud) */}
                 <Card title="Keyword Co-occurrence (Word Cloud)">
                   <p className="text-xs text-muted-foreground mb-4">
-                    Keywords commonly co-occurring with your followed keywords. The font size corresponds to frequency, and border color indicates growth rate.
+                    Keywords commonly co-occurring with your followed keywords. Chip color and trend indicator show keyword growth rate.
                   </p>
                   {report.landscape?.tagCloud?.length === 0 ? (
                     <div className="text-muted-foreground text-sm">No word cloud data available.</div>
                   ) : (
                     <div className="space-y-4">
-                      <div className="flex flex-wrap items-center justify-center p-6 border border-border/40 bg-surface-elevated/20 rounded-2xl min-h-[320px]">
+                      <div className="flex flex-wrap items-center justify-center gap-2 p-6 border border-border/40 bg-surface-elevated/20 rounded-2xl min-h-[320px]">
                         {report.landscape.tagCloud.map((tag) => {
-                          const size = Math.min(12 + tag.coOccurrenceCount * 1.5, 26);
-
-                          let colorClass = "text-muted-foreground border-border bg-secondary/10 hover:bg-secondary/20";
+                          let colorClass = "text-muted-foreground border-border/40 bg-secondary/5 hover:bg-secondary/10 hover:border-border/80";
+                          let trendIcon = "•";
                           if (tag.growthRate > 5.0) {
-                            colorClass = "text-rose-400 border-rose-500/50 bg-rose-500/10 hover:bg-rose-500/20";
+                            colorClass = "text-rose-400 border-rose-500/30 bg-rose-500/5 hover:bg-rose-500/10 hover:border-rose-500/60 hover:shadow-[0_0_12px_rgba(244,63,94,0.15)]";
+                            trendIcon = "↗️";
                           } else if (tag.growthRate > 1.5) {
-                            colorClass = "text-amber-400 border-amber-500/50 bg-amber-500/10 hover:bg-amber-500/20";
+                            colorClass = "text-amber-400 border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10 hover:border-amber-500/60 hover:shadow-[0_0_12px_rgba(245,158,11,0.15)]";
+                            trendIcon = "↗";
                           } else if (tag.growthRate > 0) {
-                            colorClass = "text-blue-400 border-blue-500/50 bg-blue-500/10 hover:bg-blue-500/20";
+                            colorClass = "text-sky-400 border-sky-500/30 bg-sky-500/5 hover:bg-sky-500/10 hover:border-sky-500/60 hover:shadow-[0_0_12px_rgba(56,189,248,0.15)]";
+                            trendIcon = "→";
                           }
 
                           return (
                             <span
                               key={tag.term}
-                              className={`inline-block m-1 px-2.5 py-1 rounded-lg border text-xs transition-all hover:scale-105 ${colorClass}`}
-                              style={{ fontSize: `${size}px` }}
+                              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all hover:scale-105 cursor-default ${colorClass}`}
                               title={`Frequency: ${tag.coOccurrenceCount} times | Growth: +${tag.growthRate}%`}
                             >
-                              {tag.term}
+                              <span>{tag.term}</span>
+                              <span className="opacity-80 text-[10px] font-mono">{trendIcon} {tag.growthRate > 0 ? `+${tag.growthRate.toFixed(1)}%` : `${tag.growthRate.toFixed(1)}%`}</span>
                             </span>
                           );
                         })}
@@ -463,19 +924,19 @@ function ReportsPage() {
                       {/* Chú thích màu sắc thể hiện tốc độ phát triển */}
                       <div className="flex flex-wrap justify-center gap-6 pt-3 text-[11px] text-muted-foreground">
                         <div className="flex items-center gap-1.5">
-                          <span className="inline-block size-3.5 rounded bg-rose-500/10 border border-rose-500/50" />
+                          <span className="inline-block size-3.5 rounded bg-rose-500/5 border border-rose-500/30" />
                           <span>Hot Growth (&gt; 5.0%)</span>
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <span className="inline-block size-3.5 rounded bg-amber-500/10 border border-amber-500/50" />
+                          <span className="inline-block size-3.5 rounded bg-amber-500/5 border border-amber-500/30" />
                           <span>High Growth (1.5% - 5.0%)</span>
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <span className="inline-block size-3.5 rounded bg-blue-500/10 border border-blue-500/50" />
+                          <span className="inline-block size-3.5 rounded bg-sky-500/5 border border-sky-500/30" />
                           <span>Stable Growth (0.0% - 1.5%)</span>
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <span className="inline-block size-3.5 rounded bg-secondary/10 border border-border" />
+                          <span className="inline-block size-3.5 rounded bg-secondary/5 border border-border/40" />
                           <span>Static / No Change (&le; 0.0%)</span>
                         </div>
                       </div>

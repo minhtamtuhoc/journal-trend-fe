@@ -1,19 +1,35 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { AppLayout, PageHeader } from "@/components/AppLayout";
 import { Card } from "@/components/Card";
 import { SaveToCollectionButton } from "@/components/SaveToCollectionButton";
 import { useAuthor, useAuthorPapers } from "@/hooks/data/use-authors";
-import { ArrowLeft, ArrowUpRight, Building2, FileText, TrendingUp, User } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, Building2, FileText, TrendingUp, User, Bookmark } from "lucide-react";
+import { useFollowedAuthors, useFollowAuthor, useUnfollowAuthor } from "@/hooks/data/use-follows";
+import { useAuth } from "@/auth";
+import { toast } from "sonner";
+import { ApiError } from "@/api/errors";
+import type { Paper } from "@/types/domain";
 
-export const Route = createFileRoute("/authors/$authorId")({ component: AuthorProfilePage });
+export const Route = createFileRoute("/authors/$authorId")({
+  component: AuthorProfilePage,
+  validateSearch: (search: Record<string, unknown>) => search,
+});
 
 function AuthorProfilePage() {
   const { authorId } = Route.useParams();
+  const { fromReport: fromReportSearch } = Route.useSearch() as { fromReport?: boolean | string };
+  const fromReport = fromReportSearch === true || fromReportSearch === 'true';
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 14;
   const { data: author, isLoading, isError } = useAuthor(authorId);
   const { data: papers = [], isLoading: loadingPapers } = useAuthorPapers(authorId);
+  const { user } = useAuth();
+  const { data: followedAuthors = [] } = useFollowedAuthors();
+  const followAuthorMut = useFollowAuthor();
+  const unfollowAuthorMut = useUnfollowAuthor();
+  const followed = followedAuthors.some((a) => a.id === authorId);
+
   const hasPagination = papers.length > 14;
   const totalPages = Math.ceil(papers.length / itemsPerPage);
   const paginatedPapers = hasPagination
@@ -23,7 +39,7 @@ function AuthorProfilePage() {
   if (isLoading) {
     return (
       <AppLayout>
-        <div className="p-8 text-sm text-muted-foreground">Đang tải hồ sơ tác giả…</div>
+        <div className="p-8 text-sm text-muted-foreground">Loading author profile...</div>
       </AppLayout>
     );
   }
@@ -34,29 +50,66 @@ function AuthorProfilePage() {
     <AppLayout>
       <PageHeader
         title={author.name}
-        subtitle={`${author.affiliation} · nguồn: ${author.source ?? "OpenAlex / DB"}`}
+        subtitle={`${author.affiliation} · source: ${author.source ?? "OpenAlex / DB"}`}
         action={
           <div className="flex gap-2">
+            {fromReport && (
+              <Link
+                to="/reports"
+                search={(prev: any) => ({ ...prev, authorId })}
+                className="inline-flex items-center gap-2 h-9 px-3 rounded-lg text-sm font-medium border border-brand/40 bg-brand/10 text-brand hover:bg-brand/20 transition-all cursor-pointer"
+              >
+                <ArrowLeft className="size-4" /> Back to Topic Matches
+              </Link>
+            )}
             <Link
               to="/authors"
               className="inline-flex items-center gap-2 h-9 px-3 rounded-lg text-sm font-medium border border-border hover:bg-secondary/50"
             >
-              <ArrowLeft className="size-4" /> Danh sách tác giả
+              <ArrowLeft className="size-4" /> Back to Authors
             </Link>
-            <Link
-              to="/search"
-              search={{ q: author.name }}
-              className="inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-medium border border-border hover:bg-secondary/50"
+            <button
+              type="button"
+              disabled={followAuthorMut.isPending || unfollowAuthorMut.isPending}
+              onClick={() => {
+                if (!user) {
+                  toast.error("Please login to follow authors");
+                  return;
+                }
+                if (followed) {
+                  unfollowAuthorMut.mutate(author.id, {
+                    onSuccess: () => toast.info(`Unfollowed ${author.name}`),
+                    onError: (err) => {
+                      const msg = err instanceof ApiError ? err.message : "Unfollow failed";
+                      toast.error(msg);
+                    },
+                  });
+                } else {
+                  followAuthorMut.mutate(author.id, {
+                    onSuccess: () => toast.success(`Following ${author.name}`),
+                    onError: (err) => {
+                      const msg = err instanceof ApiError ? err.message : "Follow failed. Max 20 authors.";
+                      toast.error(msg);
+                    },
+                  });
+                }
+              }}
+              className={`inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-medium border transition-colors cursor-pointer ${
+                followed
+                  ? "border-brand/40 bg-brand/10 text-brand"
+                  : "border-border hover:bg-secondary/50 text-foreground"
+              }`}
             >
-              Tìm bài báo
-            </Link>
+              <Bookmark className="size-4" fill={followed ? "currentColor" : "none"} />
+              {followed ? "Followed" : "Follow"}
+            </button>
           </div>
         }
       />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <Stat label="Bài báo" value={String(author.papers)} icon={<FileText className="size-4" />} />
-        <Stat label="Trích dẫn" value={author.citations.toLocaleString()} icon={<TrendingUp className="size-4" />} />
+        <Stat label="Papers" value={String(author.papers)} icon={<FileText className="size-4" />} />
+        <Stat label="Citations" value={author.citations.toLocaleString()} icon={<TrendingUp className="size-4" />} />
         <Stat label="h-index" value={String(author.hIndex)} icon={<User className="size-4" />} />
       </div>
 
@@ -67,12 +120,12 @@ function AuthorProfilePage() {
         </div>
       ) : null}
 
-      <Card title={`Bài báo của tác giả (${papers.length})`}>
+      <Card title={`Author's Papers (${papers.length})`}>
         {loadingPapers ? (
-          <p className="text-sm text-muted-foreground p-4">Đang tải danh sách bài báo…</p>
+          <p className="text-sm text-muted-foreground p-4">Loading papers list...</p>
         ) : papers.length === 0 ? (
           <p className="text-sm text-muted-foreground p-4">
-            Chưa có bài báo liên kết trong hệ thống. Chạy sync từ Admin để đồng bộ metadata từ OpenAlex.
+            No linked papers found in the system. Run sync from Admin to synchronize metadata from OpenAlex.
           </p>
         ) : (
           <>

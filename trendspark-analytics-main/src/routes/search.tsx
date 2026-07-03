@@ -128,10 +128,10 @@ function SearchPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "papers.csv";
+    a.download = `${searchType}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-    toast.success(`${results.length} papers exported`);
+    toast.success(`${results.length} ${searchType} exported`);
   };
 
   const yearOptions: [string, string][] = [
@@ -273,8 +273,8 @@ function SearchPage() {
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>
               {totalResults === 0
-                ? "Showing 0 of 0 papers"
-                : `Showing ${startIndex + 1}-${endIndex} of ${totalResults} papers`}
+                ? `Showing 0 of 0 ${searchType}`
+                : `Showing ${startIndex + 1}-${endIndex} of ${totalResults} ${searchType}`}
             </span>
             <span className="font-mono">sorted by {sort}</span>
           </div>
@@ -287,7 +287,11 @@ function SearchPage() {
             </div>
           ) : paginatedResults.length === 0 ? (
             <div className="py-12 text-center text-sm text-muted-foreground">
-              No papers found matching your search criteria.
+              {searchType === "papers"
+                ? "No papers found matching your search criteria."
+                : searchType === "authors"
+                ? "No authors found matching your search criteria."
+                : "No keywords found matching your search criteria."}
             </div>
           ) : (
             <div className="space-y-3">

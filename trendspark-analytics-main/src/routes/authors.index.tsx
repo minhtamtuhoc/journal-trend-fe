@@ -50,20 +50,22 @@ function AuthorsIndexPage() {
   return (
     <AppLayout>
       <PageHeader
-        title="Researchers"
-        subtitle="Tác giả từ OpenAlex · nhấn để xem hồ sơ và danh sách bài báo"
+        title="Authors"
+        subtitle="Authors from OpenAlex · Click to view profile and papers"
       />
 
       <div className="flex flex-col md:flex-row items-stretch gap-4 mb-6">
-        <div className="relative flex-1">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search researchers by name..."
-            className="w-full h-14 pl-11 pr-4 rounded-2xl bg-surface/60 border border-border focus:outline-none focus:ring-2 focus:ring-brand/40 text-sm placeholder:text-muted-foreground"
-          />
+        <div className="flex-1 flex items-center">
+          <div className="relative w-full">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search authors by name..."
+              className="w-full h-14 pl-11 pr-4 rounded-2xl bg-surface/60 border border-border focus:outline-none focus:ring-2 focus:ring-brand/40 text-sm placeholder:text-muted-foreground"
+            />
+          </div>
         </div>
         
         <div className="flex gap-4 shrink-0">
@@ -75,7 +77,7 @@ function AuthorsIndexPage() {
             className="glass rounded-2xl p-4 flex flex-col justify-between min-w-32 border border-border hover:border-brand/40 hover:bg-brand/5 transition-all text-left group cursor-pointer"
             title="Click to reset search"
           >
-            <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mb-1">Total Researchers</div>
+            <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mb-1">Total Authors</div>
             <div className="text-2xl font-bold font-mono text-foreground group-hover:text-brand">
               {isLoading && !pageData ? "..." : (pageData?.totalElements ?? 0).toLocaleString()}
             </div>
@@ -95,18 +97,18 @@ function AuthorsIndexPage() {
 
       {isError && (
         <p className="text-sm text-warning mb-4">
-          Không tải được danh sách tác giả. Kiểm tra backend (port 8080) và chạy sync từ Admin.
+          Failed to load authors list. Check the backend (port 8080) and run sync from Admin.
         </p>
       )}
 
       {isLoading ? (
-        <p className="text-sm text-muted-foreground p-8">Đang tải tác giả…</p>
+        <p className="text-sm text-muted-foreground p-8">Loading authors...</p>
       ) : authorsList.length === 0 ? (
         <Card>
           <p className="text-sm text-muted-foreground py-6 text-center">
             {debouncedQuery.trim()
-              ? `Không tìm thấy tác giả trùng khớp với "${debouncedQuery.trim()}".`
-              : "Chưa có tác giả trong hệ thống. Đăng nhập Admin → Run Manual Sync."}
+              ? `No authors found matching "${debouncedQuery.trim()}".`
+              : "No authors in system. Log in as Admin → Run Manual Sync."}
           </p>
         </Card>
       ) : (
@@ -160,7 +162,7 @@ function AuthorsIndexPage() {
                       e.preventDefault();
                       e.stopPropagation();
                       if (!user) {
-                        toast.error("Đăng nhập để theo dõi tác giả");
+                        toast.error("Please login to follow authors");
                         return;
                       }
                       if (followed) {
