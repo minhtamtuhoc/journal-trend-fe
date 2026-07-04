@@ -4,15 +4,15 @@ import { Card } from "@/components/Card";
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useAnalyticsSnapshot } from "@/hooks/data/use-analytics";
 import { useFollowedTopics, useFollowTopic, useUnfollowTopic, useFollowedAuthors, useFollowAuthor, useUnfollowAuthor } from "@/hooks/data/use-follows";
-import { Flame, TrendingUp } from "lucide-react";
+import { Flame, TrendingUp, Sparkles, Brain, CheckCircle, Lightbulb, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/auth";
 import { ApiError } from "@/api/errors";
-import { useQueries } from "@tanstack/react-query";
+import { useQueries, useMutation } from "@tanstack/react-query";
 import { useDashboardSummary, KeywordChartResponse, KeywordChartPointDto } from "@/hooks/data/use-dashboard";
 import { apiClient } from "@/api/client";
 import { mockQueryDefaults } from "@/hooks/data/query-options";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 
 export const Route = createFileRoute("/trends")({ component: TrendsPage });
 
@@ -41,6 +41,22 @@ const KEYWORD_COLORS = [
   "#14b8a6", // Teal
   "#a855f7", // Violet
 ];
+
+interface AiTopTrendsAnalysisRequest {
+  keywordIds?: number[];
+  months?: number;
+  chartImageBase64?: string;
+  chartImageMimeType?: string;
+}
+
+interface AiTopTrendsAnalysisResponse {
+  overallVerdict: "GROWING" | "STABLE" | "MIXED";
+  analyzedKeywords: string[];
+  topGrowingKeywords: string[];
+  analysis: string;
+  keyInsights: string[];
+  recommendation: string;
+}
 
 function getPreviousMonthName() {
   const d = new Date();
@@ -72,6 +88,30 @@ function TrendsPage() {
   const top10Keywords = useMemo(() => {
     return (summary?.trendingKeywords ?? []).slice(0, 10);
   }, [summary]);
+
+  const [selectedKeywordIds, setSelectedKeywordIds] = useState<number[]>([]);
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  useEffect(() => {
+    if (top10Keywords.length > 0 && !isInitialized) {
+      setSelectedKeywordIds(top10Keywords.map((k) => k.keywordId));
+      setIsInitialized(true);
+    }
+  }, [top10Keywords, isInitialized]);
+
+  const aiMutation = useMutation<
+    AiTopTrendsAnalysisResponse,
+    Error,
+    AiTopTrendsAnalysisRequest
+  >({
+    mutationFn: async (payload) => {
+      const res = await apiClient.post<{ data: AiTopTrendsAnalysisResponse }>(
+        "/v1/ai/analyze-top-trends",
+        payload
+      );
+      return res.data;
+    },
+  });
 
   const keywordChartsQueries = useQueries({
     queries: top10Keywords.map((kw) => ({
@@ -146,6 +186,7 @@ function TrendsPage() {
                   <Tooltip contentStyle={tooltipStyle} />
                   <Legend wrapperStyle={{ fontSize: 11, paddingTop: 10 }} />
                   {top10Keywords.map((kw, index) => {
+                    if (!selectedKeywordIds.includes(kw.keywordId)) return null;
                     const color = KEYWORD_COLORS[index % KEYWORD_COLORS.length];
                     return (
                       <Line
@@ -164,6 +205,199 @@ function TrendsPage() {
               <p className="mt-4 text-[10px] text-muted-foreground text-center font-medium">
                 * Chú thích: Biểu đồ hiển thị điểm xu hướng (%) của Top 10 từ khóa thịnh hành trong 4 tháng gần nhất có dữ liệu.
               </p>
+
+              {/* Checkbox Panel (Option 1) */}
+              <div className="mt-6 p-4 border border-border rounded-xl bg-secondary/10">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-3">
+                  <div>
+                    <h4 className="text-xs font-bold text-foreground">CHỌN TỪ KHÓA ĐỂ HIỂN THỊ & PHÂN TÍCH</h4>
+                    <p className="text-[10px] text-muted-foreground">Tích chọn từ khóa để hiển thị đường biểu diễn và gửi dữ liệu cho AI phân tích.</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setSelectedKeywordIds(top10Keywords.map(k => k.keywordId))}
+                      className="text-[10px] text-brand hover:underline cursor-pointer font-semibold"
+                    >
+                      Chọn tất cả
+                    </button>
+                    <span className="text-muted-foreground text-[10px]">|</span>
+                    <button
+                      onClick={() => setSelectedKeywordIds([])}
+                      className="text-[10px] text-muted-foreground hover:text-foreground hover:underline cursor-pointer font-semibold"
+                    >
+                      Bỏ chọn tất cả
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  {top10Keywords.map((kw, index) => {
+                    const isChecked = selectedKeywordIds.includes(kw.keywordId);
+                    const color = KEYWORD_COLORS[index % KEYWORD_COLORS.length];
+                    return (
+                      <label
+                        key={kw.keywordId}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[11px] cursor-pointer select-none transition-all duration-200 hover:bg-secondary/40"
+                        style={{
+                          borderColor: isChecked ? color : "var(--border)",
+                          backgroundColor: isChecked ? `${color}15` : "transparent",
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          className="rounded border-border text-brand focus:ring-brand size-3.5 cursor-pointer"
+                          onChange={() => {
+                            setSelectedKeywordIds((prev) =>
+                              prev.includes(kw.keywordId)
+                                ? prev.filter((id) => id !== kw.keywordId)
+                                : [...prev, kw.keywordId]
+                            );
+                          }}
+                        />
+                        <span
+                          className="font-semibold"
+                          style={{ color: isChecked ? "var(--foreground)" : "var(--muted-foreground)" }}
+                        >
+                          {kw.keyword}
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* AI Trend Analyst Trigger & Results */}
+              <div className="mt-6 border-t border-border pt-6">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="size-4 text-brand animate-pulse" />
+                    <h4 className="text-xs font-bold text-foreground uppercase tracking-wider">AI Trend Analyst</h4>
+                  </div>
+                  <button
+                    disabled={aiMutation.isPending || selectedKeywordIds.length === 0}
+                    onClick={() => {
+                      if (!user) {
+                        toast.error("Vui lòng đăng nhập để sử dụng tính năng phân tích AI");
+                        return;
+                      }
+                      aiMutation.mutate({
+                        keywordIds: selectedKeywordIds,
+                        months: 12,
+                      });
+                    }}
+                    className="flex items-center gap-1.5 text-[11px] font-bold px-3.5 py-1.5 bg-brand text-brand-foreground rounded-lg shadow-sm hover:bg-brand/90 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed uppercase"
+                  >
+                    {aiMutation.isPending ? (
+                      <>
+                        <RefreshCw className="size-3 animate-spin" />
+                        Đang phân tích...
+                      </>
+                    ) : (
+                      <>
+                        <Brain className="size-3" />
+                        Phân tích bằng AI
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {aiMutation.isPending && (
+                  <div className="p-6 border border-border rounded-xl bg-card/40 flex flex-col items-center justify-center text-center space-y-2">
+                    <div className="relative flex items-center justify-center">
+                      <div className="absolute size-8 bg-brand/10 rounded-full animate-ping" />
+                      <div className="relative size-8 bg-brand/20 rounded-full flex items-center justify-center text-brand">
+                        <Sparkles className="size-4 animate-pulse" />
+                      </div>
+                    </div>
+                    <div className="space-y-0.5">
+                      <p className="text-xs font-bold text-foreground">Mô hình Gemini đang xử lý dữ liệu</p>
+                      <p className="text-[10px] text-muted-foreground max-w-sm">
+                        Đang tổng hợp thông tin, so sánh xu hướng {selectedKeywordIds.length} từ khóa đã chọn trong 12 tháng qua để đưa ra nhận định chuyên sâu...
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {aiMutation.isError && (
+                  <div className="p-4 border border-destructive/20 rounded-xl bg-destructive/10 text-destructive text-xs flex items-center gap-2">
+                    <span>Có lỗi xảy ra trong quá trình phân tích: {aiMutation.error.message}</span>
+                  </div>
+                )}
+
+                {aiMutation.isSuccess && aiMutation.data && (
+                  <div className="p-5 border border-brand/20 rounded-xl bg-gradient-to-br from-card to-brand/5 space-y-4 shadow-sm">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border">
+                      <div className="flex items-center gap-2">
+                        <div className="size-6 bg-brand/10 rounded-lg flex items-center justify-center text-brand">
+                          <Brain className="size-3.5" />
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-bold text-foreground">Báo cáo phân tích tự động</h4>
+                          <p className="text-[9px] text-muted-foreground">Phân tích chuyên sâu bởi mô hình Gemini AI</p>
+                        </div>
+                      </div>
+                      <div>
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                          aiMutation.data.overallVerdict === 'GROWING' ? 'bg-success/15 text-success' :
+                          aiMutation.data.overallVerdict === 'MIXED' ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' : 'bg-secondary text-muted-foreground'
+                        }`}>
+                          <TrendingUp className="size-2.5" />
+                          Xu hướng chung: {aiMutation.data.overallVerdict}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <h5 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                        <Brain className="size-2.5 text-brand" /> Phân tích đối sánh
+                      </h5>
+                      <p className="text-xs text-foreground leading-relaxed">
+                        {aiMutation.data.analysis}
+                      </p>
+                    </div>
+
+                    {aiMutation.data.topGrowingKeywords && aiMutation.data.topGrowingKeywords.length > 0 && (
+                      <div className="space-y-1">
+                        <h5 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                          <Flame className="size-2.5 text-brand" /> Từ khóa tăng trưởng mạnh nhất
+                        </h5>
+                        <div className="flex flex-wrap gap-1">
+                          {aiMutation.data.topGrowingKeywords.map((kw, i) => (
+                            <span key={i} className="text-[10px] px-2 py-0.5 rounded-md bg-brand/10 text-brand font-bold border border-brand/20">
+                              {kw}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="space-y-2.5">
+                      <h5 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                        <CheckCircle className="size-2.5 text-brand" /> Điểm nhận định cốt lõi
+                      </h5>
+                      <ul className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+                        {aiMutation.data.keyInsights.map((insight, i) => (
+                          <li key={i} className="p-3 border border-border rounded-lg bg-card/60 text-[11px] text-muted-foreground leading-relaxed flex items-start gap-1.5">
+                            <span className="font-bold text-brand text-[11px]">0{i+1}.</span>
+                            <span>{insight}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    <div className="p-3 bg-brand/5 border border-brand/20 rounded-lg flex gap-2.5 items-start">
+                      <div className="size-5 bg-brand/20 rounded-md flex items-center justify-center text-brand shrink-0">
+                        <Lightbulb className="size-3" />
+                      </div>
+                      <div className="space-y-0.5">
+                        <p className="text-[10px] font-bold text-brand uppercase tracking-wider">Khuyến nghị hướng nghiên cứu</p>
+                        <p className="text-[11px] text-muted-foreground leading-relaxed">{aiMutation.data.recommendation}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </>
           )}
         </Card>
