@@ -221,4 +221,25 @@
     animation: shimmer 1.6s linear infinite;
     border-radius: var(--radius);
   }
+
+  .light .logo-brand {
+    background: var(--gradient-brand) !important;
+  }
+}
+
+@utility custom-scrollbar {
+  &::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: color-mix(in oklab, var(--border) 60%, transparent);
+    border-radius: 9999px;
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background: var(--brand);
+  }
 }

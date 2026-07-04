@@ -39,7 +39,7 @@ export function PaperGraph({ currentPaperTitle, nodes, isLoading }: PaperGraphPr
     return (
       <div className="h-[450px] w-full rounded-2xl border border-border bg-secondary/5 flex flex-col items-center justify-center text-sm text-muted-foreground animate-pulse">
         <div className="size-8 rounded-full border-2 border-brand border-t-transparent animate-spin mb-4" />
-        Đang tải sơ đồ mối quan hệ bài viết...
+        Loading paper relationship diagram...
       </div>
     );
   }
@@ -48,9 +48,9 @@ export function PaperGraph({ currentPaperTitle, nodes, isLoading }: PaperGraphPr
     return (
       <div className="h-[400px] w-full rounded-2xl border border-border bg-secondary/5 flex flex-col items-center justify-center p-6 text-center text-sm text-muted-foreground">
         <HelpCircle className="size-8 text-muted-foreground/50 mb-3" />
-        <p className="font-semibold text-foreground mb-1">Không tìm thấy dữ liệu liên kết</p>
+        <p className="font-semibold text-foreground mb-1">No citation network data found</p>
         <p className="text-xs text-muted-foreground max-w-sm">
-          Chưa tìm thấy bài viết nào tham chiếu hoặc trích dẫn bài báo này trên OpenAlex.
+          No referenced or citing papers found for this article on OpenAlex.
         </p>
       </div>
     );
@@ -216,26 +216,26 @@ export function PaperGraph({ currentPaperTitle, nodes, isLoading }: PaperGraphPr
       <div className="absolute bottom-4 left-4 z-10 p-3 rounded-xl bg-popover/80 border border-border backdrop-blur text-[10px] space-y-1.5 font-medium text-muted-foreground">
         <div className="flex items-center gap-2">
           <span className="size-2.5 rounded-full border-2 border-brand bg-brand/20 shadow-[0_0_8px_var(--brand)]" />
-          <span className="text-foreground font-semibold">Bài viết hiện tại</span>
+          <span className="text-foreground font-semibold">Current paper</span>
         </div>
         <div className="flex items-center gap-2">
           <span className="size-2.5 rounded-full border border-chart-2 bg-chart-2/20" />
-          <span>Nửa bên trái: Bài viết được trích dẫn (References)</span>
+          <span>Left side: Referenced papers (References)</span>
         </div>
         <div className="flex items-center gap-2">
           <span className="size-2.5 rounded-full border border-chart-5 bg-chart-5/20" />
-          <span>Nửa bên phải: Bài viết trích dẫn (Citations)</span>
+          <span>Right side: Citing papers (Citations)</span>
         </div>
         <div className="flex items-center gap-2 border-t border-border/50 pt-1 mt-1">
           <span className="size-2 rounded-full bg-foreground" />
-          <span>Đường nét liền: Có sẵn trong hệ thống (Xem chi tiết)</span>
+          <span>Solid line: Available in system (View details)</span>
         </div>
         <div className="flex items-center gap-2">
           <span className="size-2 rounded-full bg-muted-foreground/40" />
-          <span>Đường nét đứt: Ngoài hệ thống (Chỉ xem metadata)</span>
+          <span>Dashed line: Outside system (Metadata only)</span>
         </div>
         <div className="text-[9px] text-muted-foreground/60 border-t border-border/50 pt-1 mt-1">
-          * Lăn chuột để zoom · Nhấp kéo để di chuyển sơ đồ
+          * Scroll to zoom · Click and drag to pan diagram
         </div>
       </div>
 
@@ -407,13 +407,13 @@ export function PaperGraph({ currentPaperTitle, nodes, isLoading }: PaperGraphPr
         >
           <p className="text-xs font-bold text-foreground line-clamp-2 leading-tight mb-1.5">{hoveredNode.title}</p>
           <div className="flex flex-wrap gap-x-2 gap-y-1 text-[10px] font-mono text-muted-foreground">
-            <span>Năm: <strong className="text-foreground">{hoveredNode.year}</strong></span>
+            <span>Year: <strong className="text-foreground">{hoveredNode.year}</strong></span>
             <span>•</span>
-            <span>Trích dẫn: <strong className="text-brand font-bold">{hoveredNode.citations?.toLocaleString() ?? "N/A"}</strong></span>
+            <span>Citations: <strong className="text-brand font-bold">{hoveredNode.citations?.toLocaleString() ?? "N/A"}</strong></span>
           </div>
           {hoveredNode.existsLocally && (
             <div className="mt-2 text-[9px] text-brand font-bold flex items-center gap-0.5">
-              <ArrowUpRight className="size-3" /> Nhấp để xem bài viết này
+              <ArrowUpRight className="size-3" /> Click to view this paper
             </div>
           )}
         </div>
@@ -429,17 +429,17 @@ export function PaperGraph({ currentPaperTitle, nodes, isLoading }: PaperGraphPr
                   ? "bg-chart-2/10 text-chart-2"
                   : "bg-chart-5/10 text-chart-5"
               }`}>
-                {selectedNode.relationType === "reference" ? "Bài viết được trích dẫn (Reference)" : "Bài viết trích dẫn (Citation)"}
+                {selectedNode.relationType === "reference" ? "Referenced Paper (Reference)" : "Citing Paper (Citation)"}
               </span>
               {selectedNode.existsLocally ? (
-                <span className="text-[9px] font-mono bg-success/10 text-success px-1.5 py-0.5 rounded border border-success/20">Có sẵn trong hệ thống</span>
+                <span className="text-[9px] font-mono bg-success/10 text-success px-1.5 py-0.5 rounded border border-success/20">Available in system</span>
               ) : (
-                <span className="text-[9px] font-mono bg-muted text-muted-foreground px-1.5 py-0.5 rounded">Ngoài hệ thống</span>
+                <span className="text-[9px] font-mono bg-muted text-muted-foreground px-1.5 py-0.5 rounded">Outside system</span>
               )}
             </div>
             <h4 className="text-sm font-bold text-foreground line-clamp-1 leading-snug">{selectedNode.title}</h4>
             <p className="text-[10px] text-muted-foreground font-mono mt-1">
-              Năm: <span className="text-foreground font-bold">{selectedNode.year}</span> · Trích dẫn: <span className="text-brand font-bold">{selectedNode.citations?.toLocaleString() ?? "N/A"}</span> {selectedNode.doi && `· DOI: ${selectedNode.doi}`}
+              Year: <span className="text-foreground font-bold">{selectedNode.year}</span> · Citations: <span className="text-brand font-bold">{selectedNode.citations?.toLocaleString() ?? "N/A"}</span> {selectedNode.doi && `· DOI: ${selectedNode.doi}`}
             </p>
           </div>
 
@@ -452,7 +452,7 @@ export function PaperGraph({ currentPaperTitle, nodes, isLoading }: PaperGraphPr
                 className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-semibold text-brand-foreground glow-brand transition-transform hover:scale-[1.02]"
                 style={{ background: "var(--gradient-brand)" }}
               >
-                <FileText className="size-3.5" /> Xem chi tiết
+                <FileText className="size-3.5" /> View Details
               </Link>
             ) : null}
 
@@ -480,7 +480,7 @@ export function PaperGraph({ currentPaperTitle, nodes, isLoading }: PaperGraphPr
               onClick={() => setSelectedNode(null)}
               className="h-8 px-3 rounded-lg text-xs font-medium border border-transparent hover:bg-secondary text-muted-foreground transition-colors cursor-pointer"
             >
-              Đóng
+              Close
             </button>
           </div>
         </div>

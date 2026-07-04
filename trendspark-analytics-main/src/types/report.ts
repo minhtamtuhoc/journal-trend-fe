@@ -1,6 +1,7 @@
 export interface KeywordTrendPoint {
   term: string;
   year: number;
+  month?: number;
   paperCount: number;
 }
 
