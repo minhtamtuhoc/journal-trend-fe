@@ -4,15 +4,23 @@ import { Card } from "@/components/Card";
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useAnalyticsSnapshot } from "@/hooks/data/use-analytics";
 import { useFollowedTopics, useFollowTopic, useUnfollowTopic, useFollowedAuthors, useFollowAuthor, useUnfollowAuthor } from "@/hooks/data/use-follows";
-import { Flame, TrendingUp, Sparkles, Brain, CheckCircle, Lightbulb, RefreshCw } from "lucide-react";
+import { Flame, TrendingUp, Sparkles, Brain, CheckCircle, Lightbulb, RefreshCw, X } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/auth";
 import { ApiError } from "@/api/errors";
-import { useQueries, useMutation } from "@tanstack/react-query";
+import { useQueries, useMutation, useQuery } from "@tanstack/react-query";
 import { useDashboardSummary, KeywordChartResponse, KeywordChartPointDto } from "@/hooks/data/use-dashboard";
 import { apiClient } from "@/api/client";
 import { mockQueryDefaults } from "@/hooks/data/query-options";
 import { useMemo, useState, useEffect } from "react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
 
 export const Route = createFileRoute("/trends")({ component: TrendsPage });
 
