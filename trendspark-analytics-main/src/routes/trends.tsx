@@ -446,7 +446,7 @@ function TrendsPage() {
                       </div>
                     </div>
                     <div className="space-y-0.5">
-                      <p className="text-xs font-bold text-foreground">Mô hình Gemini đang xử lý dữ liệu</p>
+                      <p className="text-xs font-bold text-foreground">Mô hình Groq AI đang xử lý dữ liệu</p>
                       <p className="text-[10px] text-muted-foreground max-w-sm">
                         Đang tổng hợp thông tin, so sánh xu hướng {selectedKeywordIds.length} từ khóa đã chọn trong 12 tháng qua để đưa ra nhận định chuyên sâu...
                       </p>
@@ -464,42 +464,42 @@ function TrendsPage() {
                   <div className="p-5 border border-brand/20 rounded-xl bg-gradient-to-br from-card to-brand/5 space-y-4 shadow-sm">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border">
                       <div className="flex items-center gap-2">
-                        <div className="size-6 bg-brand/10 rounded-lg flex items-center justify-center text-brand">
-                          <Brain className="size-3.5" />
+                        <div className="size-6.5 bg-brand/10 rounded-lg flex items-center justify-center text-brand">
+                          <Brain className="size-4" />
                         </div>
                         <div>
-                          <h4 className="text-xs font-bold text-foreground">Báo cáo phân tích tự động</h4>
-                          <p className="text-[9px] text-muted-foreground">Phân tích chuyên sâu bởi mô hình Gemini AI</p>
+                          <h4 className="text-sm font-bold text-foreground">Báo cáo phân tích tự động</h4>
+                          <p className="text-[10px] text-muted-foreground">Phân tích chuyên sâu bởi mô hình Groq AI</p>
                         </div>
                       </div>
                       <div>
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold ${
                           aiMutation.data.overallVerdict === 'GROWING' ? 'bg-success/15 text-success' :
                           aiMutation.data.overallVerdict === 'MIXED' ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' : 'bg-secondary text-muted-foreground'
                         }`}>
-                          <TrendingUp className="size-2.5" />
+                          <TrendingUp className="size-3" />
                           Xu hướng chung: {aiMutation.data.overallVerdict}
                         </span>
                       </div>
                     </div>
 
                     <div className="space-y-1">
-                      <h5 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                        <Brain className="size-2.5 text-brand" /> Phân tích đối sánh
+                      <h5 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                        <Brain className="size-3 text-brand" /> Phân tích đối sánh
                       </h5>
-                      <p className="text-xs text-foreground leading-relaxed">
+                      <p className="text-sm text-foreground leading-relaxed">
                         {aiMutation.data.analysis}
                       </p>
                     </div>
 
                     {aiMutation.data.topGrowingKeywords && aiMutation.data.topGrowingKeywords.length > 0 && (
                       <div className="space-y-1">
-                        <h5 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                          <Flame className="size-2.5 text-brand" /> Từ khóa tăng trưởng mạnh nhất
+                        <h5 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                          <Flame className="size-3 text-brand" /> Từ khóa tăng trưởng mạnh nhất
                         </h5>
                         <div className="flex flex-wrap gap-1">
                           {aiMutation.data.topGrowingKeywords.map((kw, i) => (
-                            <span key={i} className="text-[10px] px-2 py-0.5 rounded-md bg-brand/10 text-brand font-bold border border-brand/20">
+                            <span key={i} className="text-xs px-2 py-0.5 rounded-md bg-brand/10 text-brand font-bold border border-brand/20">
                               {kw}
                             </span>
                           ))}
@@ -508,26 +508,26 @@ function TrendsPage() {
                     )}
 
                     <div className="space-y-2.5">
-                      <h5 className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                        <CheckCircle className="size-2.5 text-brand" /> Điểm nhận định cốt lõi
+                      <h5 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                        <CheckCircle className="size-3 text-brand" /> Điểm nhận định cốt lõi
                       </h5>
                       <ul className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
                         {aiMutation.data.keyInsights.map((insight, i) => (
-                          <li key={i} className="p-3 border border-border rounded-lg bg-card/60 text-[11px] text-muted-foreground leading-relaxed flex items-start gap-1.5">
-                            <span className="font-bold text-brand text-[11px]">0{i+1}.</span>
+                          <li key={i} className="p-3 border border-border rounded-lg bg-card/60 text-xs text-muted-foreground leading-relaxed flex items-start gap-1.5">
+                            <span className="font-bold text-brand text-xs">0{i+1}.</span>
                             <span>{insight}</span>
                           </li>
                         ))}
                       </ul>
                     </div>
 
-                    <div className="p-3 bg-brand/5 border border-brand/20 rounded-lg flex gap-2.5 items-start">
-                      <div className="size-5 bg-brand/20 rounded-md flex items-center justify-center text-brand shrink-0">
-                        <Lightbulb className="size-3" />
+                    <div className="p-3.5 bg-brand/5 border border-brand/20 rounded-lg flex gap-2.5 items-start">
+                      <div className="size-5.5 bg-brand/20 rounded-md flex items-center justify-center text-brand shrink-0">
+                        <Lightbulb className="size-3.5" />
                       </div>
                       <div className="space-y-0.5">
-                        <p className="text-[10px] font-bold text-brand uppercase tracking-wider">Khuyến nghị hướng nghiên cứu</p>
-                        <p className="text-[11px] text-muted-foreground leading-relaxed">{aiMutation.data.recommendation}</p>
+                        <p className="text-xs font-bold text-brand uppercase tracking-wider">Khuyến nghị hướng nghiên cứu</p>
+                        <p className="text-xs text-muted-foreground leading-relaxed">{aiMutation.data.recommendation}</p>
                       </div>
                     </div>
                   </div>
