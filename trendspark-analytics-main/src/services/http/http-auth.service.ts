@@ -44,6 +44,23 @@ export class HttpAuthService implements AuthService {
     return normalized;
   }
 
+  async updateNotificationPreferences(prefs: {
+    notifyKeywords: boolean;
+    notifyAuthors: boolean;
+    notifyJournals: boolean;
+    notifyEmail: boolean;
+  }): Promise<AuthSession> {
+    const session = await apiClient.put<AuthSession>("/auth/notification-preferences", prefs);
+    const cached = authStorage.getSession();
+    const normalized = {
+      ...session,
+      user: normalizeUser(session.user),
+      refreshToken: session.refreshToken || cached?.refreshToken || "",
+    };
+    authStorage.setSession(normalized);
+    return normalized;
+  }
+
   async getSession(): Promise<AuthSession | null> {
     const cached = authStorage.getSession();
     if (!cached) return null;

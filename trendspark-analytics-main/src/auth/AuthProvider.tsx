@@ -13,6 +13,12 @@ type AuthContextValue = {
   register: (name: string, email: string, password: string, role: RegisterRole) => Promise<void>;
   logout: () => void;
   updateProfile: (fullName: string) => Promise<void>;
+  updateNotificationPreferences: (prefs: {
+    notifyKeywords: boolean;
+    notifyAuthors: boolean;
+    notifyJournals: boolean;
+    notifyEmail: boolean;
+  }) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -80,9 +86,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(normalizeUser(session.user));
   }, []);
 
+  const updateNotificationPreferences = useCallback(async (prefs: {
+    notifyKeywords: boolean;
+    notifyAuthors: boolean;
+    notifyJournals: boolean;
+    notifyEmail: boolean;
+  }) => {
+    const session = await getServices().auth.updateNotificationPreferences(prefs);
+    setUser(normalizeUser(session.user));
+  }, []);
+
   const value = useMemo(
-    () => ({ user, isLoading, initializing, login, register, logout, updateProfile }),
-    [user, isLoading, initializing, login, register, logout, updateProfile],
+    () => ({
+      user,
+      isLoading,
+      initializing,
+      login,
+      register,
+      logout,
+      updateProfile,
+      updateNotificationPreferences,
+    }),
+    [user, isLoading, initializing, login, register, logout, updateProfile, updateNotificationPreferences],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

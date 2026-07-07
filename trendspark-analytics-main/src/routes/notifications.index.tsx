@@ -19,11 +19,20 @@ import {
   Trash2,
   ChevronLeft,
   ChevronRight,
+  Settings,
 } from "lucide-react";
 import { toast } from "sonner";
 import { ApiError } from "@/api/errors";
 import { useState, useEffect, useMemo } from "react";
 import { formatDistanceToNow, parseISO, isValid } from "date-fns";
+import { useAuth } from "@/auth";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 
 import { z } from "zod";
 import { groupNotifications, type NotificationGroup, type PaperSummary } from "@/utils/notification-grouper";
@@ -224,6 +233,43 @@ function NotificationsPage() {
   const { page = 1 } = Route.useSearch();
   const { data: notifications = [], isLoading } = useNotificationsBulk(1000);
 
+  const { user, updateNotificationPreferences } = useAuth();
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [notifyKeywords, setNotifyKeywords] = useState(user?.notifyKeywords ?? true);
+  const [notifyAuthors, setNotifyAuthors] = useState(user?.notifyAuthors ?? true);
+  const [notifyJournals, setNotifyJournals] = useState(user?.notifyJournals ?? true);
+  const [notifyEmail, setNotifyEmail] = useState(user?.notifyEmail ?? true);
+
+  useEffect(() => {
+    if (user) {
+      setNotifyKeywords(user.notifyKeywords ?? true);
+      setNotifyAuthors(user.notifyAuthors ?? true);
+      setNotifyJournals(user.notifyJournals ?? true);
+      setNotifyEmail(user.notifyEmail ?? true);
+    }
+  }, [user, isSettingsOpen]);
+
+  const handleSaveSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingSettings(true);
+    try {
+      await updateNotificationPreferences({
+        notifyKeywords,
+        notifyAuthors,
+        notifyJournals,
+        notifyEmail,
+      });
+      toast.success("Đã cập nhật cài đặt thông báo");
+      setIsSettingsOpen(false);
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.message : "Cập nhật cài đặt thất bại";
+      toast.error(msg);
+    } finally {
+      setIsSavingSettings(false);
+    }
+  };
+
   const navigate = useNavigate();
   const markAll = useMarkAllNotificationsRead();
   const markMultiple = useMarkMultipleNotificationsRead();
@@ -341,6 +387,14 @@ function NotificationsPage() {
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
+              onClick={() => setIsSettingsOpen(true)}
+              className="inline-flex items-center justify-center size-9 rounded-lg border border-border bg-surface/50 hover:bg-surface text-foreground transition-colors cursor-pointer"
+              title="Notification Settings"
+            >
+              <Settings className="size-4" />
+            </button>
+            <button
+              type="button"
               onClick={onMarkAll}
               disabled={markAll.isPending || unreadGroupsCount === 0}
               className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-xs font-medium border border-border bg-surface/50 hover:bg-surface text-foreground transition-colors disabled:opacity-50 cursor-pointer"
@@ -441,6 +495,92 @@ function NotificationsPage() {
         </div>
       </Card>
 
+      <Sheet open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
+        <SheetContent side="right" className="sm:max-w-md">
+          <SheetHeader>
+            <SheetTitle>Notification Settings</SheetTitle>
+            <SheetDescription>
+              Configure how and when you want to receive alerts and notifications.
+            </SheetDescription>
+          </SheetHeader>
+
+          <form onSubmit={handleSaveSettings} className="space-y-6 mt-6">
+            <div className="space-y-4">
+              <label className="flex items-start gap-3 cursor-pointer p-1 rounded hover:bg-secondary/20 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={notifyKeywords}
+                  onChange={(e) => setNotifyKeywords(e.target.checked)}
+                  className="mt-0.5 size-4 accent-[var(--brand)] rounded border-border"
+                />
+                <div className="grid gap-0.5 leading-none">
+                  <span className="text-sm font-semibold">Keyword follows</span>
+                  <span className="text-xs text-muted-foreground">Nhận thông báo khi có từ khóa theo dõi mới.</span>
+                </div>
+              </label>
+
+              <label className="flex items-start gap-3 cursor-pointer p-1 rounded hover:bg-secondary/20 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={notifyAuthors}
+                  onChange={(e) => setNotifyAuthors(e.target.checked)}
+                  className="mt-0.5 size-4 accent-[var(--brand)] rounded border-border"
+                />
+                <div className="grid gap-0.5 leading-none">
+                  <span className="text-sm font-semibold">Author follows</span>
+                  <span className="text-xs text-muted-foreground">Nhận thông báo từ tác giả theo dõi mới.</span>
+                </div>
+              </label>
+
+              <label className="flex items-start gap-3 cursor-pointer p-1 rounded hover:bg-secondary/20 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={notifyJournals}
+                  onChange={(e) => setNotifyJournals(e.target.checked)}
+                  className="mt-0.5 size-4 accent-[var(--brand)] rounded border-border"
+                />
+                <div className="grid gap-0.5 leading-none">
+                  <span className="text-sm font-semibold">Journal follows</span>
+                  <span className="text-xs text-muted-foreground">Nhận thông báo từ tạp chí theo dõi mới.</span>
+                </div>
+              </label>
+
+              <div className="h-px bg-border my-4" />
+
+              <label className="flex items-start gap-3 cursor-pointer p-1 rounded hover:bg-secondary/20 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={notifyEmail}
+                  onChange={(e) => setNotifyEmail(e.target.checked)}
+                  className="mt-0.5 size-4 accent-[var(--brand)] rounded border-border"
+                />
+                <div className="grid gap-0.5 leading-none">
+                  <span className="text-sm font-semibold">Email notifications</span>
+                  <span className="text-xs text-muted-foreground">Nhận thông báo qua Email.</span>
+                </div>
+              </label>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 border-t border-border">
+              <button
+                type="button"
+                onClick={() => setIsSettingsOpen(false)}
+                className="h-10 px-4 rounded-lg text-sm font-semibold border border-border hover:bg-secondary transition-colors cursor-pointer"
+              >
+                Hủy
+              </button>
+              <button
+                type="submit"
+                disabled={isSavingSettings}
+                className="h-10 px-5 rounded-lg text-sm font-semibold text-brand-foreground glow-brand disabled:opacity-60 flex items-center justify-center cursor-pointer"
+                style={{ background: "var(--gradient-brand)" }}
+              >
+                {isSavingSettings ? "Đang lưu…" : "Save"}
+              </button>
+            </div>
+          </form>
+        </SheetContent>
+      </Sheet>
     </AppLayout>
   );
 }

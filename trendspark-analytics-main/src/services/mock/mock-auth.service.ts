@@ -45,6 +45,26 @@ export class MockAuthService implements AuthService {
     return session;
   }
 
+  async updateNotificationPreferences(prefs: {
+    notifyKeywords: boolean;
+    notifyAuthors: boolean;
+    notifyJournals: boolean;
+    notifyEmail: boolean;
+  }): Promise<AuthSession> {
+    await new Promise((r) => setTimeout(r, AUTH_DELAY_MS));
+    const existing = authStorage.getSession();
+    if (!existing) throw new Error("Not authenticated");
+    const session = buildSession({
+      ...existing.user,
+      notifyKeywords: prefs.notifyKeywords,
+      notifyAuthors: prefs.notifyAuthors,
+      notifyJournals: prefs.notifyJournals,
+      notifyEmail: prefs.notifyEmail,
+    });
+    authStorage.setSession(session);
+    return session;
+  }
+
   async getSession(): Promise<AuthSession | null> {
     const session = authStorage.getSession();
     if (session) return session;
