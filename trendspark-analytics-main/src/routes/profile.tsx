@@ -12,7 +12,6 @@ function ProfilePage() {
   const { user, updateProfile } = useAuth();
   const [name, setName] = useState(user?.name ?? "");
   const [saving, setSaving] = useState(false);
-  const [notif, setNotif] = useState({ trends: true, papers: true, journals: false });
 
   useEffect(() => {
     if (user?.name) setName(user.name);
@@ -41,10 +40,10 @@ function ProfilePage() {
 
   return (
     <AppLayout>
-      <PageHeader title="Profile Settings" subtitle="Manage your account and notification preferences" />
+      <PageHeader title="Profile Settings" subtitle="Manage your account profile" />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card title="Account" className="lg:col-span-2">
+      <div className="max-w-2xl mx-auto w-full">
+        <Card title="Account">
           <form onSubmit={onSubmit} className="space-y-4">
             <Field label="Full name" value={name} onChange={setName} />
             <Field label="Email" value={user.email} onChange={() => {}} type="email" disabled hint="Email không thể đổi qua hệ thống" />
@@ -58,23 +57,6 @@ function ProfilePage() {
               {saving ? "Đang lưu…" : "Save changes"}
             </button>
           </form>
-        </Card>
-
-        <Card title="Notification Preferences">
-          <p className="text-xs text-muted-foreground mb-3">Lưu cục bộ trên trình duyệt (sắp có đồng bộ server).</p>
-          <div className="space-y-4">
-            {([["trends", "Trend alerts"], ["papers", "New papers"], ["journals", "Journal updates"]] as const).map(([k, l]) => (
-              <label key={k} className="flex items-center justify-between text-sm">
-                <span>{l}</span>
-                <input
-                  type="checkbox"
-                  checked={notif[k]}
-                  onChange={(e) => setNotif({ ...notif, [k]: e.target.checked })}
-                  className="size-4 accent-[var(--brand)]"
-                />
-              </label>
-            ))}
-          </div>
         </Card>
       </div>
     </AppLayout>

@@ -5,6 +5,10 @@ export type User = {
   email: string;
   role: UserRole;
   rawRole?: string; // giá trị gốc từ backend: STUDENT | LECTURER | RESEARCHER | ADMIN | SUPER_ADMIN
+  notifyKeywords?: boolean;
+  notifyAuthors?: boolean;
+  notifyJournals?: boolean;
+  notifyEmail?: boolean;
 };
 
 export type AuthSession = {
