@@ -171,3 +171,25 @@ export type UserAdminResponse = {
   createdAt: string;
   updatedAt: string;
 };
+
+export type SearchHistoryEntry = {
+  query: string;
+  searchType: "papers" | "authors" | "keywords";
+};
+
+export type AuthorSpotlightEntry = {
+  id: string;
+  name: string;
+  affiliation: string;
+  papers: number;
+  citations: number;
+  hIndex: number;
+};
+
+export type AuthorSpotlight = {
+  mostPapers: AuthorSpotlightEntry | null;
+  mostCitations: AuthorSpotlightEntry | null;
+  mostHIndex: AuthorSpotlightEntry | null;
+};
+
+

@@ -4,6 +4,8 @@ import { Card } from "@/components/Card";
 import { useSearchPapers, useAvailableYears } from "@/hooks/data/use-papers";
 import { useFollowedTopics, useFollowTopic, useUnfollowTopic } from "@/hooks/data/use-follows";
 import type { Paper } from "@/types/domain";
+import { useAuth } from "@/auth";
+import { useRecentSearches, useRecordSearch } from "@/hooks/data/use-search-history";
 import { useEffect, useState, useRef } from "react";
 import { Search as SearchIcon, Download, SlidersHorizontal, ArrowUpRight, Check, ChevronDown } from "lucide-react";
 import { z } from "zod";
@@ -21,7 +23,7 @@ export const Route = createFileRoute("/search")({
   validateSearch: (s) => searchSchema.parse(s),
 });
 
-const SUGGESTIONS = ["CRISPR", "Quantum", "Neural Radiance", "Solid-state battery", "Edge AI", "Climate"];
+
 
 const categories = [
   "Computer Science",
@@ -56,6 +58,10 @@ function SearchPage() {
   const [toYear, setToYear] = useState<string>("all");
   const [category, setCategory] = useState("all");
   const [minCitations, setMinCitations] = useState(0);
+
+  const { user } = useAuth();
+  const { data: recentSearches = [] } = useRecentSearches();
+  const recordSearch = useRecordSearch();
 
   const { data: followedTopics = [] } = useFollowedTopics();
   const { data: availableYears = [] } = useAvailableYears();
@@ -168,30 +174,41 @@ function SearchPage() {
               </div>
             </div>
           </Card>
-          <Card title="Recent Searches">
-            <div className="flex flex-wrap gap-2">
-              {SUGGESTIONS.map((s) => (
-                <button
-                  key={s}
-                  onClick={() => {
-                    setQ(s);
-                    navigate({
-                      to: "/search",
-                      search: {
-                        q: s,
-                        searchType,
-                        topicId: undefined,
-                      },
-                      replace: true,
-                    });
-                  }}
-                  className="text-[11px] px-2.5 py-1 rounded-full border border-border bg-secondary/40 hover:border-brand/40 hover:text-brand transition-colors"
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-          </Card>
+          {user && (
+            <Card title="Recent Searches">
+              <div className="flex flex-wrap gap-2">
+                {recentSearches.length === 0 ? (
+                  <span className="text-xs text-muted-foreground italic px-1">No recent searches</span>
+                ) : (
+                  recentSearches.map((entry) => (
+                    <button
+                      key={`${entry.query}-${entry.searchType}`}
+                      onClick={() => {
+                        setQ(entry.query);
+                        setSearchType(entry.searchType);
+                        if (user) {
+                          recordSearch.mutate({ query: entry.query, searchType: entry.searchType });
+                        }
+                        navigate({
+                          to: "/search",
+                          search: {
+                            q: entry.query,
+                            searchType: entry.searchType,
+                            topicId: undefined,
+                          },
+                          replace: true,
+                        });
+                      }}
+                      className="inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-full border border-border bg-secondary/40 hover:border-brand/40 hover:text-brand transition-colors"
+                    >
+                      <span>{entry.query}</span>
+                      <span className="text-[9px] opacity-50 capitalize">({entry.searchType === "keywords" ? "keyword" : entry.searchType === "authors" ? "author" : "paper"})</span>
+                    </button>
+                  ))
+                )}
+              </div>
+            </Card>
+          )}
         </aside>
 
         <div className="space-y-4">
@@ -204,10 +221,14 @@ function SearchPage() {
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     setShowDropdown(false);
+                    const trimmedQ = q.trim();
+                    if (trimmedQ && user) {
+                      recordSearch.mutate({ query: trimmedQ, searchType });
+                    }
                     navigate({
                       to: "/search",
                       search: {
-                        q: q || undefined,
+                        q: trimmedQ || undefined,
                         searchType,
                         topicId: undefined,
                       },

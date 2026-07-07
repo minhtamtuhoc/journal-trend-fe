@@ -43,3 +43,13 @@ export function useAuthorPapers(authorId: string) {
     ...mockQueryDefaults,
   });
 }
+
+export function useAuthorSpotlight() {
+  return useQuery({
+    queryKey: queryKeys.authors.spotlight,
+    queryFn: () => getServices().authors.getSpotlight(),
+    enabled: isBrowser,
+    ...mockQueryDefaults,
+  });
+}
+

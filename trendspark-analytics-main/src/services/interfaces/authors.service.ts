@@ -1,4 +1,4 @@
-import type { Author, AuthorProfile, Paper } from "@/types/domain";
+import type { Author, AuthorProfile, Paper, AuthorSpotlight } from "@/types/domain";
 import type { PageResponse } from "./papers.service";
 
 export interface AuthorsService {
@@ -6,4 +6,6 @@ export interface AuthorsService {
   listFeatured(limit?: number): Promise<Author[]>;
   getById(id: string): Promise<AuthorProfile | null>;
   listPapers(authorId: string, limit?: number): Promise<Paper[]>;
+  getSpotlight(): Promise<AuthorSpotlight>;
 }
+
