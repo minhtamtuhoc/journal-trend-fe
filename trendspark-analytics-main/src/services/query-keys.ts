@@ -23,6 +23,7 @@ export const queryKeys = {
     featured: ["authors", "featured"] as const,
     detail: (id: string) => ["authors", "detail", id] as const,
     papers: (id: string) => ["authors", "papers", id] as const,
+    spotlight: ["authors", "spotlight"] as const,
   },
   notifications: {
     all: ["notifications", "list"] as const,
@@ -45,4 +46,8 @@ export const queryKeys = {
     admins: ["superAdmin", "admins"] as const,
     users: (q?: string, page?: number, size?: number) => ["superAdmin", "users", { q, page, size }] as const,
   },
+  searchHistory: {
+    recent: ["searchHistory", "recent"] as const,
+  },
 } as const;
+

@@ -100,7 +100,7 @@ function TrendsPage() {
     const date = new Date();
     date.setDate(1); // prevent rollover
     date.setMonth(date.getMonth() - 1); // start from previous calendar month (main month of the table)
-    
+
     for (let i = 0; i < 5; i++) {
       date.setMonth(date.getMonth() - 1);
       list.push({
@@ -473,10 +473,9 @@ function TrendsPage() {
                         </div>
                       </div>
                       <div>
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                          aiMutation.data.overallVerdict === 'GROWING' ? 'bg-success/15 text-success' :
-                          aiMutation.data.overallVerdict === 'MIXED' ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' : 'bg-secondary text-muted-foreground'
-                        }`}>
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold ${aiMutation.data.overallVerdict === 'GROWING' ? 'bg-success/15 text-success' :
+                            aiMutation.data.overallVerdict === 'MIXED' ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' : 'bg-secondary text-muted-foreground'
+                          }`}>
                           <TrendingUp className="size-3" />
                           Xu hướng chung: {aiMutation.data.overallVerdict}
                         </span>
@@ -514,7 +513,7 @@ function TrendsPage() {
                       <ul className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
                         {aiMutation.data.keyInsights.map((insight, i) => (
                           <li key={i} className="p-3 border border-border rounded-lg bg-card/60 text-xs text-muted-foreground leading-relaxed flex items-start gap-1.5">
-                            <span className="font-bold text-brand text-xs">0{i+1}.</span>
+                            <span className="font-bold text-brand text-xs">0{i + 1}.</span>
                             <span>{insight}</span>
                           </li>
                         ))}
@@ -597,13 +596,12 @@ function TrendsPage() {
                       </td>
                       <td className="py-3 text-right font-mono text-muted-foreground">{k.count}</td>
                       <td
-                        className={`py-3 text-right font-mono ${
-                          k.trendScore >= 15
+                        className={`py-3 text-right font-mono ${k.trendScore >= 15
                             ? "text-success"
                             : k.trendScore < 0
-                            ? "text-destructive"
-                            : "text-muted-foreground"
-                        }`}
+                              ? "text-destructive"
+                              : "text-muted-foreground"
+                          }`}
                       >
                         {k.trendScore > 0 ? "+" : ""}{k.trendScore.toFixed(1)}%
                       </td>
@@ -701,19 +699,18 @@ function TrendsPage() {
                                 </span>
                               ) : (
                                 <span
-                                  className={`text-[10px] font-semibold flex items-center gap-0.5 ${
-                                    rowData.diffPapers > 0
+                                  className={`text-[10px] font-semibold flex items-center gap-0.5 ${rowData.diffPapers > 0
                                       ? "text-success"
                                       : rowData.diffPapers < 0
-                                      ? "text-destructive"
-                                      : "text-muted-foreground/60"
-                                  }`}
+                                        ? "text-destructive"
+                                        : "text-muted-foreground/60"
+                                    }`}
                                 >
                                   {rowData.diffPapers > 0
                                     ? `▲ +${rowData.diffPapers}`
                                     : rowData.diffPapers < 0
-                                    ? `▼ ${rowData.diffPapers}`
-                                    : `▬ 0`}
+                                      ? `▼ ${rowData.diffPapers}`
+                                      : `▬ 0`}
                                 </span>
                               )}
                             </div>
@@ -721,15 +718,14 @@ function TrendsPage() {
                           <td className="py-3 text-right font-mono">
                             <div className="flex flex-col items-end justify-center">
                               <span
-                                className={`font-semibold ${
-                                  rowData.trendScore !== null
+                                className={`font-semibold ${rowData.trendScore !== null
                                     ? rowData.trendScore >= 15
                                       ? "text-success"
                                       : rowData.trendScore < 0
-                                      ? "text-destructive"
-                                      : "text-muted-foreground"
+                                        ? "text-destructive"
+                                        : "text-muted-foreground"
                                     : "text-muted-foreground/40"
-                                }`}
+                                  }`}
                               >
                                 {rowData.trendScore !== null
                                   ? `${rowData.trendScore > 0 ? "+" : ""}${rowData.trendScore.toFixed(1)}%`
@@ -748,19 +744,18 @@ function TrendsPage() {
                                 </span>
                               ) : (
                                 <span
-                                  className={`text-[10px] font-semibold flex items-center gap-0.5 ${
-                                    rowData.diffScore > 0
+                                  className={`text-[10px] font-semibold flex items-center gap-0.5 ${rowData.diffScore > 0
                                       ? "text-success"
                                       : rowData.diffScore < 0
-                                      ? "text-destructive"
-                                      : "text-muted-foreground/60"
-                                  }`}
+                                        ? "text-destructive"
+                                        : "text-muted-foreground/60"
+                                    }`}
                                 >
                                   {rowData.diffScore > 0
                                     ? `▲ +${rowData.diffScore.toFixed(1)}%`
                                     : rowData.diffScore < 0
-                                    ? `▼ ${rowData.diffScore.toFixed(1)}%`
-                                    : `▬ 0.0%`}
+                                      ? `▼ ${rowData.diffScore.toFixed(1)}%`
+                                      : `▬ 0.0%`}
                                 </span>
                               )}
                             </div>

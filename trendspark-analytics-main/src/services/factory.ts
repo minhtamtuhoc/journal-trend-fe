@@ -29,6 +29,10 @@ import { MockJournalsService } from "@/services/mock/mock-journals.service";
 import type { SuperAdminService } from "@/services/interfaces/super-admin.service";
 import { HttpSuperAdminService } from "@/services/http/http-super-admin.service";
 import { MockSuperAdminService } from "@/services/mock/mock-super-admin.service";
+import type { SearchHistoryService } from "@/services/interfaces/search-history.service";
+import { HttpSearchHistoryService } from "@/services/http/http-search-history.service";
+import { MockSearchHistoryService } from "@/services/mock/mock-search-history.service";
+
 
 
 export type AppServices = {
@@ -42,6 +46,7 @@ export type AppServices = {
   collections: CollectionsService;
   journals: JournalsService;
   superAdmin: SuperAdminService;
+  searchHistory: SearchHistoryService;
 };
 
 function createMockServices(): AppServices {
@@ -56,6 +61,7 @@ function createMockServices(): AppServices {
     collections: new MockCollectionsService(),
     journals: new MockJournalsService(),
     superAdmin: new MockSuperAdminService(),
+    searchHistory: new MockSearchHistoryService(),
   };
 }
 
@@ -71,6 +77,7 @@ function createHttpServices(): AppServices {
     collections: new HttpCollectionsService(),
     journals: new HttpJournalsService(),
     superAdmin: new HttpSuperAdminService(),
+    searchHistory: new HttpSearchHistoryService(),
   };
 }
 
