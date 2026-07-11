@@ -4,6 +4,8 @@ import { authStorage } from "@/auth/storage";
 import type { LoginCredentials, RegisterCredentials, RegisterRole, User } from "@/auth/types";
 import { normalizeUser } from "@/auth/roles";
 import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { recordActivity, getIdleMs, clearActivity, IDLE_TIMEOUT_MS } from "@/auth/idle-timer";
 
 type AuthContextValue = {
   user: User | null;
@@ -76,10 +78,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const logout = useCallback(() => {
+    clearActivity();
     void getServices().auth.logout();
     setUser(null);
     qc.clear();
   }, [qc]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    recordActivity(); // reset mốc ngay khi bắt đầu theo dõi (login/reload)
+
+    const events = ["mousemove", "keydown", "click", "scroll", "touchstart"] as const;
+    let throttleTimer: number | null = null;
+    const onActivity = () => {
+      // throttle: chỉ ghi localStorage tối đa 1 lần / 5 giây, tránh ghi quá dày khi user di chuột liên tục
+      if (throttleTimer) return;
+      throttleTimer = window.setTimeout(() => { throttleTimer = null; }, 5000);
+      recordActivity();
+    };
+    events.forEach((e) => window.addEventListener(e, onActivity, { passive: true }));
+
+    const checkInterval = window.setInterval(() => {
+      if (getIdleMs() >= IDLE_TIMEOUT_MS) {
+        clearActivity();
+        logout();
+        toast.info("Bạn đã bị đăng xuất do không hoạt động trong 30 phút");
+      }
+    }, 15_000); // check mỗi 15 giây là đủ, không cần chính xác tới từng giây
+
+    return () => {
+      events.forEach((e) => window.removeEventListener(e, onActivity));
+      window.clearInterval(checkInterval);
+      if (throttleTimer) window.clearTimeout(throttleTimer);
+    };
+  }, [user, logout]);
 
   const updateProfile = useCallback(async (fullName: string) => {
     const session = await getServices().auth.updateProfile(fullName);
