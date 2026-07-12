@@ -121,11 +121,11 @@ function PaperDetailPage() {
 
   const handleAuthorFollow = (authorId: string | null, authorName: string) => {
     if (!user) {
-      toast.error("Đăng nhập để theo dõi tác giả");
+      toast.error("Please log in to follow authors");
       return;
     }
     if (!authorId) {
-      toast.error("Tác giả này chưa có trong hệ thống, không thể theo dõi.");
+      toast.error("This author is not registered in the system and cannot be followed.");
       return;
     }
     const followed = isAuthorFollowed(authorId);
@@ -164,9 +164,9 @@ function PaperDetailPage() {
                   const mutate = journalFollowed ? unfollowJournal : followJournal;
                   mutate.mutate(journalId, {
                     onSuccess: () =>
-                      toast.success(journalFollowed ? `Đã bỏ theo dõi journal: ${paper.journal}` : `Đang theo dõi journal: ${paper.journal}`),
+                      toast.success(journalFollowed ? `Unfollowed journal: ${paper.journal}` : `Following journal: ${paper.journal}`),
                     onError: (err) => {
-                      const msg = err instanceof ApiError ? err.message : "Không cập nhật follow journal";
+                      const msg = err instanceof ApiError ? err.message : "Failed to update journal follow status";
                       toast.error(msg);
                     },
                   });
@@ -193,7 +193,7 @@ function PaperDetailPage() {
               {isAuthorDropdownOpen && (
                 <div className="absolute right-0 mt-2 w-64 rounded-xl bg-popover border border-border shadow-2xl p-2 z-50 animate-fade-in">
                   <p className="text-[9px] uppercase tracking-widest text-muted-foreground font-bold px-3 py-1.5 border-b border-border/50 mb-1">
-                    Danh sách tác giả
+                    Author List
                   </p>
                   <div className="max-h-56 overflow-y-auto space-y-1">
                     {(paper.authorRefs?.length
@@ -230,9 +230,9 @@ function PaperDetailPage() {
                           ) : (
                             <span
                               className="text-[9px] text-muted-foreground px-2 py-1 bg-secondary/20 rounded border border-border/30 cursor-not-allowed"
-                              title="Tác giả chưa có trong hệ thống"
+                              title="Author not in system"
                             >
-                              Mới
+                              New
                             </span>
                           )}
                         </div>
@@ -453,7 +453,7 @@ function PaperDetailPage() {
                 label="Related Topic Trend"
                 value={`${(paper.trendScore ?? 0) > 0 ? "+" : ""}${(paper.trendScore ?? 0).toFixed(1)}%`}
                 accent={(paper.trendScore ?? 0) >= 0 ? "success" : "destructive"}
-                tooltip="Mức tăng trưởng cao nhất trong số các chủ đề (keywords) gắn với bài viết này trong tháng hiện tại."
+                tooltip="Highest growth rate among keywords associated with this paper in the current month."
               />
               <Metric label="Citations" value={(paper.citations ?? 0).toLocaleString()} />
               <Metric label="Impact Factor" value={(paper.impactFactor ?? 0).toString()} />
@@ -496,7 +496,7 @@ function PaperDetailPage() {
                         {followed ? "Following" : "Follow"}
                       </button>
                     ) : (
-                      <span className="text-[10px] px-2 py-1 text-muted-foreground" title="Tác giả chưa có trong hệ thống">
+                      <span className="text-[10px] px-2 py-1 text-muted-foreground" title="Author not in system">
                         —
                       </span>
                     )}

@@ -42,10 +42,10 @@ function ResetPasswordPage() {
 
     try {
       await getServices().auth.resetPassword(token, newPassword);
-      toast.success("Mật khẩu đã được thay đổi thành công!");
+      toast.success("Password has been successfully changed!");
       navigate({ to: "/login" });
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Đổi mật khẩu thất bại";
+      const message = error instanceof Error ? error.message : "Password reset failed";
       setApiError(message);
       toast.error(message);
     } finally {

@@ -50,9 +50,9 @@ function TopicPapersPage() {
                   const mutate = isFollowing ? unfollowTopic : followTopic;
                   mutate.mutate(topicId, {
                     onSuccess: () =>
-                      toast.success(isFollowing ? `Đã bỏ theo dõi topic: ${topic.name}` : `Đang theo dõi topic: ${topic.name}`),
+                      toast.success(isFollowing ? `Unfollowed topic: ${topic.name}` : `Following topic: ${topic.name}`),
                     onError: (err) => {
-                      const msg = err instanceof ApiError ? err.message : "Không cập nhật follow";
+                      const msg = err instanceof ApiError ? err.message : "Failed to update follow status";
                       toast.error(msg);
                     },
                   });
@@ -63,7 +63,7 @@ function TopicPapersPage() {
                 style={isFollowing ? undefined : { background: "var(--gradient-brand)" }}
               >
                 {isFollowing ? <BellOff className="size-4" /> : <Bell className="size-4" />}
-                {isFollowing ? "Đang theo dõi" : "Theo dõi topic"}
+                {isFollowing ? "Following" : "Follow topic"}
               </button>
             ) : null}
             <Link

@@ -59,7 +59,7 @@ function transformLineChartData(points: KeywordTrendPoint[]) {
   const generateLast3Months = () => {
     const list: { label: string; sortKey: number }[] = [];
     const now = new Date();
-    for (let i = 3; i >= 1; i--) {
+    for (let i = 3; i >= 0; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const year = d.getFullYear();
       const month = d.getMonth() + 1;

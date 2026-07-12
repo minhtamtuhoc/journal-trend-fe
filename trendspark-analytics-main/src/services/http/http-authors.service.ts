@@ -38,7 +38,7 @@ function mapEntry(dto: AuthorDto | null): AuthorSpotlightEntry | null {
 }
 
 export class HttpAuthorsService implements AuthorsService {
-  list(params: { page: number; size: number; q?: string; topicId?: string }) {
+  list(params: { page: number; size: number; q?: string; topicId?: string; sort?: string }) {
     return apiClient.get<PageResponse<Author>>("/authors", { params });
   }
 

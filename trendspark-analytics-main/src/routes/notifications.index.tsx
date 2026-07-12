@@ -260,10 +260,10 @@ function NotificationsPage() {
         notifyJournals,
         notifyEmail,
       });
-      toast.success("Đã cập nhật cài đặt thông báo");
+      toast.success("Notification settings updated");
       setIsSettingsOpen(false);
     } catch (err) {
-      const msg = err instanceof ApiError ? err.message : "Cập nhật cài đặt thất bại";
+      const msg = err instanceof ApiError ? err.message : "Failed to update notification settings";
       toast.error(msg);
     } finally {
       setIsSavingSettings(false);
@@ -515,7 +515,7 @@ function NotificationsPage() {
                 />
                 <div className="grid gap-0.5 leading-none">
                   <span className="text-sm font-semibold">Keyword follows</span>
-                  <span className="text-xs text-muted-foreground">Nhận thông báo khi có từ khóa theo dõi mới.</span>
+                  <span className="text-xs text-muted-foreground">Receive alerts when followed keywords have new papers.</span>
                 </div>
               </label>
 
@@ -528,7 +528,7 @@ function NotificationsPage() {
                 />
                 <div className="grid gap-0.5 leading-none">
                   <span className="text-sm font-semibold">Author follows</span>
-                  <span className="text-xs text-muted-foreground">Nhận thông báo từ tác giả theo dõi mới.</span>
+                  <span className="text-xs text-muted-foreground">Receive alerts when followed authors publish new papers.</span>
                 </div>
               </label>
 
@@ -541,7 +541,7 @@ function NotificationsPage() {
                 />
                 <div className="grid gap-0.5 leading-none">
                   <span className="text-sm font-semibold">Journal follows</span>
-                  <span className="text-xs text-muted-foreground">Nhận thông báo từ tạp chí theo dõi mới.</span>
+                  <span className="text-xs text-muted-foreground">Receive alerts when followed journals publish new papers.</span>
                 </div>
               </label>
 
@@ -556,7 +556,7 @@ function NotificationsPage() {
                 />
                 <div className="grid gap-0.5 leading-none">
                   <span className="text-sm font-semibold">Email notifications</span>
-                  <span className="text-xs text-muted-foreground">Nhận thông báo qua Email.</span>
+                  <span className="text-xs text-muted-foreground">Receive alerts via Email.</span>
                 </div>
               </label>
             </div>
@@ -567,7 +567,7 @@ function NotificationsPage() {
                 onClick={() => setIsSettingsOpen(false)}
                 className="h-10 px-4 rounded-lg text-sm font-semibold border border-border hover:bg-secondary transition-colors cursor-pointer"
               >
-                Hủy
+                Cancel
               </button>
               <button
                 type="submit"
@@ -575,7 +575,7 @@ function NotificationsPage() {
                 className="h-10 px-5 rounded-lg text-sm font-semibold text-brand-foreground glow-brand disabled:opacity-60 flex items-center justify-center cursor-pointer"
                 style={{ background: "var(--gradient-brand)" }}
               >
-                {isSavingSettings ? "Đang lưu…" : "Save"}
+                {isSavingSettings ? "Saving..." : "Save"}
               </button>
             </div>
           </form>

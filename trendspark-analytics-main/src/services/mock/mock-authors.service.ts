@@ -6,12 +6,22 @@ import { MOCK_TRENDING_AUTHORS } from "@/mocks/data/authors";
 import { mockDelay } from "@/services/utils";
 
 export class MockAuthorsService implements AuthorsService {
-  async list(params: { page: number; size: number; q?: string; topicId?: string }): Promise<PageResponse<Author>> {
+  async list(params: { page: number; size: number; q?: string; topicId?: string; sort?: "papers" | "citations" | "hIndex" }): Promise<PageResponse<Author>> {
     await mockDelay();
     const q = params.q?.trim().toLowerCase();
-    const filtered = q
+    let filtered = q
       ? MOCK_TRENDING_AUTHORS.filter((a) => a.name.toLowerCase().includes(q))
       : MOCK_TRENDING_AUTHORS;
+    
+    const sort = params.sort || "citations";
+    if (sort === "papers") {
+      filtered = filtered.filter((a) => a.papers > 0);
+      filtered = [...filtered].sort((a, b) => b.papers - a.papers);
+    } else if (sort === "hIndex") {
+      filtered = [...filtered].sort((a, b) => b.hIndex - a.hIndex);
+    } else {
+      filtered = [...filtered].sort((a, b) => b.citations - a.citations);
+    }
     
     const page = params.page ?? 0;
     const size = params.size ?? 24;

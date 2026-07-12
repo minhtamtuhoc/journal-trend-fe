@@ -149,7 +149,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             onClick={handleLogout}
             className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium border border-border text-foreground hover:bg-destructive/10 hover:border-destructive/40 hover:text-destructive transition-colors"
           >
-            <LogOut className="size-4" /> Đăng xuất
+            <LogOut className="size-4" /> Log out
           </button>
         </div>
       </aside>
@@ -204,10 +204,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 type="button"
                 onClick={handleLogout}
                 className="inline-flex items-center gap-2 h-9 px-3 rounded-lg text-sm font-medium border border-border hover:bg-destructive/10 hover:border-destructive/40 hover:text-destructive transition-colors"
-                title="Đăng xuất"
+                title="Log out"
               >
                 <LogOut className="size-4" />
-                <span className="hidden md:inline">Đăng xuất</span>
+                <span className="hidden md:inline">Log out</span>
               </button>
             </div>
           </div>

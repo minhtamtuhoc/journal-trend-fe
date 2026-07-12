@@ -3,7 +3,7 @@ import { getServices, queryKeys } from "@/services";
 import { isBrowser } from "@/hooks/data/client-only";
 import { mockQueryDefaults } from "@/hooks/data/query-options";
 
-export function useAuthors(params: { page: number; size: number; q?: string; topicId?: string }) {
+export function useAuthors(params: { page: number; size: number; q?: string; topicId?: string; sort?: "papers" | "citations" | "hIndex" }) {
   return useQuery({
     queryKey: queryKeys.authors.list(params),
     queryFn: () => getServices().authors.list(params),

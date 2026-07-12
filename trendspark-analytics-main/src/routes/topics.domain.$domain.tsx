@@ -34,7 +34,7 @@ function TopicDomainPage() {
     <AppLayout>
       <PageHeader
         title={decodedDomain}
-        subtitle={`${total.toLocaleString()} bài báo liên quan đến lĩnh vực ${decodedDomain}`}
+        subtitle={`${total.toLocaleString()} papers related to the domain ${decodedDomain}`}
         action={
           <Link
             to="/dashboard"
@@ -56,10 +56,10 @@ function TopicDomainPage() {
           <div className="py-12 text-center">
             <BookOpen className="size-10 mx-auto text-muted-foreground/40 mb-3" />
             <p className="text-sm text-muted-foreground">
-              Không có bài báo nào liên quan đến lĩnh vực <strong>{decodedDomain}</strong>.
+              No papers related to the domain <strong>{decodedDomain}</strong>.
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              Hãy chạy sync dữ liệu hoặc recalculate trend trong trang Admin.
+              Please run manual sync or recalculate trends in the Admin portal.
             </p>
           </div>
         ) : (

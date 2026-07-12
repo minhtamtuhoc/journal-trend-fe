@@ -90,7 +90,7 @@ function SuperAdminUsersPage() {
 
     // Safety checks
     if (targetUser.email === user.email) {
-      toast.error("Bạn không thể tự thay đổi quyền hạn của chính mình!");
+      toast.error("You cannot change your own permissions!");
       setConfirmTarget(null);
       return;
     }
@@ -98,16 +98,16 @@ function SuperAdminUsersPage() {
     try {
       if (action === "grant") {
         await grantAdminMutation.mutateAsync(targetUser.id);
-        toast.success(`Đã cấp quyền Admin cho ${targetUser.fullName}`);
+        toast.success(`Granted Admin rights to ${targetUser.fullName}`);
       } else if (action === "revoke") {
         await revokeAdminMutation.mutateAsync(targetUser.id);
-        toast.success(`Đã thu hồi quyền Admin của ${targetUser.fullName}`);
+        toast.success(`Revoked Admin rights from ${targetUser.fullName}`);
       } else if (action === "changeRole" && newRole) {
         await updateRoleMutation.mutateAsync({ userId: targetUser.id, role: newRole });
-        toast.success(`Đã cập nhật vai trò của ${targetUser.fullName} thành ${newRole}`);
+        toast.success(`Updated role of ${targetUser.fullName} to ${newRole}`);
       }
     } catch (err) {
-      const msg = err instanceof ApiError ? err.message : "Thao tác thất bại";
+      const msg = err instanceof ApiError ? err.message : "Action failed";
       toast.error(msg);
     } finally {
       setConfirmTarget(null);
@@ -131,19 +131,19 @@ function SuperAdminUsersPage() {
             Users with elevated ADMIN or SUPER_ADMIN access privileges.
           </div>
           {isLoadingAdmins ? (
-            <div className="py-8 text-center text-sm text-muted-foreground">Đang tải danh sách Admin...</div>
+            <div className="py-8 text-center text-sm text-muted-foreground">Loading administrators list...</div>
           ) : admins.length === 0 ? (
-            <div className="py-8 text-center text-sm text-muted-foreground">Không có Admin nào.</div>
+            <div className="py-8 text-center text-sm text-muted-foreground">No administrators found.</div>
           ) : (
             <div className="border border-border rounded-lg overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-secondary/20">
                     <TableHead className="w-12">ID</TableHead>
-                    <TableHead>Họ Tên</TableHead>
+                    <TableHead>Full Name</TableHead>
                     <TableHead>Email</TableHead>
-                    <TableHead>Vai Trò</TableHead>
-                    <TableHead className="text-right">Hành Động</TableHead>
+                    <TableHead>Role</TableHead>
+                    <TableHead className="text-right">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -232,10 +232,10 @@ function SuperAdminUsersPage() {
           </div>
 
           {isLoadingUsers ? (
-            <div className="py-8 text-center text-sm text-muted-foreground">Đang tìm kiếm người dùng...</div>
+            <div className="py-8 text-center text-sm text-muted-foreground">Searching for users...</div>
           ) : !usersPage || usersPage.content.length === 0 ? (
             <div className="py-12 text-center text-sm text-muted-foreground">
-              Không tìm thấy người dùng nào phù hợp.
+              No matching users found.
             </div>
           ) : (
             <div className="space-y-4">
@@ -244,10 +244,10 @@ function SuperAdminUsersPage() {
                   <TableHeader>
                     <TableRow className="bg-secondary/20">
                       <TableHead className="w-12">ID</TableHead>
-                      <TableHead>Họ Tên</TableHead>
+                      <TableHead>Full Name</TableHead>
                       <TableHead>Email</TableHead>
-                      <TableHead>Vai Trò</TableHead>
-                      <TableHead className="text-right">Hành Động</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead className="text-right">Action</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -335,11 +335,10 @@ function SuperAdminUsersPage() {
                 </Table>
               </div>
 
-              {/* Pagination controls */}
               {usersPage.totalPages > 1 && (
                 <div className="flex items-center justify-between mt-4">
                   <span className="text-xs text-muted-foreground">
-                    Trang {usersPage.page + 1} / {usersPage.totalPages} (Tổng số {usersPage.totalElements} kết quả)
+                    Page {usersPage.page + 1} of {usersPage.totalPages} (Total {usersPage.totalElements} results)
                   </span>
                   <div className="flex items-center gap-1">
                     <Button
@@ -349,7 +348,7 @@ function SuperAdminUsersPage() {
                       disabled={usersPage.first}
                       className="h-8 px-2 border-border text-xs"
                     >
-                      <ArrowLeft className="size-3.5 mr-1" /> Trước
+                      <ArrowLeft className="size-3.5 mr-1" /> Previous
                     </Button>
                     <Button
                       variant="outline"
@@ -358,7 +357,7 @@ function SuperAdminUsersPage() {
                       disabled={usersPage.last}
                       className="h-8 px-2 border-border text-xs"
                     >
-                      Sau <ArrowRightIcon className="size-3.5 ml-1" />
+                      Next <ArrowRightIcon className="size-3.5 ml-1" />
                     </Button>
                   </div>
                 </div>
@@ -377,36 +376,36 @@ function SuperAdminUsersPage() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Xác nhận hành động?</AlertDialogTitle>
+            <AlertDialogTitle>Confirm action?</AlertDialogTitle>
             <AlertDialogDescription>
               {confirmTarget?.action === "grant" && (
                 <span>
-                  Bạn có chắc chắn muốn cấp quyền <strong>ADMIN</strong> cho người dùng{" "}
-                  <strong>{confirmTarget?.user.fullName}</strong> ({confirmTarget?.user.email}) không?
+                  Are you sure you want to grant <strong>ADMIN</strong> role to user{" "}
+                  <strong>{confirmTarget?.user.fullName}</strong> ({confirmTarget?.user.email})?
                 </span>
               )}
               {confirmTarget?.action === "revoke" && (
                 <span>
-                  Bạn có chắc chắn muốn thu hồi quyền Admin của người dùng{" "}
-                  <strong>{confirmTarget?.user.fullName}</strong> ({confirmTarget?.user.email}) không? Vai trò sẽ chuyển về STUDENT.
+                  Are you sure you want to revoke Admin rights from user{" "}
+                  <strong>{confirmTarget?.user.fullName}</strong> ({confirmTarget?.user.email})? Role will revert to STUDENT.
                 </span>
               )}
               {confirmTarget?.action === "changeRole" && (
                 <span>
-                  Bạn có chắc chắn muốn thay đổi vai trò của người dùng{" "}
-                  <strong>{confirmTarget?.user.fullName}</strong> từ <strong>{confirmTarget?.user.role}</strong> sang{" "}
-                  <strong>{confirmTarget?.newRole}</strong> không?
+                  Are you sure you want to change the role of user{" "}
+                  <strong>{confirmTarget?.user.fullName}</strong> from <strong>{confirmTarget?.user.role}</strong> to{" "}
+                  <strong>{confirmTarget?.newRole}</strong>?
                 </span>
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Hủy</AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleAction}
               className="bg-brand text-brand-foreground hover:bg-brand/90 font-semibold"
             >
-              Đồng Ý
+              Confirm
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

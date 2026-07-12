@@ -194,7 +194,7 @@ function BookmarksPage() {
         <div>
           {!user ? (
             <div className="text-center py-16 glass rounded-2xl border border-border max-w-md mx-auto">
-              <p className="text-sm text-muted-foreground px-4">Đăng nhập để theo dõi tác giả và đồng bộ dữ liệu.</p>
+              <p className="text-sm text-muted-foreground px-4">Log in to follow authors and synchronize data.</p>
               <Link to="/login" className="mt-4 inline-block text-sm text-brand hover:underline">
                 Sign in
               </Link>
@@ -297,7 +297,7 @@ function BookmarksPage() {
         <div>
           {!user ? (
             <div className="text-center py-16 glass rounded-2xl border border-border max-w-md mx-auto">
-              <p className="text-sm text-muted-foreground px-4">Đăng nhập để theo dõi journal và nhận thông báo bài mới sau sync.</p>
+              <p className="text-sm text-muted-foreground px-4">Log in to follow journals and receive notifications of new papers after sync.</p>
               <Link to="/login" className="mt-4 inline-block text-sm text-brand hover:underline">
                 Sign in
               </Link>
@@ -343,7 +343,7 @@ function BookmarksPage() {
               </div>
               <h3 className="font-semibold text-sm text-foreground">No followed journals</h3>
               <p className="text-xs text-muted-foreground mt-1 max-w-xs mx-auto px-4">
-                Mở chi tiết bài báo và bấm <strong>Follow journal</strong> để nhận thông báo khi sync có bài mới.
+                Open any paper details page and click <strong>Follow journal</strong> to receive notifications when a sync imports new papers.
               </p>
             </div>
           )}

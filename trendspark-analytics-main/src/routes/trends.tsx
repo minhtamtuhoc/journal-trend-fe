@@ -87,9 +87,56 @@ function TrendsPage() {
   const isAuthorFollowed = (authorId: string) => followedAuthors.some((a) => a.id === authorId);
 
   const {
-    trendingKeywords: TRENDING_KEYWORDS = [],
     trendingAuthors: TRENDING_AUTHORS = [],
   } = analytics ?? {};
+
+  // Current main month of the table (previous calendar month)
+  const currentMainMonth = useMemo(() => {
+    const date = new Date();
+    date.setDate(1);
+    date.setMonth(date.getMonth() - 1);
+    return {
+      year: date.getFullYear(),
+      month: date.getMonth() + 1,
+    };
+  }, []);
+
+  // Fetch current month's trending keywords from the database
+  const { data: databaseTrendingKeywords = [] } = useQuery({
+    queryKey: ["trending-keywords-month", currentMainMonth.year, currentMainMonth.month],
+    queryFn: async () => {
+      const res = await apiClient.get<{
+        data: Array<{
+          keywordId: number;
+          term: string;
+          domain?: string;
+          paperCount: number;
+          trendScore: number;
+          rank: number;
+        }>;
+      }>("/v1/keywords/trending", {
+        params: {
+          year: currentMainMonth.year,
+          month: currentMainMonth.month,
+        },
+      });
+
+      // Normalize raw TrendingKeywordResponse to Keyword
+      return (res.data ?? []).map((raw) => ({
+        id: String(raw.keywordId),
+        term: raw.term,
+        count: raw.paperCount,
+        trendScore: raw.trendScore,
+        monthsTrending: 3,
+        category: raw.domain ?? "Research",
+      }));
+    },
+    ...mockQueryDefaults,
+  });
+
+  const TRENDING_KEYWORDS = useMemo(() => {
+    return databaseTrendingKeywords.slice(0, 8);
+  }, [databaseTrendingKeywords]);
 
   // State for the selected month to compare
   const [compareMonth, setCompareMonth] = useState<{ month: number; year: number; name: string } | null>(null);
@@ -191,74 +238,40 @@ function TrendsPage() {
     ...mockQueryDefaults,
   });
 
-  // Keywords that are in the top table but not in the bottom table (New in Top)
-  const newInTop = useMemo(() => {
-    const bottomTerms = compareKeywords.map(bk => bk.term);
-    return TRENDING_KEYWORDS.filter(tk => !bottomTerms.includes(tk.term));
-  }, [TRENDING_KEYWORDS, compareKeywords]);
-
-  // Keywords that are in the bottom table but not in the top table (Gone in Bottom)
-  const goneInBottom = useMemo(() => {
-    const topTerms = TRENDING_KEYWORDS.map(tk => tk.term);
-    return compareKeywords.filter(bk => !topTerms.includes(bk.term));
-  }, [TRENDING_KEYWORDS, compareKeywords]);
-
-  // Helper to get data and comparison info for the bottom table row-by-row
-  const getBottomRowData = (index: number) => {
-    const tk = TRENDING_KEYWORDS[index];
-    if (!tk) return null;
-
-    const matchedBk = compareKeywords.find(bk => bk.term === tk.term);
-    if (matchedBk) {
-      const diffPapers = tk.count - matchedBk.count;
-      const diffScore = tk.trendScore - matchedBk.trendScore;
-      return {
-        key: tk.id,
-        term: tk.term,
-        id: tk.id,
-        count: matchedBk.count,
-        trendScore: matchedBk.trendScore,
-        monthsTrending: matchedBk.monthsTrending,
-        isReplaced: false,
-        replacingTerm: null,
-        isNewEntry: false,
-        diffPapers,
-        diffScore,
-      };
-    }
-
-    const newIdx = newInTop.findIndex(k => k.term === tk.term);
-    const bk = newIdx !== -1 ? goneInBottom[newIdx] : null;
-
-    if (bk) {
+  // Helper to get comparison info for the bottom table row-by-row
+  const getCompareRowData = (bk: any, index: number) => {
+    const tk = TRENDING_KEYWORDS.find(k => k.term === bk.term);
+    if (tk) {
+      const rank_in_top = TRENDING_KEYWORDS.findIndex(k => k.term === bk.term) + 1;
+      const rank_in_bottom = index + 1;
       return {
         key: bk.id,
-        term: bk.term,
         id: bk.id,
+        term: bk.term,
         count: bk.count,
         trendScore: bk.trendScore,
         monthsTrending: bk.monthsTrending,
-        isReplaced: true,
-        replacingTerm: tk.term,
-        isNewEntry: false,
-        diffPapers: 0,
-        diffScore: 0,
+        isReplaced: false,
+        replacingTerm: null,
+        diffPapers: tk.count - bk.count,
+        diffScore: tk.trendScore - bk.trendScore,
+        diffRank: rank_in_bottom - rank_in_top,
       };
     }
 
-    // New Entry (no corresponding keyword in bottom month)
+    const replacingTk = TRENDING_KEYWORDS[index];
     return {
-      key: tk.id,
-      term: tk.term,
-      id: tk.id,
-      count: null,
-      trendScore: null,
-      monthsTrending: tk.monthsTrending,
-      isReplaced: false,
-      replacingTerm: null,
-      isNewEntry: true,
-      diffPapers: 0,
-      diffScore: 0,
+      key: bk.id,
+      id: bk.id,
+      term: bk.term,
+      count: bk.count,
+      trendScore: bk.trendScore,
+      monthsTrending: bk.monthsTrending,
+      isReplaced: true,
+      replacingTerm: replacingTk ? replacingTk.term : null,
+      diffPapers: null,
+      diffScore: null,
+      diffRank: null,
     };
   };
 
@@ -345,22 +358,22 @@ function TrendsPage() {
               <div className="mt-6 p-4 border border-border rounded-xl bg-secondary/10">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-3">
                   <div>
-                    <h4 className="text-xs font-bold text-foreground">CHỌN TỪ KHÓA ĐỂ HIỂN THỊ & PHÂN TÍCH</h4>
-                    <p className="text-[10px] text-muted-foreground">Tích chọn từ khóa để hiển thị đường biểu diễn và gửi dữ liệu cho AI phân tích.</p>
+                    <h4 className="text-xs font-bold text-foreground">SELECT KEYWORDS TO DISPLAY & ANALYZE</h4>
+                    <p className="text-[10px] text-muted-foreground">Select keywords to display trend lines and send data to AI for deep analysis.</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => setSelectedKeywordIds(top10Keywords.map(k => k.keywordId))}
                       className="text-[10px] text-brand hover:underline cursor-pointer font-semibold"
                     >
-                      Chọn tất cả
+                      Select All
                     </button>
                     <span className="text-muted-foreground text-[10px]">|</span>
                     <button
                       onClick={() => setSelectedKeywordIds([])}
                       className="text-[10px] text-muted-foreground hover:text-foreground hover:underline cursor-pointer font-semibold"
                     >
-                      Bỏ chọn tất cả
+                      Deselect All
                     </button>
                   </div>
                 </div>
@@ -413,7 +426,7 @@ function TrendsPage() {
                     disabled={aiMutation.isPending || selectedKeywordIds.length === 0}
                     onClick={() => {
                       if (!user) {
-                        toast.error("Vui lòng đăng nhập để sử dụng tính năng phân tích AI");
+                        toast.error("Please log in to use AI analysis features");
                         return;
                       }
                       aiMutation.mutate({
@@ -426,12 +439,12 @@ function TrendsPage() {
                     {aiMutation.isPending ? (
                       <>
                         <RefreshCw className="size-3 animate-spin" />
-                        Đang phân tích...
+                        Analyzing...
                       </>
                     ) : (
                       <>
                         <Brain className="size-3" />
-                        Phân tích bằng AI
+                        Analyze with AI
                       </>
                     )}
                   </button>
@@ -446,9 +459,9 @@ function TrendsPage() {
                       </div>
                     </div>
                     <div className="space-y-0.5">
-                      <p className="text-xs font-bold text-foreground">Mô hình Groq AI đang xử lý dữ liệu</p>
+                      <p className="text-xs font-bold text-foreground">Groq AI model is processing data</p>
                       <p className="text-[10px] text-muted-foreground max-w-sm">
-                        Đang tổng hợp thông tin, so sánh xu hướng {selectedKeywordIds.length} từ khóa đã chọn trong 12 tháng qua để đưa ra nhận định chuyên sâu...
+                        Synthesizing info and comparing trends for {selectedKeywordIds.length} selected keywords over the past 12 months to generate deep insights...
                       </p>
                     </div>
                   </div>
@@ -456,7 +469,7 @@ function TrendsPage() {
 
                 {aiMutation.isError && (
                   <div className="p-4 border border-destructive/20 rounded-xl bg-destructive/10 text-destructive text-xs flex items-center gap-2">
-                    <span>Có lỗi xảy ra trong quá trình phân tích: {aiMutation.error.message}</span>
+                    <span>An error occurred during analysis: {aiMutation.error.message}</span>
                   </div>
                 )}
 
@@ -468,8 +481,8 @@ function TrendsPage() {
                           <Brain className="size-4" />
                         </div>
                         <div>
-                          <h4 className="text-sm font-bold text-foreground">Báo cáo phân tích tự động</h4>
-                          <p className="text-[10px] text-muted-foreground">Phân tích chuyên sâu bởi mô hình Groq AI</p>
+                          <h4 className="text-sm font-bold text-foreground">Automated Analysis Report</h4>
+                          <p className="text-[10px] text-muted-foreground">Deep analysis by Groq AI model</p>
                         </div>
                       </div>
                       <div>
@@ -477,14 +490,14 @@ function TrendsPage() {
                             aiMutation.data.overallVerdict === 'MIXED' ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' : 'bg-secondary text-muted-foreground'
                           }`}>
                           <TrendingUp className="size-3" />
-                          Xu hướng chung: {aiMutation.data.overallVerdict}
+                          Overall Trend: {aiMutation.data.overallVerdict}
                         </span>
                       </div>
                     </div>
 
                     <div className="space-y-1">
                       <h5 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                        <Brain className="size-3 text-brand" /> Phân tích đối sánh
+                        <Brain className="size-3 text-brand" /> Comparative Analysis
                       </h5>
                       <p className="text-sm text-foreground leading-relaxed">
                         {aiMutation.data.analysis}
@@ -494,7 +507,7 @@ function TrendsPage() {
                     {aiMutation.data.topGrowingKeywords && aiMutation.data.topGrowingKeywords.length > 0 && (
                       <div className="space-y-1">
                         <h5 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                          <Flame className="size-3 text-brand" /> Từ khóa tăng trưởng mạnh nhất
+                          <Flame className="size-3 text-brand" /> Top Growing Keywords
                         </h5>
                         <div className="flex flex-wrap gap-1">
                           {aiMutation.data.topGrowingKeywords.map((kw, i) => (
@@ -508,7 +521,7 @@ function TrendsPage() {
 
                     <div className="space-y-2.5">
                       <h5 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                        <CheckCircle className="size-3 text-brand" /> Điểm nhận định cốt lõi
+                        <CheckCircle className="size-3 text-brand" /> Core Insights
                       </h5>
                       <ul className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
                         {aiMutation.data.keyInsights.map((insight, i) => (
@@ -525,7 +538,7 @@ function TrendsPage() {
                         <Lightbulb className="size-3.5" />
                       </div>
                       <div className="space-y-0.5">
-                        <p className="text-xs font-bold text-brand uppercase tracking-wider">Khuyến nghị hướng nghiên cứu</p>
+                        <p className="text-xs font-bold text-brand uppercase tracking-wider">Research Direction Recommendations</p>
                         <p className="text-xs text-muted-foreground leading-relaxed">{aiMutation.data.recommendation}</p>
                       </div>
                     </div>
@@ -664,47 +677,46 @@ function TrendsPage() {
                       <th className="text-left font-medium pb-3">Keyword</th>
                       <th className="text-right font-medium pb-3">Papers</th>
                       <th className="text-right font-medium pb-3">Score</th>
-                      <th className="text-right font-medium pb-3">Months</th>
+                      <th className="text-right font-medium pb-3">Rank</th>
                       <th className="text-right font-medium pb-3 w-20">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
-                    {Array.from({ length: TRENDING_KEYWORDS.length }).map((_, index) => {
-                      const rowData = getBottomRowData(index);
-                      if (!rowData) return null;
+                    {compareKeywords.slice(0, 8).map((bk, index) => {
+                      const rowData = getCompareRowData(bk, index);
                       const followed = isTopicFollowed(rowData.id);
                       return (
                         <tr key={rowData.key} className="hover:bg-secondary/40 transition-colors">
                           <td className="py-3 text-foreground font-medium">
-                            <Link
-                              to="/topics/$topicId"
-                              params={{ topicId: rowData.id }}
-                              className="hover:text-brand transition-colors cursor-pointer hover:underline"
-                            >
-                              {rowData.term}
-                            </Link>
+                            <div className="flex flex-col">
+                              <Link
+                                to="/topics/$topicId"
+                                params={{ topicId: rowData.id }}
+                                className="hover:text-brand transition-colors cursor-pointer hover:underline"
+                              >
+                                {rowData.term}
+                              </Link>
+                              {rowData.isReplaced && (
+                                <span className="text-[10px] text-destructive/80 font-normal mt-0.5 flex items-center gap-1">
+                                  <span className="text-warning font-bold">↻</span> Replaced by: "{rowData.replacingTerm ?? '—'}"
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className="py-3 text-right font-mono">
                             <div className="flex flex-col items-end justify-center">
                               <span className="text-foreground font-medium">
                                 {rowData.count !== null ? rowData.count : "—"}
                               </span>
-                              {rowData.isReplaced ? (
-                                <span className="text-[10px] text-destructive font-medium">
-                                  Replaced
-                                </span>
-                              ) : rowData.isNewEntry ? (
-                                <span className="text-[10px] text-success font-medium">
-                                  New Entry
-                                </span>
-                              ) : (
+                              {rowData.diffPapers !== null && (
                                 <span
-                                  className={`text-[10px] font-semibold flex items-center gap-0.5 ${rowData.diffPapers > 0
+                                  className={`text-[10px] font-semibold flex items-center gap-0.5 ${
+                                    rowData.diffPapers > 0
                                       ? "text-success"
                                       : rowData.diffPapers < 0
                                         ? "text-destructive"
                                         : "text-muted-foreground/60"
-                                    }`}
+                                  }`}
                                 >
                                   {rowData.diffPapers > 0
                                     ? `▲ +${rowData.diffPapers}`
@@ -718,38 +730,29 @@ function TrendsPage() {
                           <td className="py-3 text-right font-mono">
                             <div className="flex flex-col items-end justify-center">
                               <span
-                                className={`font-semibold ${rowData.trendScore !== null
+                                className={`font-semibold ${
+                                  rowData.trendScore !== null
                                     ? rowData.trendScore >= 15
                                       ? "text-success"
                                       : rowData.trendScore < 0
                                         ? "text-destructive"
                                         : "text-muted-foreground"
                                     : "text-muted-foreground/40"
-                                  }`}
+                                }`}
                               >
                                 {rowData.trendScore !== null
                                   ? `${rowData.trendScore > 0 ? "+" : ""}${rowData.trendScore.toFixed(1)}%`
                                   : "—"}
                               </span>
-                              {rowData.isReplaced ? (
+                              {rowData.diffScore !== null && (
                                 <span
-                                  className="text-[10px] text-destructive/80 font-normal truncate max-w-[120px]"
-                                  title={rowData.replacingTerm ? `Replaced by ${rowData.replacingTerm}` : "Replaced"}
-                                >
-                                  by "{rowData.replacingTerm ? rowData.replacingTerm : '—'}"
-                                </span>
-                              ) : rowData.isNewEntry ? (
-                                <span className="text-[10px] text-success/80 font-normal">
-                                  New
-                                </span>
-                              ) : (
-                                <span
-                                  className={`text-[10px] font-semibold flex items-center gap-0.5 ${rowData.diffScore > 0
+                                  className={`text-[10px] font-semibold flex items-center gap-0.5 ${
+                                    rowData.diffScore > 0
                                       ? "text-success"
                                       : rowData.diffScore < 0
                                         ? "text-destructive"
                                         : "text-muted-foreground/60"
-                                    }`}
+                                  }`}
                                 >
                                   {rowData.diffScore > 0
                                     ? `▲ +${rowData.diffScore.toFixed(1)}%`
@@ -760,8 +763,33 @@ function TrendsPage() {
                               )}
                             </div>
                           </td>
-                          <td className="py-3 text-right font-mono text-muted-foreground">
-                            {rowData.monthsTrending}
+                          <td className="py-3 text-right font-mono">
+                            <div className="flex flex-col items-end justify-center">
+                              <span className="text-muted-foreground font-medium">
+                                #{index + 1}
+                              </span>
+                              {rowData.diffRank !== null ? (
+                                <span
+                                  className={`text-[10px] font-semibold flex items-center gap-0.5 ${
+                                    rowData.diffRank > 0
+                                      ? "text-success"
+                                      : rowData.diffRank < 0
+                                        ? "text-destructive"
+                                        : "text-muted-foreground/60"
+                                  }`}
+                                >
+                                  {rowData.diffRank > 0
+                                    ? `▲ +${rowData.diffRank}`
+                                    : rowData.diffRank < 0
+                                      ? `▼ ${rowData.diffRank}`
+                                      : `▬ 0`}
+                                </span>
+                              ) : (
+                                <span className="text-[10px] text-warning font-semibold flex items-center gap-0.5">
+                                  ↻ Replaced
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className="py-3 text-right">
                             <button
@@ -794,77 +822,122 @@ function TrendsPage() {
           )}
         </div>
 
-        <Card title="Top Cited Authors">
-          <div className="space-y-3">
-            {TRENDING_AUTHORS.map((a, i) => {
-              const followed = isAuthorFollowed(a.id);
-              return (
-                <div
-                  key={a.id}
-                  className="flex items-center gap-3 p-3 rounded-lg hover:bg-secondary/40 transition-colors"
-                >
+        <div className="space-y-6">
+          <Card title="Top Cited Authors">
+            <div className="space-y-3">
+              {TRENDING_AUTHORS.map((a, i) => {
+                const followed = isAuthorFollowed(a.id);
+                return (
                   <div
-                    className="size-8 rounded-full flex items-center justify-center text-[10px] font-bold text-brand-foreground shrink-0"
-                    style={{ background: "var(--gradient-brand)" }}
+                    key={a.id}
+                    className="flex items-center gap-3 p-3 rounded-lg hover:bg-secondary/40 transition-colors"
                   >
-                    {String(i + 1).padStart(2, "0")}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <Link
-                      to="/authors/$authorId"
-                      params={{ authorId: a.id }}
-                      className="text-sm font-medium text-foreground hover:text-brand transition-colors cursor-pointer block truncate"
+                    <div
+                      className="size-8 rounded-full flex items-center justify-center text-[10px] font-bold text-brand-foreground shrink-0"
+                      style={{ background: "var(--gradient-brand)" }}
                     >
-                      {a.name}
-                    </Link>
-                    <div className="text-[10px] text-muted-foreground truncate">
-                      {a.affiliation} · h-index {a.hIndex}
+                      {String(i + 1).padStart(2, "0")}
                     </div>
-                  </div>
-                  <div className="flex items-center gap-3 shrink-0">
-                    <div className="text-right">
-                      <div className="text-xs font-mono text-muted-foreground font-semibold">
-                        {(a.citations ?? 0).toLocaleString()} citations
+                    <div className="flex-1 min-w-0">
+                      <Link
+                        to="/authors/$authorId"
+                        params={{ authorId: a.id }}
+                        className="text-sm font-medium text-foreground hover:text-brand transition-colors cursor-pointer block truncate"
+                      >
+                        {a.name}
+                      </Link>
+                      <div className="text-[10px] text-muted-foreground truncate">
+                        {a.affiliation} · h-index {a.hIndex}
                       </div>
                     </div>
-                    <button
-                      disabled={followAuthorMut.isPending || unfollowAuthorMut.isPending}
-                      onClick={() => {
-                        if (!user) {
-                          toast.error("Log in to follow authors");
-                          return;
-                        }
-                        if (followed) {
-                          unfollowAuthorMut.mutate(a.id, {
-                            onSuccess: () => toast.info(`Unfollowed ${a.name}`),
-                            onError: (err) => {
-                              const msg = err instanceof ApiError ? err.message : "Unfollow failed";
-                              toast.error(msg);
-                            },
-                          });
-                        } else {
-                          followAuthorMut.mutate(a.id, {
-                            onSuccess: () => toast.success(`Following ${a.name}`),
-                            onError: (err) => {
-                              const msg = err instanceof ApiError ? err.message : "Follow failed. Max 20 authors.";
-                              toast.error(msg);
-                            },
-                          });
-                        }
-                      }}
-                      className={`text-[10px] px-2 py-0.5 rounded-md border transition-all cursor-pointer ${followed
-                        ? "border-brand/40 bg-brand/10 text-brand"
-                        : "border-border hover:border-brand/40 hover:text-brand"
-                        }`}
-                    >
-                      {followed ? "Following" : "Follow"}
-                    </button>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <div className="text-right">
+                        <div className="text-xs font-mono text-muted-foreground font-semibold">
+                          {(a.citations ?? 0).toLocaleString()} citations
+                        </div>
+                      </div>
+                      <button
+                        disabled={followAuthorMut.isPending || unfollowAuthorMut.isPending}
+                        onClick={() => {
+                          if (!user) {
+                            toast.error("Log in to follow authors");
+                            return;
+                          }
+                          if (followed) {
+                            unfollowAuthorMut.mutate(a.id, {
+                              onSuccess: () => toast.info(`Unfollowed ${a.name}`),
+                              onError: (err) => {
+                                const msg = err instanceof ApiError ? err.message : "Unfollow failed";
+                                toast.error(msg);
+                              },
+                            });
+                          } else {
+                            followAuthorMut.mutate(a.id, {
+                              onSuccess: () => toast.success(`Following ${a.name}`),
+                              onError: (err) => {
+                                const msg = err instanceof ApiError ? err.message : "Follow failed. Max 20 authors.";
+                                toast.error(msg);
+                              },
+                            });
+                          }
+                        }}
+                        className={`text-[10px] px-2 py-0.5 rounded-md border transition-all cursor-pointer ${followed
+                          ? "border-brand/40 bg-brand/10 text-brand"
+                          : "border-border hover:border-brand/40 hover:text-brand"
+                          }`}
+                      >
+                        {followed ? "Following" : "Follow"}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+
+          {compareMonth && (
+            <Card title="Comparison Guide">
+              <div className="space-y-4 text-xs">
+                <p className="text-muted-foreground leading-relaxed">
+                  Comparing the selected historical month's data with the current month's trends:
+                </p>
+                <div className="grid grid-cols-2 gap-3 pt-2">
+                  <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-success/5 border border-success/10">
+                    <span className="text-success font-bold font-mono text-sm shrink-0">▲</span>
+                    <div>
+                      <div className="font-semibold text-foreground">Increased</div>
+                      <div className="text-[10px] text-muted-foreground">Metric improved</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-destructive/5 border border-destructive/10">
+                    <span className="text-destructive font-bold font-mono text-sm shrink-0">▼</span>
+                    <div>
+                      <div className="font-semibold text-foreground">Decreased</div>
+                      <div className="text-[10px] text-muted-foreground">Metric declined</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-secondary/20 border border-border">
+                    <span className="text-muted-foreground font-bold font-mono text-sm shrink-0">▬</span>
+                    <div>
+                      <div className="font-semibold text-foreground">Unchanged</div>
+                      <div className="text-[10px] text-muted-foreground">No change</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-warning/5 border border-warning/10">
+                    <span className="text-warning font-bold font-mono text-sm shrink-0">↻</span>
+                    <div>
+                      <div className="font-semibold text-foreground">Replaced</div>
+                      <div className="text-[10px] text-muted-foreground">Fell out of Top list</div>
+                    </div>
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        </Card>
+                <div className="mt-3 p-3 rounded-xl bg-secondary/30 border border-border text-[11px] text-muted-foreground leading-relaxed">
+                  <strong className="text-foreground">Replacement Logic:</strong> If a keyword fell out of the current month's trending list, the table indicates which current keyword took its corresponding rank.
+                </div>
+              </div>
+            </Card>
+          )}
+        </div>
       </div>
     </AppLayout>
   );

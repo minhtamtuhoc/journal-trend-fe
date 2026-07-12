@@ -79,7 +79,7 @@ function RegisterPage() {
 
     try {
       await register(name, email, password, role as RegisterRole);
-      toast.success("Đăng ký thành công. Vui lòng xác thực email của bạn.");
+      toast.success("Registration successful. Please verify your email.");
       navigate({ to: "/verify-email", search: { email } });
     } catch (error) {
       const message =
