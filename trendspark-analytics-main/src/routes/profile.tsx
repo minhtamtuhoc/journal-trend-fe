@@ -23,15 +23,15 @@ function ProfilePage() {
     e.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) {
-      toast.error("Họ tên không được để trống");
+      toast.error("Full name cannot be empty");
       return;
     }
     setSaving(true);
     try {
       await updateProfile(trimmed);
-      toast.success("Đã cập nhật hồ sơ");
+      toast.success("Profile updated successfully");
     } catch (err) {
-      const msg = err instanceof ApiError ? err.message : "Cập nhật thất bại";
+      const msg = err instanceof ApiError ? err.message : "Update failed";
       toast.error(msg);
     } finally {
       setSaving(false);
@@ -46,7 +46,7 @@ function ProfilePage() {
         <Card title="Account">
           <form onSubmit={onSubmit} className="space-y-4">
             <Field label="Full name" value={name} onChange={setName} />
-            <Field label="Email" value={user.email} onChange={() => {}} type="email" disabled hint="Email không thể đổi qua hệ thống" />
+            <Field label="Email" value={user.email} onChange={() => {}} type="email" disabled hint="Email cannot be changed through the system" />
             <Field label="Role" value={user.role} onChange={() => {}} disabled />
             <button
               type="submit"
@@ -54,7 +54,7 @@ function ProfilePage() {
               className="h-10 px-5 rounded-lg text-sm font-semibold text-brand-foreground glow-brand disabled:opacity-60"
               style={{ background: "var(--gradient-brand)" }}
             >
-              {saving ? "Đang lưu…" : "Save changes"}
+              {saving ? "Saving..." : "Save changes"}
             </button>
           </form>
         </Card>

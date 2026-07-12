@@ -55,21 +55,19 @@ function AuthorsIndexPage() {
     return () => clearTimeout(timer);
   }, [query]);
 
+  useEffect(() => {
+    setPage(1);
+  }, [sortBy]);
+
   const { data: pageData, isLoading, isError } = useAuthors({
     page: page - 1,
     size: pageSize,
     q: debouncedQuery.trim() || undefined,
+    sort: sortBy !== "default" ? sortBy : undefined,
   });
 
   const authorsList = pageData?.content ?? [];
   const totalPages = pageData?.totalPages ?? 0;
-
-  const sortedAuthors = [...authorsList].sort((a, b) => {
-    if (sortBy === "papers") return b.papers - a.papers;
-    if (sortBy === "citations") return b.citations - a.citations;
-    if (sortBy === "hIndex") return b.hIndex - a.hIndex;
-    return 0;
-  });
 
   return (
     <AppLayout>
@@ -201,7 +199,7 @@ function AuthorsIndexPage() {
       ) : (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {sortedAuthors.map((a) => {
+            {authorsList.map((a) => {
               const followed = isAuthorFollowed(a.id);
               return (
                 <div

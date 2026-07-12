@@ -69,13 +69,13 @@ function AdminPage() {
       }
       await invalidateAfterSync();
       if (status.status === "SUCCESS") {
-        toast.success(status.message || `Đồng bộ xong · ${status.papersFetched} bài báo`);
+        toast.success(status.message || `Sync completed · ${status.papersFetched} papers`);
       } else {
-        toast.error(status.message || "Đồng bộ thất bại — xem Audit Logs");
+        toast.error(status.message || "Sync failed — check Audit Logs");
       }
       return;
     }
-    toast.warning("Sync vẫn đang chạy. Xem tiến độ trong Audit Logs.");
+    toast.warning("Sync is still running. Check progress in Audit Logs.");
     await invalidateAfterSync();
   };
 
@@ -83,9 +83,9 @@ function AdminPage() {
     try {
       const result = await getServices().admin.resetStaleSync();
       await invalidateAfterSync();
-      toast.success(result.message || "Đã reset sync kẹt — bạn có thể chạy sync lại");
+      toast.success(result.message || "Stale sync reset — you can run sync again");
     } catch (err) {
-      const msg = err instanceof ApiError ? err.message : "Không reset được sync";
+      const msg = err instanceof ApiError ? err.message : "Failed to reset sync";
       toast.error(msg);
     }
   };
@@ -95,21 +95,21 @@ function AdminPage() {
     try {
       const result = await getServices().admin.triggerSync();
       if (result.status === "RUNNING") {
-        toast.info(result.message || "Đang đồng bộ metadata từ OpenAlex…");
+        toast.info(result.message || "Syncing metadata from OpenAlex...");
         await pollSyncUntilDone();
       } else if (result.status === "FAILED") {
         await invalidateAfterSync();
-        toast.error(result.message || "Đồng bộ thất bại — thử Reset sync kẹt rồi chạy lại");
+        toast.error(result.message || "Sync failed — try resetting stale sync and run again");
       } else {
         await invalidateAfterSync();
         if (result.status === "SUCCESS") {
-          toast.success(result.message || `Đồng bộ xong · ${result.papersFetched} bài báo`);
+          toast.success(result.message || `Sync completed · ${result.papersFetched} papers`);
         } else {
-          toast.info(result.message || "Trạng thái sync đã cập nhật");
+          toast.info(result.message || "Sync status updated");
         }
       }
     } catch (err) {
-      const msg = err instanceof ApiError ? err.message : "Đồng bộ thất bại";
+      const msg = err instanceof ApiError ? err.message : "Sync failed";
       toast.error(msg);
     } finally {
       setSyncing(false);
@@ -119,7 +119,7 @@ function AdminPage() {
   if (isLoadingAdmin) {
     return (
       <AppLayout>
-        <div className="p-8 text-sm text-muted-foreground">Loading admin data…</div>
+        <div className="p-8 text-sm text-muted-foreground">Loading admin data...</div>
       </AppLayout>
     );
   }
@@ -128,9 +128,9 @@ function AdminPage() {
     <AppLayout>
       {isAdminError && (
         <div className="mb-4 rounded-lg border border-warning/40 bg-warning/10 px-4 py-3 text-sm flex items-center justify-between gap-4">
-          <span>Không tải được audit logs. Backend có đang chạy trên port 8080? Hãy đăng nhập lại bằng admin@helix.io.</span>
+          <span>Failed to load audit logs. Is the backend running on port 8080? Please log in again using admin@helix.io.</span>
           <button type="button" onClick={() => refetchAdmin()} className="text-xs font-semibold text-brand hover:underline shrink-0">
-            Thử lại
+            Retry
           </button>
         </div>
       )}
@@ -146,7 +146,7 @@ function AdminPage() {
               disabled={syncing}
               className="inline-flex items-center gap-2 h-9 px-3 rounded-lg text-sm font-medium border border-border hover:bg-secondary/50 disabled:opacity-60"
             >
-              Reset sync kẹt
+              Reset Stale Sync
             </button>
             <button
               type="button"
@@ -189,7 +189,7 @@ function AdminPage() {
 
           {PENDING_REVIEW.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              Không có bài chờ duyệt. Chạy <strong>Manual Sync</strong> để nạp bài từ OpenAlex.
+              No papers pending review. Run <strong>Manual Sync</strong> to fetch papers from OpenAlex.
             </p>
           ) : (
             <div className="space-y-3">
@@ -201,7 +201,7 @@ function AdminPage() {
                       <span>{p.journal}</span>
                       {p.status === "flagged" && (
                         <span className="text-warning flex items-center gap-1">
-                          <AlertTriangle className="size-3" /> Thiếu metadata
+                          <AlertTriangle className="size-3" /> Missing metadata
                         </span>
                       )}
                     </div>
@@ -219,9 +219,9 @@ function AdminPage() {
                         approvePaper.mutate(
                           { id: p.id },
                           {
-                            onSuccess: () => toast.success("Đã duyệt bài báo thành công"),
+                            onSuccess: () => toast.success("Paper approved successfully"),
                             onError: (err) => {
-                              const msg = err instanceof ApiError ? err.message : "Duyệt thất bại";
+                              const msg = err instanceof ApiError ? err.message : "Approval failed";
                               toast.error(msg);
                             },
                           }
@@ -236,9 +236,9 @@ function AdminPage() {
                       disabled={approvePaper.isPending || deletePaper.isPending}
                       onClick={() => {
                         deletePaper.mutate(p.id, {
-                          onSuccess: () => toast.success("Đã xóa bài báo thành công"),
+                          onSuccess: () => toast.success("Paper deleted successfully"),
                           onError: (err) => {
-                            const msg = err instanceof ApiError ? err.message : "Xóa thất bại";
+                            const msg = err instanceof ApiError ? err.message : "Deletion failed";
                             toast.error(msg);
                           },
                         });
@@ -257,7 +257,7 @@ function AdminPage() {
 
         <Card title="Metadata APIs (OpenAlex · Crossref · S2)">
           {sources.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Đang tải cấu hình nguồn…</p>
+            <p className="text-sm text-muted-foreground">Loading source configurations...</p>
           ) : (
             <div className="space-y-4">
               {sources.map((src) => (
@@ -280,9 +280,9 @@ function AdminPage() {
                         updateSource.mutate(
                           { name: src.name, enabled: e.target.checked },
                           {
-                            onSuccess: () => toast.success(`${src.name}: ${e.target.checked ? "bật" : "tắt"}`),
+                            onSuccess: () => toast.success(`${src.name}: ${e.target.checked ? "ON" : "OFF"}`),
                             onError: (err) => {
-                              const msg = err instanceof ApiError ? err.message : "Không cập nhật được nguồn";
+                              const msg = err instanceof ApiError ? err.message : "Failed to update source";
                               toast.error(msg);
                             },
                           },

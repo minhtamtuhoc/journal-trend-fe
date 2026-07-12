@@ -23,9 +23,9 @@ function ForecastPage() {
         <Card>
           <div className="text-center py-12">
             <AlertTriangle className="size-8 mx-auto text-warning mb-2" />
-            <h2 className="font-semibold text-lg">Không có quyền truy cập</h2>
+            <h2 className="font-semibold text-lg">Access Denied</h2>
             <p className="text-muted-foreground text-sm mt-1">
-              Tính năng Hot Topic Forecast chỉ dành cho Lecturer, Researcher và Admin.
+              The Hot Topic Forecast feature is only available for Lecturers, Researchers, and Admins.
             </p>
           </div>
         </Card>

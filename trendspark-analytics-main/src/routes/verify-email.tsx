@@ -25,7 +25,7 @@ function VerifyEmailPage() {
 
   useEffect(() => {
     if (!email) {
-      toast.error("Không tìm thấy email cần xác thực. Vui lòng đăng ký lại.");
+      toast.error("Verification email not found. Please register again.");
       navigate({ to: "/register" });
       return;
     }
@@ -40,7 +40,7 @@ function VerifyEmailPage() {
         if (response?.verified) {
           clearInterval(interval);
           setVerified(true);
-          toast.success("Xác thực email thành công!");
+          toast.success("Email verification successful!");
           
           // Wait 2 seconds and redirect to login
           setTimeout(() => {
@@ -48,7 +48,7 @@ function VerifyEmailPage() {
           }, 2000);
         }
       } catch (error) {
-        console.error("Lỗi khi kiểm tra trạng thái xác thực:", error);
+        console.error("Error checking verification status:", error);
       }
     }, 3000);
 
@@ -71,7 +71,7 @@ function VerifyEmailPage() {
       await apiClient.post("/auth/resend-verification", null, {
         params: { email },
       });
-      toast.success("Email xác thực mới đã được gửi. Vui lòng kiểm tra hộp thư!");
+      toast.success("A new verification email has been sent. Please check your inbox!");
       setCountdown(60); // Cool down of 60 seconds
     } catch (error) {
       const message =
@@ -79,7 +79,7 @@ function VerifyEmailPage() {
           ? error.message
           : error instanceof Error
             ? error.message
-            : "Gửi lại email thất bại";
+            : "Resending verification email failed";
       toast.error(message);
     } finally {
       setResending(false);
@@ -88,11 +88,11 @@ function VerifyEmailPage() {
 
   return (
     <AuthShell
-      title={verified ? "Xác thực thành công!" : "Vui lòng xác thực email"}
-      subtitle={verified ? "Tài khoản của bạn đã sẵn sàng sử dụng." : "Kiểm tra hòm thư của bạn để kích hoạt tài khoản."}
+      title={verified ? "Verification Successful!" : "Verify Your Email"}
+      subtitle={verified ? "Your account is ready to use." : "Please check your inbox to activate your account."}
       footer={
         <Link to="/login" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-brand transition-colors">
-          <ArrowLeft className="size-3" /> Quay lại trang Đăng nhập
+          <ArrowLeft className="size-3" /> Back to Login
         </Link>
       }
     >
@@ -113,18 +113,18 @@ function VerifyEmailPage() {
         <div className="space-y-2 max-w-sm">
           {verified ? (
             <p className="text-sm text-muted-foreground">
-              Hệ thống sẽ tự động chuyển hướng bạn đến trang đăng nhập trong giây lát...
+              The system will automatically redirect you to the login page shortly...
             </p>
           ) : (
             <>
               <p className="text-sm text-muted-foreground">
-                Chúng tôi đã gửi một email xác thực đến địa chỉ:
+                We have sent a verification email to:
               </p>
               <p className="text-sm font-semibold text-foreground bg-secondary/30 px-3 py-1.5 rounded-lg border border-border/50 inline-block font-mono">
                 {email}
               </p>
               <p className="text-xs text-muted-foreground pt-2">
-                Vui lòng kiểm tra hộp thư của bạn (bao gồm cả thư rác/spam) và nhấn vào liên kết xác nhận để kích hoạt tài khoản.
+                Please check your inbox (including spam folder) and click the verification link to activate your account.
               </p>
             </>
           )}
@@ -134,7 +134,7 @@ function VerifyEmailPage() {
           <div className="w-full pt-4 space-y-3">
             <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground font-medium">
               <Loader2 className="size-3 animate-spin text-brand" />
-              Đang chờ bạn xác thực từ Email...
+              Waiting for email verification...
             </div>
 
             <button
@@ -145,12 +145,12 @@ function VerifyEmailPage() {
               {resending ? (
                 <>
                   <Loader2 className="size-3.5 animate-spin" />
-                  Đang gửi lại...
+                  Resending...
                 </>
               ) : countdown > 0 ? (
-                `Gửi lại sau (${countdown}s)`
+                `Resend in (${countdown}s)`
               ) : (
-                "Gửi lại email xác nhận"
+                "Resend confirmation email"
               )}
             </button>
           </div>
