@@ -24,7 +24,15 @@ export interface RecommendedPaper {
   citations: number;
   doi: string;
   recommendationReason: string;
-  matchType: "FOLLOWED_AUTHOR" | "KEYWORD_OVERLAP" | "TOP_CITED" | "POPULAR" | "COMBINED_MATCH";
+  matchType:
+    | "FOLLOWED_AUTHOR"
+    | "KEYWORD_OVERLAP"
+    | "TOP_CITED"
+    | "POPULAR"
+    | "COMBINED_MATCH"
+    | "TRENDING_KEYWORD"
+    | "TRENDING_JOURNAL"
+    | "RISING";
 }
 
 export interface AuthorInfluencePoint {
@@ -53,8 +61,15 @@ export interface LandscapeSection {
   researchGaps: ResearchGapPoint[];
 }
 
+export interface FollowStats {
+  keywordCount: number;
+  authorCount: number;
+  journalCount: number;
+}
+
 export interface PersonalReportResponse {
   trends: TrendsSection;
   recommendations: RecommendedPaper[];
   landscape: LandscapeSection;
+  followStats: FollowStats;
 }
