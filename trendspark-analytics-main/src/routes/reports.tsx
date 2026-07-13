@@ -8,7 +8,7 @@ import { SaveToCollectionButton } from "@/components/SaveToCollectionButton";
 import { usePersonalReport } from "@/hooks/data/use-personal-report";
 import { useCollections } from "@/hooks/data/use-collections";
 import { useAuthor, useAuthorPapers } from "@/hooks/data/use-authors";
-import { useFollowedTopics, useFollowedAuthors, useFollowAuthor, useUnfollowAuthor } from "@/hooks/data/use-follows";
+import { useFollowedTopics, useFollowedAuthors, useFollowAuthor, useUnfollowAuthor, useFollowedJournals } from "@/hooks/data/use-follows";
 import { useAuth } from "@/auth";
 import { toast } from "sonner";
 import { ApiError } from "@/api/errors";
@@ -111,7 +111,9 @@ const translateReason = (reason: string) => {
   const mapping: Record<string, string> = {
     "Bài viết mới nhất từ tác giả bạn đang theo dõi": "Latest paper from followed authors",
     "Bài viết có tầm ảnh hưởng (trích dẫn cao) trong chủ đề quan tâm": "Highly cited paper in your topics of interest",
-    "Nghiên cứu thịnh hành nổi bật trên hệ thống": "Trending research highlighted in the system"
+    "Nghiên cứu thịnh hành nổi bật trên hệ thống": "Trending research highlighted in the system",
+    "Bài viết trending trong journal bạn đang theo dõi": "Trending paper in your followed journal",
+    "Nghiên cứu mới đang nổi bật trong chủ đề bạn quan tâm": "New and rising research in your topics of interest"
   };
   
   if (mapping[reason]) {
@@ -126,6 +128,11 @@ const translateReason = (reason: string) => {
   if (reason.includes("Trùng khớp") && reason.includes("từ khóa nghiên cứu bạn đang follow")) {
     const matchCount = reason.match(/\d+/)?.[0] ?? "";
     return `Overlaps with ${matchCount} of your followed keywords`;
+  }
+  
+  if (reason.includes("Trùng khớp") && reason.includes("keyword đang trending")) {
+    const matchCount = reason.match(/\d+/)?.[0] ?? "";
+    return `Overlaps with ${matchCount} trending keywords`;
   }
   
   return reason;
@@ -410,7 +417,8 @@ function CustomAuthorReportView({ authorId }: { authorId: string }) {
 
 function ReportsPage() {
   const { authorId } = Route.useSearch() as { authorId?: string };
-  const { data: report, isLoading, error } = usePersonalReport();
+  const [activeTab, setActiveTab] = useState<"ALL" | "KEYWORD" | "AUTHOR" | "JOURNAL">("ALL");
+  const { data: report, isLoading, error } = usePersonalReport(activeTab);
   const { data: collections = [] } = useCollections();
 
   // Render CustomAuthorReportView conditionally at the end to satisfy rules of hooks
@@ -450,11 +458,16 @@ function ReportsPage() {
 
   const [showKeywordDropdown, setShowKeywordDropdown] = useState(false);
   const trendDropdownRef = useRef<HTMLDivElement>(null);
+  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
+  const filterDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (trendDropdownRef.current && !trendDropdownRef.current.contains(event.target as Node)) {
         setShowKeywordDropdown(false);
+      }
+      if (filterDropdownRef.current && !filterDropdownRef.current.contains(event.target as Node)) {
+        setShowFilterDropdown(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -468,6 +481,15 @@ function ReportsPage() {
     (paper) => !collections.some((c) => c.paperIds.includes(String(paper.id)))
   ) ?? [];
 
+  const { data: followedTopics = [] } = useFollowedTopics();
+  const { data: followedAuthors = [] } = useFollowedAuthors();
+  const { data: followedJournals = [] } = useFollowedJournals();
+
+  const followStats = report?.followStats;
+  const showKeywordTab = (followStats?.keywordCount ?? followedTopics.length) >= 1;
+  const showAuthorTab  = (followStats?.authorCount  ?? followedAuthors.length) >= 1;
+  const showJournalTab = (followStats?.journalCount ?? followedJournals.length) >= 1;
+
   const getBadgeStyle = (matchType: string) => {
     switch (matchType) {
       case "FOLLOWED_AUTHOR":
@@ -480,6 +502,12 @@ function ReportsPage() {
         return "bg-amber-500/10 text-amber-500 border-amber-500/20";
       case "COMBINED_MATCH":
         return "bg-indigo-500/15 text-indigo-400 border-indigo-500/30 font-bold bg-gradient-to-r from-indigo-500/10 to-brand/10";
+      case "TRENDING_KEYWORD":
+        return "bg-teal-500/10 text-teal-500 border-teal-500/20";
+      case "TRENDING_JOURNAL":
+        return "bg-cyan-500/10 text-cyan-500 border-cyan-500/20";
+      case "RISING":
+        return "bg-orange-500/10 text-orange-500 border-orange-500/20";
       default:
         return "bg-secondary text-secondary-foreground border-transparent";
     }
@@ -497,6 +525,12 @@ function ReportsPage() {
         return "Trending";
       case "COMBINED_MATCH":
         return "Author & Keyword";
+      case "TRENDING_KEYWORD":
+        return "Trending Keyword";
+      case "TRENDING_JOURNAL":
+        return "Trending in Journal";
+      case "RISING":
+        return "Rising Paper";
       default:
         return matchType;
     }
@@ -708,15 +742,73 @@ function ReportsPage() {
 
               {/* PHẦN 2: GỢI Ý ĐỌC TIẾP (RECOMMENDATIONS) */}
               <div>
-                <div className="flex items-center gap-2 mb-4">
+                <div className="flex items-center gap-2 mb-4 flex-wrap">
                   <BookOpen className="size-5 text-brand" />
                   <h2 className="text-lg font-bold uppercase tracking-wider text-foreground">Recommended Reads for You</h2>
                   <span className="text-xs text-muted-foreground font-mono">({visibleRecommendations.length} papers)</span>
+
+                  {/* Filter dropdown — chỉ hiện khi có ít nhất 1 tab filter khả dụng */}
+                  {(showKeywordTab || showAuthorTab || showJournalTab) && (
+                    <div className="relative ml-auto" ref={filterDropdownRef}>
+                      <button
+                        type="button"
+                        onClick={() => setShowFilterDropdown(!showFilterDropdown)}
+                        className="inline-flex items-center justify-between gap-1.5 h-8 px-3 rounded-lg border border-border bg-secondary/40 hover:bg-secondary/70 hover:text-foreground text-xs font-semibold text-muted-foreground transition-all cursor-pointer min-w-[140px] text-left"
+                      >
+                        <span className="truncate">
+                          Filter: {activeTab === "ALL" ? "All" : activeTab === "KEYWORD" ? "Keywords" : activeTab === "AUTHOR" ? "Authors" : "Journals"}
+                        </span>
+                        <ChevronDown className="size-3.5 opacity-75 shrink-0" />
+                      </button>
+
+                      {showFilterDropdown && (
+                        <div className="absolute right-0 top-[calc(100%+6px)] w-44 bg-popover border border-border rounded-xl shadow-lg p-1.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                          {(["ALL", showKeywordTab && "KEYWORD", showAuthorTab && "AUTHOR", showJournalTab && "JOURNAL"] as const)
+                            .filter(Boolean)
+                            .map((tab) => {
+                              const isSelected = activeTab === tab;
+                              return (
+                                <div
+                                  key={tab}
+                                  onClick={() => {
+                                    setActiveTab(tab as typeof activeTab);
+                                    setShowFilterDropdown(false);
+                                  }}
+                                  className="w-full flex items-center justify-between px-3 py-1.5 text-xs font-medium rounded-lg text-muted-foreground hover:bg-secondary/40 hover:text-foreground transition-colors cursor-pointer select-none text-left"
+                                >
+                                  <span className={isSelected ? "font-semibold text-brand" : "text-foreground"}>
+                                    {tab === "ALL" ? "All" : tab === "KEYWORD" ? "Keywords" : tab === "AUTHOR" ? "Authors" : "Journals"}
+                                  </span>
+                                  {isSelected && <Check className="size-3.5 text-brand stroke-[3]" />}
+                                </div>
+                              );
+                            })}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {visibleRecommendations.length === 0 ? (
-                  <Card className="p-8 text-center text-muted-foreground text-sm">
-                    💡 No more recommended papers. Follow more topics or authors to get new recommendations!
+                  <Card className="p-8 text-center text-muted-foreground text-sm space-y-2">
+                    {activeTab === "ALL" ? (
+                      <p>💡 No recommended papers. Follow more topics or authors to get new recommendations!</p>
+                    ) : activeTab === "KEYWORD" ? (
+                      <>
+                        <p>No trending papers found for your followed keywords.</p>
+                        <p className="text-xs text-muted-foreground">Try switching to the <strong>All</strong> tab, or follow more keywords.</p>
+                      </>
+                    ) : activeTab === "AUTHOR" ? (
+                      <>
+                        <p>No recent papers from your followed authors.</p>
+                        <p className="text-xs text-muted-foreground">Try switching to the <strong>All</strong> tab, or follow more authors.</p>
+                      </>
+                    ) : (
+                      <>
+                        <p>No trending papers found in your followed journals.</p>
+                        <p className="text-xs text-muted-foreground">Try switching to the <strong>All</strong> tab, or follow more journals.</p>
+                      </>
+                    )}
                   </Card>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -874,9 +966,14 @@ function ReportsPage() {
                           }
 
                           return (
-                            <div key={gap.term} className="block">
+                            <Link
+                              key={gap.term}
+                              to="/search"
+                              search={{ q: gap.term }}
+                              className="block no-underline"
+                            >
                               {gapContent}
-                            </div>
+                            </Link>
                           );
                         })}
                       </div>
@@ -909,14 +1006,16 @@ function ReportsPage() {
                           }
 
                           return (
-                            <span
-                              key={tag.term}
-                              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all hover:scale-105 cursor-default ${colorClass}`}
-                              title={`Frequency: ${tag.coOccurrenceCount} times | Growth: +${tag.growthRate}%`}
-                            >
-                              <span>{tag.term}</span>
-                              <span className="opacity-80 text-[10px] font-mono">{trendIcon} {tag.growthRate > 0 ? `+${tag.growthRate.toFixed(1)}%` : `${tag.growthRate.toFixed(1)}%`}</span>
-                            </span>
+                            <Link
+                               key={tag.term}
+                               to="/search"
+                               search={{ q: tag.term }}
+                               className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all hover:scale-105 cursor-pointer no-underline ${colorClass}`}
+                               title={`Frequency: ${tag.coOccurrenceCount} times | Growth: +${tag.growthRate}%`}
+                             >
+                               <span>{tag.term}</span>
+                               <span className="opacity-80 text-[10px] font-mono">{trendIcon} {tag.growthRate > 0 ? `+${tag.growthRate.toFixed(1)}%` : `${tag.growthRate.toFixed(1)}%`}</span>
+                             </Link>
                           );
                         })}
                       </div>
