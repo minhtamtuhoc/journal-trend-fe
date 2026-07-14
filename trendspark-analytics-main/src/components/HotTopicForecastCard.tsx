@@ -1,11 +1,11 @@
-import type { ForecastListItem } from "@/types/forecast";
+import type { ForecastCategory, ForecastListItem } from "@/types/forecast";
 
-const REASON_BADGE: Record<string, { label: string; class: string }> = {
-  "Bùng nổ sớm":          { label: "Early Boom",    class: "bg-orange-500/15 text-orange-500 border-orange-500/30" },
-  "Tăng trưởng vượt bậc": { label: "Breakout",      class: "bg-purple-500/15 text-purple-500 border-purple-500/30" },
-  "Tăng trưởng ổn định":  { label: "Steady Growth", class: "bg-blue-500/15   text-blue-500   border-blue-500/30"   },
+const CATEGORY_BADGE: Record<ForecastCategory, { label: string; class: string }> = {
+  EARLY_BOOM: { label: "Early Boom",    class: "bg-orange-500/15 text-orange-500 border-orange-500/30" },
+  BREAKOUT:   { label: "Breakout",      class: "bg-purple-500/15 text-purple-500 border-purple-500/30" },
+  STEADY:     { label: "Steady Growth", class: "bg-blue-500/15   text-blue-500   border-blue-500/30"   },
 };
-const FALLBACK_BADGE = { label: "Steady Growth", class: "bg-blue-500/15 text-blue-500 border-blue-500/30" };
+const FALLBACK_BADGE = { label: "Unknown", class: "bg-muted text-muted-foreground border-border" };
 
 type Props = {
   items: ForecastListItem[];
@@ -65,7 +65,7 @@ export function HotTopicForecastCard({ items, isLoading, selectedKeywordId, onSe
           <tbody className="divide-y divide-border/40">
             {sliceItems.map((item, idx) => {
               const isSelected = selectedKeywordId === item.keywordId;
-              const badge = REASON_BADGE[item.forecastReason] || FALLBACK_BADGE;
+              const badge = CATEGORY_BADGE[item.forecastReason] ?? FALLBACK_BADGE;
               
               let scoreClass = "text-brand";
               if (item.potentialScore >= 80) scoreClass = "text-orange-500 font-bold";
