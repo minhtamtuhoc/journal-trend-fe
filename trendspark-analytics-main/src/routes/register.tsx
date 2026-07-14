@@ -16,10 +16,19 @@ import {
 export const Route = createFileRoute("/register")({ component: RegisterPage });
 
 const schema = z.object({
-  name: z.string().min(2, "Name too short"),
-  email: z.string().email("Enter a valid email"),
+  name: z
+    .string()
+    .trim()
+    .min(1, "Please enter your full name")
+    .min(2, "Full name must be at least 2 characters"),
+  email: z
+    .string()
+    .trim()
+    .min(1, "Please enter your email address")
+    .email("Enter a valid email address"),
   password: z
     .string()
+    .min(1, "Please enter a password")
     .min(8, "Min 8 characters")
     .regex(/[A-Z]/, "Include at least one uppercase letter")
     .regex(/\d/, "Include at least one digit"),
@@ -36,14 +45,45 @@ const ROLE_OPTIONS = [
   { label: "Researcher", value: "RESEARCHER" },
 ];
 
-function Field({ label, value, onChange, type = "text", placeholder }: { label: string; value: string; onChange: (v: string) => void; type?: string; placeholder?: string }) {
+function Field({
+  label,
+  value,
+  onChange,
+  type = "text",
+  placeholder,
+  error,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  type?: string;
+  placeholder?: string;
+  error?: string;
+}) {
   return (
     <div>
       <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{label}</label>
-      <input type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="mt-1 w-full h-10 px-3 bg-secondary/40 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand/40" />
+      <input
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className={`mt-1 w-full h-10 px-3 bg-secondary/40 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand/40 ${
+          error ? "border-destructive focus:ring-destructive/40" : "border-border"
+        }`}
+      />
+      {error && <div className="mt-1 text-xs text-destructive">{error}</div>}
     </div>
   );
 }
+
+type FormErrors = {
+  name?: string;
+  email?: string;
+  password?: string;
+  role?: string;
+  global?: string;
+};
 
 function RegisterPage() {
   const { register } = useAuth();
@@ -52,30 +92,31 @@ function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<string>("");
-  const [err, setErr] = useState<string | null>(null);
-  const [roleErr, setRoleErr] = useState<string | null>(null);
+  const [errors, setErrors] = useState<FormErrors>({});
   const [loading, setLoading] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErr(null);
-    setRoleErr(null);
+    setErrors({});
 
     const r = schema.safeParse({ name, email, password, role });
     if (!r.success) {
-      const roleIssue = r.error.issues.find((issue) => issue.path.includes("role"));
-      if (roleIssue) {
-        setRoleErr(roleIssue.message);
-        return;
+      const fieldErrors: FormErrors = {};
+      for (const issue of r.error.issues) {
+        const key = issue.path[0] as keyof FormErrors;
+        if (key && !fieldErrors[key]) {
+          fieldErrors[key] = issue.message;
+        }
       }
-      return setErr(r.error.issues[0].message);
+      setErrors(fieldErrors);
+      return;
     }
-    if (TAKEN.includes(email)) return setErr("Email already in use");
-    setErr(null);
+    if (TAKEN.includes(email)) {
+      setErrors({ email: "Email already in use" });
+      return;
+    }
+
     setLoading(true);
-    
-    const data = { name, email, password, role };
-    console.log("FORM DATA", data);
 
     try {
       await register(name, email, password, role as RegisterRole);
@@ -90,9 +131,11 @@ function RegisterPage() {
             : "Registration failed";
       
       if (message.toLowerCase().includes("role")) {
-        setRoleErr(message);
+        setErrors({ role: message });
+      } else if (message.toLowerCase().includes("email")) {
+        setErrors({ email: message });
       } else {
-        setErr(message);
+        setErrors({ global: message });
         toast.error(message);
       }
     } finally {
@@ -107,14 +150,51 @@ function RegisterPage() {
       footer={<>Already have an account? <Link to="/login" className="text-brand hover:underline">Sign in</Link></>}
     >
       <form onSubmit={submit} className="space-y-4">
-        <Field label="Full name" value={name} onChange={setName} placeholder="Dr. Jane Doe" />
-        <Field label="Email" type="email" value={email} onChange={setEmail} placeholder="you@lab.edu" />
-        <Field label="Password" type="password" value={password} onChange={setPassword} placeholder="At least 8 characters" />
+        <Field
+          label="Full name"
+          value={name}
+          onChange={(v) => {
+            setName(v);
+            if (errors.name) setErrors((prev) => ({ ...prev, name: undefined }));
+          }}
+          placeholder="Dr. Jane Doe"
+          error={errors.name}
+        />
+        <Field
+          label="Email"
+          type="email"
+          value={email}
+          onChange={(v) => {
+            setEmail(v);
+            if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }));
+          }}
+          placeholder="you@lab.edu"
+          error={errors.email}
+        />
+        <Field
+          label="Password"
+          type="password"
+          value={password}
+          onChange={(v) => {
+            setPassword(v);
+            if (errors.password) setErrors((prev) => ({ ...prev, password: undefined }));
+          }}
+          placeholder="At least 8 characters"
+          error={errors.password}
+        />
         
         <div>
           <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Role</label>
-          <Select value={role} onValueChange={(val) => { setRole(val); setRoleErr(null); }}>
-            <SelectTrigger className="mt-1 w-full h-10 px-3 bg-secondary/40 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand/40 text-left cursor-pointer">
+          <Select
+            value={role}
+            onValueChange={(val) => {
+              setRole(val);
+              if (errors.role) setErrors((prev) => ({ ...prev, role: undefined }));
+            }}
+          >
+            <SelectTrigger className={`mt-1 w-full h-10 px-3 bg-secondary/40 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand/40 text-left cursor-pointer ${
+              errors.role ? "border-destructive focus:ring-destructive/40" : "border-border"
+            }`}>
               <SelectValue placeholder="Select your role" />
             </SelectTrigger>
             <SelectContent>
@@ -125,10 +205,10 @@ function RegisterPage() {
               ))}
             </SelectContent>
           </Select>
-          {roleErr && <div className="mt-1 text-xs text-destructive">{roleErr}</div>}
+          {errors.role && <div className="mt-1 text-xs text-destructive">{errors.role}</div>}
         </div>
 
-        {err && <div className="text-xs text-destructive">{err}</div>}
+        {errors.global && <div className="text-xs text-destructive">{errors.global}</div>}
         <button disabled={loading} type="submit" className="w-full h-10 rounded-lg text-sm font-semibold text-brand-foreground glow-brand transition-transform hover:scale-[1.01] disabled:opacity-60" style={{ background: "var(--gradient-brand)" }}>
           {loading ? "Creating..." : "Create account"}
         </button>
