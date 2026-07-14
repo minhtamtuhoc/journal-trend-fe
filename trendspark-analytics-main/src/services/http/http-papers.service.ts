@@ -18,7 +18,7 @@ interface BackendPaperDetail {
   status: string;
   createdAt: string;
   keywords: Array<{ keywordId: number; term: string; domain: string; trendScore: number }>;
-  authors: Array<{ id: number; name: string; affiliation: string }>;
+  authors: Array<{ id: number; name: string; affiliation: string; authorPosition?: string }>;
 }
 
 interface BackendApiResponse<T> {
@@ -44,7 +44,7 @@ export function toPaperDomainModel(p: BackendPaperDetail): Paper {
     title: p.title,
     authors: p.authors ? p.authors.map((a) => a.name) : [],
     authorRefs: p.authors
-      ? p.authors.map((a) => ({ id: String(a.id), name: a.name }))
+      ? p.authors.map((a) => ({ id: String(a.id), name: a.name, authorPosition: a.authorPosition as any }))
       : [],
     journal: p.journal || "Unknown Journal",
     journalId: p.journalId ? String(p.journalId) : null,

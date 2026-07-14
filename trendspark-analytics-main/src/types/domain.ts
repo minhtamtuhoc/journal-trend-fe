@@ -3,6 +3,7 @@ export type PaperSource = "OpenAlex" | "CrossRef" | "Semantic Scholar";
 export type AuthorRef = {
   id: string;
   name: string;
+  authorPosition?: "first" | "middle" | "last";
 };
 
 /** Mirrors backend HelixTopicRef: a keyword with its persisted topic ID. */
@@ -176,6 +177,13 @@ export type SearchHistoryEntry = {
   query: string;
   searchType: "papers" | "authors" | "keywords";
 };
+
+export interface SearchSuggestion {
+  type: "papers" | "authors" | "keywords";
+  id: string;
+  label: string;
+  subtitle: string;
+}
 
 export type AuthorSpotlightEntry = {
   id: string;
