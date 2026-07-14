@@ -325,10 +325,10 @@ function DashboardPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left table-fixed">
                 <thead>
-                  <tr className="border-b border-border text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  <tr className="border-b border-border text-[13px] font-bold uppercase tracking-wider text-muted-foreground">
                     <th className="pb-3 pr-4 font-semibold w-[40%]">Journal Name</th>
                     <th className="pb-3 px-4 font-semibold text-right w-[20%]">Total Papers</th>
-                    <th className="pb-3 px-4 font-semibold text-right w-[20%]">Impact Factor</th>
+                    <th className="pb-3 px-4 font-semibold text-right w-[20%]">CPP</th>
                     <th className="pb-3 pl-4 font-semibold w-[20%]">Domain</th>
                   </tr>
                 </thead>
