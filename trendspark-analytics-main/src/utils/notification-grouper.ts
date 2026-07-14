@@ -9,6 +9,7 @@ export interface PaperSummary {
 }
 
 export interface NotificationGroup {
+  key: string;
   keyword: string; // The keyword or group title
   keywordId?: string;
   unread: boolean;
@@ -142,6 +143,7 @@ export function groupNotifications(notifications: NotificationItem[]): Notificat
       else if (type === "author" || type === "journal") uiType = "paper";
 
       groupsMap.set(key, {
+        key,
         keyword: name,
         keywordId: n.keywordId,
         unread: n.unread,

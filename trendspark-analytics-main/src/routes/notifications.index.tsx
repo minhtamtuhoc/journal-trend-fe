@@ -114,7 +114,7 @@ function NotificationGroupCard({
     if (group.triggerType === "TRENDING_KEYWORD") {
       return `📈 Keyword "${group.keyword}" is trending!`;
     }
-    const typeLabel = group.ids[0] && group.ids[0].includes("author") ? "from author" : group.ids[0] && group.ids[0].includes("journal") ? "in journal" : "for keyword";
+    const typeLabel = group.key?.startsWith("author-") ? "from author" : group.key?.startsWith("journal-") ? "in journal" : "for keyword";
     return `📚 ${count} new ${count === 1 ? "paper" : "papers"} ${typeLabel} "${group.keyword}"`;
   };
 
