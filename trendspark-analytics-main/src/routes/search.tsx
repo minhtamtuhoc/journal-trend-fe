@@ -8,6 +8,7 @@ import { useAuth } from "@/auth";
 import { useRecentSearches, useRecordSearch } from "@/hooks/data/use-search-history";
 import { useEffect, useState, useRef, useMemo } from "react";
 import { Search as SearchIcon, Download, SlidersHorizontal, ArrowUpRight, Check, ChevronDown } from "lucide-react";
+import { useSearchSuggestions } from "@/hooks/data/use-search-suggestions";
 import { z } from "zod";
 import { toast } from "sonner";
 import { SaveToCollectionButton } from "@/components/SaveToCollectionButton";
@@ -68,6 +69,10 @@ function SearchPage() {
   const { data: recentSearches = [] } = useRecentSearches();
   const recordSearch = useRecordSearch();
 
+  const [isInputFocused, setIsInputFocused] = useState(false);
+  const showSuggestions = isInputFocused && q.trim().length >= 2;
+  const { data: suggestions = [] } = useSearchSuggestions(q, showSuggestions);
+
   const { data: followedTopics = [] } = useFollowedTopics();
   const { data: availableYears = [] } = useAvailableYears();
   const followTopic = useFollowTopic();
@@ -98,6 +103,7 @@ function SearchPage() {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setShowDropdown(false);
+        setIsInputFocused(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -223,9 +229,15 @@ function SearchPage() {
               <input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
+                onFocus={() => setIsInputFocused(true)}
                 onKeyDown={(e) => {
+                  if (e.key === "Escape") {
+                    setIsInputFocused(false);
+                    (e.target as HTMLInputElement).blur();
+                  }
                   if (e.key === "Enter") {
                     setShowDropdown(false);
+                    setIsInputFocused(false);
                     const trimmedQ = q.trim();
                     if (trimmedQ && user) {
                       recordSearch.mutate({ query: trimmedQ, searchType });
@@ -292,6 +304,87 @@ function SearchPage() {
                     {searchType === type && <Check className="size-3.5" />}
                   </button>
                 ))}
+              </div>
+            )}
+
+            {showSuggestions && suggestions.length > 0 && (
+              <div className="absolute left-0 top-[calc(100%+6px)] w-full bg-popover border border-border rounded-xl shadow-lg p-1.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150 max-h-72 overflow-y-auto">
+                <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-3 py-1.5 mb-1 border-b border-border/40">
+                  Suggestions
+                </div>
+                {suggestions.map((suggestion) => {
+                  let badgeStyle = "bg-secondary text-secondary-foreground";
+                  let badgeLabel = "Keyword";
+                  if (suggestion.type === "papers") {
+                    badgeStyle = "bg-blue-500/10 text-blue-500 border border-blue-500/20";
+                    badgeLabel = "Paper";
+                  } else if (suggestion.type === "authors") {
+                    badgeStyle = "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20";
+                    badgeLabel = "Author";
+                  } else if (suggestion.type === "keywords") {
+                    badgeStyle = "bg-purple-500/10 text-purple-500 border border-purple-500/20";
+                    badgeLabel = "Keyword";
+                  }
+
+                  return (
+                    <button
+                      key={`${suggestion.type}-${suggestion.id}`}
+                      type="button"
+                      onClick={() => {
+                        setIsInputFocused(false);
+                        const queryValue = suggestion.label;
+                        
+                        // Record search to history
+                        if (user) {
+                          recordSearch.mutate({
+                            query: queryValue,
+                            searchType: suggestion.type,
+                          });
+                        }
+
+                        // Navigate based on type
+                        if (suggestion.type === "papers") {
+                          navigate({
+                            to: "/papers/$id",
+                            params: { id: suggestion.id },
+                          });
+                        } else if (suggestion.type === "authors") {
+                          navigate({
+                            to: "/authors/$authorId",
+                            params: { authorId: suggestion.id },
+                          });
+                        } else {
+                          // Keywords
+                          setQ(queryValue);
+                          navigate({
+                            to: "/search",
+                            search: {
+                              q: queryValue,
+                              searchType: "keywords",
+                              topicId: Number(suggestion.id),
+                            },
+                            replace: true,
+                          });
+                        }
+                      }}
+                      className="w-full flex items-center justify-between gap-3 px-3 py-2 text-left hover:bg-secondary/40 rounded-lg group transition-colors cursor-pointer"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm font-semibold text-foreground group-hover:text-brand transition-colors truncate">
+                          {suggestion.label}
+                        </div>
+                        {suggestion.subtitle && (
+                          <div className="text-[11px] text-muted-foreground truncate">
+                            {suggestion.subtitle}
+                          </div>
+                        )}
+                      </div>
+                      <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0 ${badgeStyle}`}>
+                        {badgeLabel}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>

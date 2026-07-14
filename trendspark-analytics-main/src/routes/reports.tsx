@@ -26,6 +26,7 @@ import {
 } from "recharts";
 import {
   Sparkles,
+  Lock,
   BookOpen,
   User,
   AlertTriangle,
@@ -421,26 +422,43 @@ function ReportsPage() {
   const { data: report, isLoading, error } = usePersonalReport(activeTab);
   const { data: collections = [] } = useCollections();
 
+  const { data: followedTopics = [], isLoading: isLoadingTopics } = useFollowedTopics();
+  const { data: followedAuthors = [], isLoading: isLoadingAuthors } = useFollowedAuthors();
+  const { data: followedJournals = [], isLoading: isLoadingJournals } = useFollowedJournals();
+
+  const isPageLoading = isLoading || isLoadingTopics || isLoadingAuthors || isLoadingJournals;
+  const hasFollowedEntities = followedTopics.length > 0 || followedAuthors.length > 0 || followedJournals.length > 0;
+
+  const followedKeywordNames = useMemo(() => {
+    return new Set(followedTopics.map((t) => t.name.toLowerCase()));
+  }, [followedTopics]);
+
   // Render CustomAuthorReportView conditionally at the end to satisfy rules of hooks
 
   const { chartData, terms: allTerms } = useMemo(() => {
     return transformLineChartData(report?.trends?.lineChart ?? []);
   }, [report?.trends?.lineChart]);
 
+  const displayedTerms = useMemo(() => {
+    return allTerms.filter((term) => followedKeywordNames.has(term.toLowerCase()));
+  }, [allTerms, followedKeywordNames]);
+
   const [selectedKeywords, setSelectedKeywords] = useState<string[]>([]);
   const hasInitialized = useRef(false);
-  const allTermsSerialized = allTerms.join(",");
+  const displayedTermsSerialized = displayedTerms.join(",");
 
   useEffect(() => {
-    if (allTerms.length > 0) {
+    if (displayedTerms.length > 0) {
       if (!hasInitialized.current) {
-        setSelectedKeywords(allTerms);
+        setSelectedKeywords(displayedTerms);
         hasInitialized.current = true;
       } else {
-        setSelectedKeywords((prev) => prev.filter((k) => allTerms.includes(k)));
+        setSelectedKeywords((prev) => prev.filter((k) => displayedTerms.includes(k)));
       }
+    } else {
+      setSelectedKeywords([]);
     }
-  }, [allTermsSerialized]);
+  }, [displayedTermsSerialized]);
 
   const handleToggleKeyword = (term: string) => {
     setSelectedKeywords((prev) =>
@@ -449,10 +467,10 @@ function ReportsPage() {
   };
 
   const handleToggleAll = () => {
-    if (selectedKeywords.length === allTerms.length) {
+    if (selectedKeywords.length === displayedTerms.length) {
       setSelectedKeywords([]);
     } else {
-      setSelectedKeywords(allTerms);
+      setSelectedKeywords(displayedTerms);
     }
   };
 
@@ -480,10 +498,6 @@ function ReportsPage() {
   const visibleRecommendations = report?.recommendations?.filter(
     (paper) => !collections.some((c) => c.paperIds.includes(String(paper.id)))
   ) ?? [];
-
-  const { data: followedTopics = [] } = useFollowedTopics();
-  const { data: followedAuthors = [] } = useFollowedAuthors();
-  const { data: followedJournals = [] } = useFollowedJournals();
 
   const followStats = report?.followStats;
   const showKeywordTab = (followStats?.keywordCount ?? followedTopics.length) >= 1;
@@ -564,7 +578,7 @@ function ReportsPage() {
       />
 
       <div className="space-y-8 mt-6">
-          {isLoading ? (
+          {isPageLoading ? (
             <div className="space-y-8">
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <Skeleton className="h-[360px] lg:col-span-2 rounded-2xl" />
@@ -587,6 +601,76 @@ function ReportsPage() {
                 An error occurred while fetching your personalized report. Please try again later.
               </p>
             </Card>
+          ) : !hasFollowedEntities ? (
+            <div className="max-w-3xl mx-auto py-12 px-4">
+              <div className="glass border border-border/60 rounded-3xl p-8 md:p-12 text-center relative overflow-hidden shadow-2xl">
+                {/* Glowing decorative background pattern */}
+                <div className="absolute -top-40 -right-40 size-80 bg-brand/10 rounded-full blur-[100px] pointer-events-none" />
+                <div className="absolute -bottom-40 -left-40 size-80 bg-emerald-500/5 rounded-full blur-[100px] pointer-events-none" />
+
+                <div className="relative z-10 flex flex-col items-center">
+                  <div className="size-16 rounded-2xl bg-brand/10 border border-brand/20 flex items-center justify-center text-brand mb-6 shadow-inner animate-pulse">
+                    <Lock className="size-8" />
+                  </div>
+
+                  <h2 className="text-2xl md:text-3xl font-extrabold text-foreground tracking-tight mb-4">
+                    Personalized Intelligence Reports Locked
+                  </h2>
+
+                  <p className="text-muted-foreground text-sm md:text-base max-w-xl leading-relaxed mb-8">
+                    To unlock the full features of your reports, please follow at least one author, keyword, or journal. Followed entities help us tailor research recommendations, key trends, and word clouds specifically to your fields of interest.
+                  </p>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full max-w-2xl mt-4">
+                    {/* Keywords Option */}
+                    <div className="glass border border-border/40 hover:border-brand/40 rounded-2xl p-5 flex flex-col items-center justify-between text-center transition-all hover:scale-[1.02] group">
+                      <div className="size-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 mb-3 group-hover:bg-blue-500/20 group-hover:scale-110 transition-all">
+                        <Sparkles className="size-5" />
+                      </div>
+                      <h4 className="font-bold text-sm text-foreground mb-1">Keywords</h4>
+                      <p className="text-[11px] text-muted-foreground mb-4">Track emerging topics and research trends in real-time.</p>
+                      <Link
+                        to="/trends"
+                        className="inline-flex items-center justify-center h-8 px-3 rounded-lg text-xs font-semibold text-brand-foreground transition-transform hover:scale-[1.03] w-full mt-auto"
+                        style={{ background: "var(--gradient-brand)" }}
+                      >
+                        Explore Trends
+                      </Link>
+                    </div>
+
+                    {/* Authors Option */}
+                    <div className="glass border border-border/40 hover:border-brand/40 rounded-2xl p-5 flex flex-col items-center justify-between text-center transition-all hover:scale-[1.02] group">
+                      <div className="size-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 mb-3 group-hover:bg-emerald-500/20 group-hover:scale-110 transition-all">
+                        <User className="size-5" />
+                      </div>
+                      <h4 className="font-bold text-sm text-foreground mb-1">Authors</h4>
+                      <p className="text-[11px] text-muted-foreground mb-4">Stay updated with publications from top researchers.</p>
+                      <Link
+                        to="/trends"
+                        className="inline-flex items-center justify-center h-8 px-3 rounded-lg text-xs font-semibold border border-border bg-secondary/35 hover:bg-secondary/60 hover:text-foreground transition-colors w-full mt-auto"
+                      >
+                        Browse Authors
+                      </Link>
+                    </div>
+
+                    {/* Journals Option */}
+                    <div className="glass border border-border/40 hover:border-brand/40 rounded-2xl p-5 flex flex-col items-center justify-between text-center transition-all hover:scale-[1.02] group">
+                      <div className="size-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 mb-3 group-hover:bg-purple-500/20 group-hover:scale-110 transition-all">
+                        <BookOpen className="size-5" />
+                      </div>
+                      <h4 className="font-bold text-sm text-foreground mb-1">Journals</h4>
+                      <p className="text-[11px] text-muted-foreground mb-4">Monitor publications in your target journals.</p>
+                      <Link
+                        to="/search"
+                        className="inline-flex items-center justify-center h-8 px-3 rounded-lg text-xs font-semibold border border-border bg-secondary/35 hover:bg-secondary/60 hover:text-foreground transition-colors w-full mt-auto"
+                      >
+                        Search Journals
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           ) : (
             <>
               {/* PHẦN 1: XU HƯỚNG LĨNH VỰC (TRENDS) */}
@@ -596,14 +680,14 @@ function ReportsPage() {
                   className="lg:col-span-2"
                   title="Keyword Trends by Month"
                   action={
-                    allTerms.length > 0 && (
+                    displayedTerms.length > 0 && (
                       <div className="relative" ref={trendDropdownRef}>
                         <button
                           onClick={() => setShowKeywordDropdown(!showKeywordDropdown)}
                           className="inline-flex items-center justify-between gap-1.5 h-8 px-3 rounded-lg border border-border bg-secondary/40 hover:bg-secondary/70 hover:text-foreground text-xs font-semibold text-muted-foreground transition-all cursor-pointer min-w-[180px] text-left"
                         >
                           <span className="truncate">
-                            {selectedKeywords.length === allTerms.length
+                            {selectedKeywords.length === displayedTerms.length
                               ? "All followed keywords"
                               : selectedKeywords.length === 0
                               ? "No keywords selected"
@@ -621,18 +705,18 @@ function ReportsPage() {
                               className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-lg text-muted-foreground hover:bg-secondary/40 hover:text-foreground transition-colors cursor-pointer select-none text-left"
                             >
                               <div className={`size-3.5 rounded border flex items-center justify-center shrink-0 transition-all ${
-                                selectedKeywords.length === allTerms.length
+                                selectedKeywords.length === displayedTerms.length
                                   ? "bg-brand border-brand text-brand-foreground"
                                   : "border-border hover:border-brand/40 bg-background"
                               }`}>
-                                {selectedKeywords.length === allTerms.length && <Check className="size-2.5 stroke-[3]" />}
+                                {selectedKeywords.length === displayedTerms.length && <Check className="size-2.5 stroke-[3]" />}
                               </div>
                               <span className="font-semibold text-foreground">All followed keywords</span>
                             </div>
                             
                             <div className="h-px bg-border my-1" />
 
-                            {allTerms.map((t) => {
+                            {displayedTerms.map((t) => {
                               const isSelected = selectedKeywords.includes(t);
                               return (
                                 <div
@@ -687,7 +771,7 @@ function ReportsPage() {
                           }}
                         />
                         <Legend wrapperStyle={{ fontSize: 11 }} />
-                        {allTerms
+                        {displayedTerms
                           .filter((term) => selectedKeywords.includes(term))
                           .map((term) => (
                             <Line

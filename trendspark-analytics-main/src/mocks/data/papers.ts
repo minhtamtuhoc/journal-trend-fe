@@ -5,6 +5,11 @@ export const MOCK_PAPERS: Paper[] = [
     id: "p1",
     title: "CRISPR-Cas9 delivery via lipid nanoparticles in primary human T cells for in-vivo gene editing",
     authors: ["Chen, Y.", "Martinez, L.", "Okafor, A."],
+    authorRefs: [
+      { id: "a_chen", name: "Chen, Y.", authorPosition: "first" },
+      { id: "a_martinez", name: "Martinez, L.", authorPosition: "middle" },
+      { id: "a_okafor", name: "Okafor, A.", authorPosition: "last" }
+    ],
     journal: "Nature Communications",
     journalId: "2",
     year: 2024,
@@ -28,6 +33,10 @@ export const MOCK_PAPERS: Paper[] = [
     id: "p2",
     title: "Hardware-efficient transformer architectures for edge deployment in IoT sensor fusion",
     authors: ["Markov, A.", "Singh, R."],
+    authorRefs: [
+      { id: "a_markov", name: "Markov, A.", authorPosition: "first" },
+      { id: "a_singh", name: "Singh, R.", authorPosition: "last" }
+    ],
     journal: "IEEE Transactions on Neural Networks",
     journalId: "3",
     year: 2024,
@@ -51,6 +60,11 @@ export const MOCK_PAPERS: Paper[] = [
     id: "p3",
     title: "Mitochondrial dynamics in aging neurons: a metabolic signature of cognitive decline",
     authors: ["Schmidt, L.", "Park, J.", "Rao, P."],
+    authorRefs: [
+      { id: "a_schmidt", name: "Schmidt, L.", authorPosition: "first" },
+      { id: "a_park", name: "Park, J.", authorPosition: "middle" },
+      { id: "a_rao", name: "Rao, P.", authorPosition: "last" }
+    ],
     journal: "Cell",
     journalId: "4",
     year: 2024,
@@ -74,6 +88,10 @@ export const MOCK_PAPERS: Paper[] = [
     id: "p4",
     title: "Lattice-based post-quantum signatures with sub-millisecond verification on consumer hardware",
     authors: ["Volkov, D.", "Tanaka, M."],
+    authorRefs: [
+      { id: "a_volkov", name: "Volkov, D.", authorPosition: "first" },
+      { id: "a_tanaka", name: "Tanaka, M.", authorPosition: "last" }
+    ],
     journal: "Journal of Cryptology",
     journalId: "1",
     year: 2024,
@@ -96,6 +114,11 @@ export const MOCK_PAPERS: Paper[] = [
     id: "p5",
     title: "Solid-state lithium-metal batteries with engineered sulfide electrolytes achieving 1200 Wh/kg",
     authors: ["Nakamura, K.", "Brown, S.", "Liu, Q."],
+    authorRefs: [
+      { id: "a_nakamura", name: "Nakamura, K.", authorPosition: "first" },
+      { id: "a_brown", name: "Brown, S.", authorPosition: "middle" },
+      { id: "a_liu", name: "Liu, Q.", authorPosition: "last" }
+    ],
     journal: "Nature Energy",
     journalId: "5",
     year: 2024,
@@ -118,6 +141,10 @@ export const MOCK_PAPERS: Paper[] = [
     id: "p6",
     title: "Reinforcement learning for autonomous protein design under structural constraints",
     authors: ["Goldberg, E.", "Patel, N."],
+    authorRefs: [
+      { id: "a_goldberg", name: "Goldberg, E.", authorPosition: "first" },
+      { id: "a_patel", name: "Patel, N.", authorPosition: "last" }
+    ],
     journal: "Science",
     journalId: "6",
     year: 2024,

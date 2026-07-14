@@ -449,24 +449,51 @@ function PaperDetailPage() {
         <div className="space-y-6">
           <Card title="Metrics">
             <div className="grid grid-cols-2 gap-4">
-              <Metric
-                label="Related Topic Trend"
-                value={`${(paper.trendScore ?? 0) > 0 ? "+" : ""}${(paper.trendScore ?? 0).toFixed(1)}%`}
-                accent={(paper.trendScore ?? 0) >= 0 ? "success" : "destructive"}
-                tooltip="Highest growth rate among keywords associated with this paper in the current month."
-              />
               <Metric label="Citations" value={(paper.citations ?? 0).toLocaleString()} />
-              <Metric label="Impact Factor" value={(paper.impactFactor ?? 0).toString()} />
               <Metric label="Year" value={paper.year.toString()} />
             </div>
           </Card>
 
+          <Card title="Identifiers">
+            <dl className="text-xs space-y-2">
+              <div className="flex justify-between gap-4">
+                <dt className="text-muted-foreground">DOI</dt>
+                <dd className="font-mono text-foreground truncate">{paper.doi}</dd>
+              </div>
+              <div className="flex justify-between"><dt className="text-muted-foreground">Source</dt><dd className="font-mono">{paper.source}</dd></div>
+              <div className="flex justify-between"><dt className="text-muted-foreground">Category</dt><dd>{paper.category}</dd></div>
+            </dl>
+            {paper.doi ? (
+              <a href={`https://doi.org/${paper.doi}`} target="_blank" rel="noreferrer" className="mt-4 inline-flex items-center gap-1 text-xs text-brand hover:underline">
+                View at publisher <ExternalLink className="size-3" />
+              </a>
+            ) : null}
+          </Card>
+
           <Card title="Authors">
             <div className="space-y-3">
-              {(paper.authorRefs?.length
-                ? paper.authorRefs.map((ref) => ({ id: ref.id, name: ref.name }))
-                : paper.authors.map((name) => ({ id: null as string | null, name }))
-              ).map((author) => {
+              {(() => {
+                const authorsList = paper.authorRefs?.length
+                  ? paper.authorRefs.map((ref) => ({ id: ref.id, name: ref.name, position: ref.authorPosition }))
+                  : paper.authors.map((name) => ({ id: null as string | null, name, position: undefined as any }));
+
+                const hasAnyPosition = authorsList.some(
+                  (a) => a.position === "first" || a.position === "last" || a.position === "middle"
+                );
+
+                if (!hasAnyPosition && authorsList.length > 0) {
+                  return authorsList.map((author, index) => {
+                    let position = "middle";
+                    if (index === 0) {
+                      position = "first";
+                    } else if (index === authorsList.length - 1) {
+                      position = "last";
+                    }
+                    return { ...author, position };
+                  });
+                }
+                return authorsList;
+              })().map((author) => {
                 const a = author.name;
                 const followed = isAuthorFollowed(author.id);
                 return (
@@ -474,13 +501,23 @@ function PaperDetailPage() {
                     <div className="size-8 rounded-full flex items-center justify-center text-[10px] font-bold text-brand-foreground" style={{ background: "var(--gradient-brand)" }}>
                       {a.split(",")[0].slice(0, 2).toUpperCase()}
                     </div>
-                    <div className="flex-1 text-sm text-foreground">
+                    <div className="flex-1 text-sm text-foreground flex items-center gap-2 flex-wrap">
                       {author.id ? (
                         <Link to="/authors/$authorId" params={{ authorId: author.id }} className="hover:text-brand font-medium">
                           {a}
                         </Link>
                       ) : (
                         a
+                      )}
+                      {author.position === "first" && (
+                        <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 font-semibold uppercase tracking-wider">
+                          Lead
+                        </span>
+                      )}
+                      {author.position === "last" && (
+                        <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-semibold uppercase tracking-wider">
+                          Senior
+                        </span>
                       )}
                     </div>
                     {author.id ? (
@@ -504,22 +541,6 @@ function PaperDetailPage() {
                 );
               })}
             </div>
-          </Card>
-
-          <Card title="Identifiers">
-            <dl className="text-xs space-y-2">
-              <div className="flex justify-between gap-4">
-                <dt className="text-muted-foreground">DOI</dt>
-                <dd className="font-mono text-foreground truncate">{paper.doi}</dd>
-              </div>
-              <div className="flex justify-between"><dt className="text-muted-foreground">Source</dt><dd className="font-mono">{paper.source}</dd></div>
-              <div className="flex justify-between"><dt className="text-muted-foreground">Category</dt><dd>{paper.category}</dd></div>
-            </dl>
-            {paper.doi ? (
-              <a href={`https://doi.org/${paper.doi}`} target="_blank" rel="noreferrer" className="mt-4 inline-flex items-center gap-1 text-xs text-brand hover:underline">
-                View at publisher <ExternalLink className="size-3" />
-              </a>
-            ) : null}
           </Card>
         </div>
       </div>
