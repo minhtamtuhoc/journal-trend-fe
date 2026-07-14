@@ -6,11 +6,13 @@ import { useFollowedTopics, useFollowTopic, useUnfollowTopic } from "@/hooks/dat
 import type { Paper } from "@/types/domain";
 import { useAuth } from "@/auth";
 import { useRecentSearches, useRecordSearch } from "@/hooks/data/use-search-history";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { Search as SearchIcon, Download, SlidersHorizontal, ArrowUpRight, Check, ChevronDown } from "lucide-react";
 import { z } from "zod";
 import { toast } from "sonner";
 import { SaveToCollectionButton } from "@/components/SaveToCollectionButton";
+import { useQuery } from "@tanstack/react-query";
+import { apiClient } from "@/api/client";
 
 const searchSchema = z.object({
   q: z.string().optional(),
@@ -25,20 +27,7 @@ export const Route = createFileRoute("/search")({
 
 
 
-const categories = [
-  "Computer Science",
-  "Medicine",
-  "Engineering",
-  "Philosophy",
-  "Physics",
-  "Chemistry",
-  "Psychology",
-  "Education",
-  "Business",
-  "Biology",
-  "Mathematics",
-  "General"
-];
+
 
 function getVisiblePages(current: number, total: number) {
   if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
@@ -50,6 +39,22 @@ function getVisiblePages(current: number, total: number) {
 function SearchPage() {
   const { q: initial, topicId: initialTopicId, searchType: initialSearchType } = Route.useSearch();
   const navigate = useNavigate();
+
+  const { data: keywordsData = [] } = useQuery({
+    queryKey: ["all-keywords-domains"],
+    queryFn: async () => {
+      const res = await apiClient.get<{ data: Array<{ domain: string }> }>("/v1/keywords");
+      return res.data ?? [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const categories = useMemo(() => {
+    const domains = keywordsData
+      .map((k) => k.domain)
+      .filter((d): d is string => typeof d === "string" && d.trim() !== "");
+    return Array.from(new Set(domains)).sort();
+  }, [keywordsData]);
   const [q, setQ] = useState(initial ?? "");
   const [searchType, setSearchType] = useState<"papers" | "authors" | "keywords">(initialSearchType ?? "papers");
   const [showDropdown, setShowDropdown] = useState(false);
