@@ -766,6 +766,7 @@ function ReportsPage() {
                           {(["ALL", showKeywordTab && "KEYWORD", showAuthorTab && "AUTHOR", showJournalTab && "JOURNAL"] as const)
                             .filter(Boolean)
                             .map((tab) => {
+                              if (!tab) return null;
                               const isSelected = activeTab === tab;
                               return (
                                 <div
