@@ -769,7 +769,7 @@ function ReportsPage() {
                               const isSelected = activeTab === tab;
                               return (
                                 <div
-                                  key={tab}
+                                  key={tab as string}
                                   onClick={() => {
                                     setActiveTab(tab as typeof activeTab);
                                     setShowFilterDropdown(false);
