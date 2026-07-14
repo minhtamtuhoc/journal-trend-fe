@@ -125,7 +125,11 @@ export function groupNotifications(notifications: NotificationItem[]): Notificat
       if (n.unread) {
         existing.unread = true;
       }
-      if (n.paperId && !existing.papers.some((p) => p.id === n.paperId)) {
+      const normalizedTitle = paperTitle.trim().toLowerCase();
+      const isDuplicate = existing.papers.some(
+        (p) => p.id === n.paperId || (Boolean(normalizedTitle) && p.title.trim().toLowerCase() === normalizedTitle)
+      );
+      if (n.paperId && !isDuplicate) {
         existing.papers.push(paperSummary);
         existing.totalPapers = existing.papers.length;
       }
