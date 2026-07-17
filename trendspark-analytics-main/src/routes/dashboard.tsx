@@ -326,9 +326,9 @@ function DashboardPage() {
               <table className="w-full text-sm text-left table-fixed">
                 <thead>
                   <tr className="border-b border-border text-[13px] font-bold uppercase tracking-wider text-muted-foreground">
-                    <th className="pb-3 pr-4 font-semibold w-[40%]">Journal Name</th>
+                    <th className="pb-3 pr-4 font-semibold w-[35%]">Journal Name</th>
                     <th className="pb-3 px-4 font-semibold text-right w-[20%]">Total Papers</th>
-                    <th className="pb-3 px-4 font-semibold text-right w-[20%]">CPP</th>
+                    <th className="pb-3 px-4 font-semibold text-right w-[25%]">Citations per Publication</th>
                     <th className="pb-3 pl-4 font-semibold w-[20%]">Domain</th>
                   </tr>
                 </thead>
@@ -350,7 +350,7 @@ function DashboardPage() {
                       </td>
                       <td className="py-3 px-4 text-right font-mono text-brand font-bold">{j.totalPapers.toLocaleString()}</td>
                       <td className="py-3 px-4 text-right font-mono font-semibold">
-                        {j.impactFactor ? j.impactFactor.toFixed(3) : ""}
+                        {j.impactFactor != null && j.impactFactor > 0 ? j.impactFactor.toFixed(3) : "0"}
                       </td>
                       <td className="py-3 pl-4 text-muted-foreground text-xs truncate" title={j.domain}>{j.domain}</td>
                     </tr>
