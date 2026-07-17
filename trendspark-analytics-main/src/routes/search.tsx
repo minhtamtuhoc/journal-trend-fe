@@ -47,7 +47,8 @@ function SearchPage() {
       const res = await apiClient.get<{ data: Array<{ domain: string }> }>("/v1/keywords");
       return res.data ?? [];
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30 * 60 * 1000,
+    gcTime: 60 * 60 * 1000,
   });
 
   const categories = useMemo(() => {

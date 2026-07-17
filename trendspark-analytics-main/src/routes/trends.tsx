@@ -212,15 +212,28 @@ function TrendsPage() {
     timestamp: string;
   }
 
-  const [savedAiAnalysis, setSavedAiAnalysis] = useState<StoredAiAnalysis | null>(() => {
-    if (typeof window === "undefined") return null;
+  const aiStorageKey = user?.email ? `journal_trend_ai_analysis_${user.email.toLowerCase()}` : null;
+  const [savedAiAnalysis, setSavedAiAnalysis] = useState<StoredAiAnalysis | null>(null);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    // Clean up old legacy shared key if present
     try {
-      const cached = localStorage.getItem("journal_trend_ai_analysis");
-      return cached ? JSON.parse(cached) : null;
-    } catch {
-      return null;
+      localStorage.removeItem("journal_trend_ai_analysis");
+    } catch {}
+
+    if (!aiStorageKey) {
+      setSavedAiAnalysis(null);
+      return;
     }
-  });
+
+    try {
+      const cached = localStorage.getItem(aiStorageKey);
+      setSavedAiAnalysis(cached ? JSON.parse(cached) : null);
+    } catch {
+      setSavedAiAnalysis(null);
+    }
+  }, [aiStorageKey]);
 
   const aiMutation = useMutation<
     AiTopTrendsAnalysisResponse,
@@ -239,9 +252,11 @@ function TrendsPage() {
       const timestamp = `${now.toLocaleDateString("vi-VN")} ${now.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`;
       const stored: StoredAiAnalysis = { data, timestamp };
       setSavedAiAnalysis(stored);
-      try {
-        localStorage.setItem("journal_trend_ai_analysis", JSON.stringify(stored));
-      } catch {}
+      if (aiStorageKey) {
+        try {
+          localStorage.setItem(aiStorageKey, JSON.stringify(stored));
+        } catch {}
+      }
     },
   });
 

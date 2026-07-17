@@ -86,7 +86,9 @@ export function useDashboardSummary() {
   return useQuery({
     queryKey: queryKeys.dashboard.summary,
     queryFn: async () => {
-      const res = await apiClient.get<{ data: DashboardSummaryResponse }>("/v1/dashboard/summary");
+      const res = await apiClient.get<{ data: DashboardSummaryResponse }>("/v1/dashboard/summary", {
+        timeoutMs: 45_000,
+      });
       return res.data;
     },
     enabled: isBrowser,

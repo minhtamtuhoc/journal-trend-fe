@@ -89,7 +89,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   <Icon className="size-4 shrink-0" />
                   <span className="flex-1">{item.label}</span>
                   {item.to === "/notifications" && unread > 0 && (
-                    <span className="text-[10px] font-mono bg-brand/20 text-brand px-1.5 py-0.5 rounded">{unread}</span>
+                    <span className="size-2 rounded-full bg-brand shrink-0 animate-pulse shadow-[0_0_8px_var(--brand)]" title="Có thông báo mới chưa đọc" />
                   )}
                 </Link>
               );

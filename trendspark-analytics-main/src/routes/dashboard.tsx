@@ -85,7 +85,36 @@ function DashboardPage() {
   if (isLoading) {
     return (
       <AppLayout>
-        <div className="p-8 text-sm text-muted-foreground animate-pulse">Loading dashboard statistics...</div>
+        <PageHeader
+          title="Dashboard Overview"
+          subtitle="Scientific journal publication statistics and dynamically derived topic trends"
+        />
+        <div className="space-y-6 animate-pulse">
+          <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="h-24 rounded-xl border border-border bg-card/40 p-4 space-y-2">
+                <div className="h-3 w-20 bg-muted rounded" />
+                <div className="h-6 w-16 bg-muted rounded" />
+              </div>
+            ))}
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 h-72 rounded-xl border border-border bg-card/40 p-6 space-y-4">
+              <div className="h-4 w-40 bg-muted rounded" />
+              <div className="grid grid-cols-2 gap-4">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="h-24 rounded-lg bg-muted/40" />
+                ))}
+              </div>
+            </div>
+            <div className="h-72 rounded-xl border border-border bg-card/40 p-6 space-y-3">
+              <div className="h-4 w-36 bg-muted rounded" />
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="h-8 rounded bg-muted/30" />
+              ))}
+            </div>
+          </div>
+        </div>
       </AppLayout>
     );
   }

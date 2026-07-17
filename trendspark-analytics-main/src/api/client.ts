@@ -8,7 +8,7 @@ type RequestOptions = Omit<RequestInit, "body"> & {
   timeoutMs?: number;
 };
 
-const DEFAULT_TIMEOUT_MS = 15_000;
+const DEFAULT_TIMEOUT_MS = 25_000;
 
 function isPublicAuthPath(path: string): boolean {
   const normalized = path.startsWith("/") ? path : `/${path}`;
