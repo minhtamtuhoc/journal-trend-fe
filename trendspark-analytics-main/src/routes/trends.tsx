@@ -207,6 +207,21 @@ function TrendsPage() {
     }
   }, [top10Keywords, isInitialized]);
 
+  interface StoredAiAnalysis {
+    data: AiTopTrendsAnalysisResponse;
+    timestamp: string;
+  }
+
+  const [savedAiAnalysis, setSavedAiAnalysis] = useState<StoredAiAnalysis | null>(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const cached = localStorage.getItem("journal_trend_ai_analysis");
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  });
+
   const aiMutation = useMutation<
     AiTopTrendsAnalysisResponse,
     Error,
@@ -218,6 +233,15 @@ function TrendsPage() {
         payload
       );
       return res.data;
+    },
+    onSuccess: (data) => {
+      const now = new Date();
+      const timestamp = `${now.toLocaleDateString("vi-VN")} ${now.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`;
+      const stored: StoredAiAnalysis = { data, timestamp };
+      setSavedAiAnalysis(stored);
+      try {
+        localStorage.setItem("journal_trend_ai_analysis", JSON.stringify(stored));
+      } catch {}
     },
   });
 
@@ -509,77 +533,86 @@ function TrendsPage() {
                   </div>
                 )}
 
-                {aiMutation.isSuccess && aiMutation.data && (
-                  <div className="p-5 border border-brand/20 rounded-xl bg-gradient-to-br from-card to-brand/5 space-y-4 shadow-sm">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border">
-                      <div className="flex items-center gap-2">
-                        <div className="size-6.5 bg-brand/10 rounded-lg flex items-center justify-center text-brand">
-                          <Brain className="size-4" />
+                {(() => {
+                  if (!savedAiAnalysis) return null;
+                  const { data, timestamp } = savedAiAnalysis;
+
+                  return (
+                    <div className="p-5 border border-brand/20 rounded-xl bg-gradient-to-br from-card to-brand/5 space-y-4 shadow-sm">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border">
+                        <div className="flex items-center gap-2">
+                          <div className="size-6.5 bg-brand/10 rounded-lg flex items-center justify-center text-brand">
+                            <Brain className="size-4" />
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-bold text-foreground">Automated Analysis Report</h4>
+                            <p className="text-[10px] text-muted-foreground flex items-center gap-1.5 flex-wrap">
+                              <span>Deep analysis by Groq AI model</span>
+                              <span>•</span>
+                              <span className="font-mono text-brand font-semibold">Thời gian phân tích: {timestamp}</span>
+                            </p>
+                          </div>
                         </div>
                         <div>
-                          <h4 className="text-sm font-bold text-foreground">Automated Analysis Report</h4>
-                          <p className="text-[10px] text-muted-foreground">Deep analysis by Groq AI model</p>
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold ${data.overallVerdict === 'GROWING' ? 'bg-success/15 text-success' :
+                              data.overallVerdict === 'MIXED' ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' : 'bg-secondary text-muted-foreground'
+                            }`}>
+                            <TrendingUp className="size-3" />
+                            Overall Trend: {data.overallVerdict}
+                          </span>
                         </div>
                       </div>
-                      <div>
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold ${aiMutation.data.overallVerdict === 'GROWING' ? 'bg-success/15 text-success' :
-                            aiMutation.data.overallVerdict === 'MIXED' ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' : 'bg-secondary text-muted-foreground'
-                          }`}>
-                          <TrendingUp className="size-3" />
-                          Overall Trend: {aiMutation.data.overallVerdict}
-                        </span>
-                      </div>
-                    </div>
 
-                    <div className="space-y-1">
-                      <h5 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                        <Brain className="size-3 text-brand" /> Comparative Analysis
-                      </h5>
-                      <p className="text-sm text-foreground leading-relaxed">
-                        {aiMutation.data.analysis}
-                      </p>
-                    </div>
-
-                    {aiMutation.data.topGrowingKeywords && aiMutation.data.topGrowingKeywords.length > 0 && (
                       <div className="space-y-1">
                         <h5 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                          <Flame className="size-3 text-brand" /> Top Growing Keywords
+                          <Brain className="size-3 text-brand" /> Comparative Analysis
                         </h5>
-                        <div className="flex flex-wrap gap-1">
-                          {aiMutation.data.topGrowingKeywords.map((kw, i) => (
-                            <span key={i} className="text-xs px-2 py-0.5 rounded-md bg-brand/10 text-brand font-bold border border-brand/20">
-                              {kw}
-                            </span>
+                        <p className="text-sm text-foreground leading-relaxed">
+                          {data.analysis}
+                        </p>
+                      </div>
+
+                      {data.topGrowingKeywords && data.topGrowingKeywords.length > 0 && (
+                        <div className="space-y-1">
+                          <h5 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                            <Flame className="size-3 text-brand" /> Top Growing Keywords
+                          </h5>
+                          <div className="flex flex-wrap gap-1">
+                            {data.topGrowingKeywords.map((kw, i) => (
+                              <span key={i} className="text-xs px-2 py-0.5 rounded-md bg-brand/10 text-brand font-bold border border-brand/20">
+                                {kw}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="space-y-2.5">
+                        <h5 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                          <CheckCircle className="size-3 text-brand" /> Core Insights
+                        </h5>
+                        <ul className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+                          {data.keyInsights.map((insight, i) => (
+                            <li key={i} className="p-3 border border-border rounded-lg bg-card/60 text-xs text-muted-foreground leading-relaxed flex items-start gap-1.5">
+                              <span className="font-bold text-brand text-xs">0{i + 1}.</span>
+                              <span>{insight}</span>
+                            </li>
                           ))}
+                        </ul>
+                      </div>
+
+                      <div className="p-3.5 bg-brand/5 border border-brand/20 rounded-lg flex gap-2.5 items-start">
+                        <div className="size-5.5 bg-brand/20 rounded-md flex items-center justify-center text-brand shrink-0">
+                          <Lightbulb className="size-3.5" />
+                        </div>
+                        <div className="space-y-0.5">
+                          <p className="text-xs font-bold text-brand uppercase tracking-wider">Research Direction Recommendations</p>
+                          <p className="text-xs text-muted-foreground leading-relaxed">{data.recommendation}</p>
                         </div>
                       </div>
-                    )}
-
-                    <div className="space-y-2.5">
-                      <h5 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                        <CheckCircle className="size-3 text-brand" /> Core Insights
-                      </h5>
-                      <ul className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
-                        {aiMutation.data.keyInsights.map((insight, i) => (
-                          <li key={i} className="p-3 border border-border rounded-lg bg-card/60 text-xs text-muted-foreground leading-relaxed flex items-start gap-1.5">
-                            <span className="font-bold text-brand text-xs">0{i + 1}.</span>
-                            <span>{insight}</span>
-                          </li>
-                        ))}
-                      </ul>
                     </div>
-
-                    <div className="p-3.5 bg-brand/5 border border-brand/20 rounded-lg flex gap-2.5 items-start">
-                      <div className="size-5.5 bg-brand/20 rounded-md flex items-center justify-center text-brand shrink-0">
-                        <Lightbulb className="size-3.5" />
-                      </div>
-                      <div className="space-y-0.5">
-                        <p className="text-xs font-bold text-brand uppercase tracking-wider">Research Direction Recommendations</p>
-                        <p className="text-xs text-muted-foreground leading-relaxed">{aiMutation.data.recommendation}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                  );
+                })()}
               </div>
             </>
           )}
