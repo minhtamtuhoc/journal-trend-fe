@@ -77,7 +77,8 @@ export function useAvailableYears() {
     queryKey: ["available-years"],
     queryFn: () => getServices().papers.getAvailableYears(),
     enabled: isBrowser,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30 * 60 * 1000,
+    gcTime: 60 * 60 * 1000,
   });
 }
 
