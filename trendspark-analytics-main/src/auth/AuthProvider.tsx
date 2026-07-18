@@ -51,8 +51,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       } catch {
         if (!cancelled) {
-          authStorage.setSession(null);
-          setUser(null);
+          const cachedUser = authStorage.getUser();
+          if (cachedUser) {
+            setUser(normalizeUser(cachedUser));
+          } else {
+            authStorage.setSession(null);
+            setUser(null);
+          }
         }
       } finally {
         if (!cancelled) {

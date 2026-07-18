@@ -11,8 +11,16 @@ function getQueryClient() {
         staleTime: 5 * 60 * 1000,
         gcTime: 10 * 60 * 1000,
         refetchOnWindowFocus: false,
-        retry: 1,
-        retryDelay: (attemptIndex: number) => Math.min(1000 * 2 ** attemptIndex, 10_000),
+        retry: (failureCount: number, error: unknown) => {
+          if (error && typeof error === "object") {
+            const status = (error as { status?: number }).status;
+            if (status === 401 || status === 403 || status === 404 || status === 400) {
+              return false;
+            }
+          }
+          return failureCount < 2;
+        },
+        retryDelay: (attemptIndex: number) => Math.min(1000 * 2 ** attemptIndex, 5000),
       },
     },
   };

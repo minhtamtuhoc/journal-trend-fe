@@ -19,14 +19,31 @@ export interface NotificationGroup {
   ids: string[]; // all raw notification ids in this group
   unreadIds: string[]; // unread raw notification ids
   triggerType: "NEW_PAPER" | "TRENDING_KEYWORD" | "SYSTEM";
-  uiType: "paper" | "trend" | "system";
+  uiType: "paper" | "trend" | "system" | "role";
 }
 
 export function getNotificationGroupInfo(n: NotificationItem): {
   key: string;
   name: string;
-  type: "keyword" | "author" | "journal" | "system";
+  type: "keyword" | "author" | "journal" | "system" | "role";
 } {
+  // 0. Role Upgrade Request Notification
+  if (
+    n.message &&
+    (n.message.toLowerCase().includes("role upgrade request") ||
+      (n.message.toLowerCase().includes("role") &&
+        (n.message.toLowerCase().includes("approved") || n.message.toLowerCase().includes("rejected"))))
+  ) {
+    const isApproved = n.message.toLowerCase().includes("approved");
+    const isRejected = n.message.toLowerCase().includes("rejected");
+    const title = isApproved
+      ? "Yêu cầu đổi Role: Đã được phê duyệt 🎉"
+      : isRejected
+      ? "Yêu cầu đổi Role: Bị từ chối ❌"
+      : "Thông báo Vai trò Hệ thống";
+    return { key: `role-request-${n.id}`, name: title, type: "role" };
+  }
+
   // 1. Keyword
   if (n.keywordId) {
     let term = "";
@@ -112,7 +129,7 @@ export function groupNotifications(notifications: NotificationItem[]): Notificat
     const paperSummary: PaperSummary = {
       id: n.paperId || "",
       notificationId: n.id,
-      title: paperTitle,
+      title: type === "role" ? n.message : paperTitle,
       createdAt: n.createdAt,
       unread: n.unread,
     };
@@ -130,7 +147,7 @@ export function groupNotifications(notifications: NotificationItem[]): Notificat
       const isDuplicate = existing.papers.some(
         (p) => p.id === n.paperId || (Boolean(normalizedTitle) && p.title.trim().toLowerCase() === normalizedTitle)
       );
-      if (n.paperId && !isDuplicate) {
+      if ((n.paperId || type === "role") && !isDuplicate) {
         existing.papers.push(paperSummary);
         existing.totalPapers = existing.papers.length;
       }
@@ -138,18 +155,19 @@ export function groupNotifications(notifications: NotificationItem[]): Notificat
         existing.latestCreatedAt = n.createdAt;
       }
     } else {
-      let uiType: "paper" | "trend" | "system" = "system";
+      let uiType: "paper" | "trend" | "system" | "role" = "system";
       if (type === "keyword") uiType = "trend";
       else if (type === "author" || type === "journal") uiType = "paper";
+      else if (type === "role") uiType = "role";
 
       groupsMap.set(key, {
         key,
         keyword: name,
         keywordId: n.keywordId,
         unread: n.unread,
-        totalPapers: n.paperId ? 1 : 0,
+        totalPapers: n.paperId || type === "role" ? 1 : 0,
         latestCreatedAt: n.createdAt,
-        papers: n.paperId ? [paperSummary] : [],
+        papers: n.paperId || type === "role" ? [paperSummary] : [],
         ids: [n.id],
         unreadIds: n.unread ? [n.id] : [],
         triggerType: n.triggerType,

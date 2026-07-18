@@ -49,5 +49,10 @@ export const queryKeys = {
   searchHistory: {
     recent: ["searchHistory", "recent"] as const,
   },
+  roleRequest: {
+    me: ["roleRequest", "me"] as const,
+    list: (status?: string, page?: number, size?: number) => ["roleRequest", "list", { status, page, size }] as const,
+    logs: (targetUserId?: number, page?: number, size?: number) => ["roleRequest", "logs", { targetUserId, page, size }] as const,
+  },
 } as const;
 
