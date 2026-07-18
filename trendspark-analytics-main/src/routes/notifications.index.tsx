@@ -147,7 +147,11 @@ function NotificationGroupCard({
         </div>
         {group.uiType === "role" ? (
           <div className="text-xs text-brand font-medium mt-1 hover:underline flex items-center gap-1">
-            <span>{group.keyword.includes("từ chối") ? "Nhấn để xem lý do từ chối từ Admin ➔" : "Nhấn để xem vai trò mới trong trang Cá nhân ➔"}</span>
+            <span>
+              {group.keyword.toLowerCase().includes("rejected") || group.keyword.includes("từ chối")
+                ? "Click to view Admin rejection reason ➔"
+                : "Click to view your new role in Profile ➔"}
+            </span>
           </div>
         ) : group.papers.length > 0 ? (
           <div className="text-xs text-muted-foreground mt-1.5 line-clamp-1 italic font-serif">
@@ -324,7 +328,10 @@ function NotificationsPage() {
       if (group.unread && group.unreadIds.length > 0) {
         void markMultiple.mutateAsync(group.unreadIds);
       }
-      const isRejected = group.keyword.includes("từ chối") || (group.papers[0]?.title && group.papers[0].title.toLowerCase().includes("rejected"));
+      const isRejected =
+        group.keyword.toLowerCase().includes("rejected") ||
+        group.keyword.includes("từ chối") ||
+        (group.papers[0]?.title && group.papers[0].title.toLowerCase().includes("rejected"));
       if (isRejected) {
         setSelectedRejection({
           message: group.papers[0]?.title || group.keyword,
