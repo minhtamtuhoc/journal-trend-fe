@@ -37,10 +37,10 @@ export function getNotificationGroupInfo(n: NotificationItem): {
     const isApproved = n.message.toLowerCase().includes("approved");
     const isRejected = n.message.toLowerCase().includes("rejected");
     const title = isApproved
-      ? "Yêu cầu đổi Role: Đã được phê duyệt 🎉"
+      ? "Role Change Request: Approved 🎉"
       : isRejected
-      ? "Yêu cầu đổi Role: Bị từ chối ❌"
-      : "Thông báo Vai trò Hệ thống";
+      ? "Role Change Request: Rejected ❌"
+      : "System Role Notification";
     return { key: `role-request-${n.id}`, name: title, type: "role" };
   }
 

@@ -360,16 +360,16 @@ function RoleRequestsAdminSection() {
   const handleApprove = async (req: RoleUpgradeRequestResponse) => {
     try {
       await approveMutation.mutateAsync({ requestId: req.id });
-      toast.success(`Đã duyệt nâng role thành công cho ${req.userName} (${req.requestedRole})`);
+      toast.success(`Role request approved successfully for ${req.userName} (${req.requestedRole})`);
       void refetchRequests();
     } catch (err) {
-      const msg = err instanceof ApiError ? err.message : "Duyệt thất bại";
+      const msg = err instanceof ApiError ? err.message : "Approval failed";
       toast.error(msg);
     }
   };
 
   return (
-    <Card className="mb-6" title="Quản lý Yêu cầu Đổi Role & Lịch sử">
+    <Card className="mb-6" title="Role Change Requests & History">
       {/* Sub tabs & status filter */}
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border/60 pb-4 mb-4">
         <div className="flex gap-2">
@@ -380,7 +380,7 @@ function RoleRequestsAdminSection() {
               subTab === "requests" ? "bg-brand text-brand-foreground" : "bg-secondary/40 text-muted-foreground hover:text-foreground"
             }`}
           >
-            Đơn yêu cầu ({statusFilter})
+            Role Requests ({statusFilter})
           </button>
           <button
             type="button"
@@ -390,7 +390,7 @@ function RoleRequestsAdminSection() {
             }`}
           >
             <History className="size-3.5" />
-            Nhật ký đổi role (Role Logs)
+            Role Change Logs
           </button>
         </div>
 
@@ -417,9 +417,9 @@ function RoleRequestsAdminSection() {
 
       {subTab === "requests" ? (
         isLoadingRequests ? (
-          <p className="text-sm text-muted-foreground py-4">Đang tải danh sách đơn...</p>
+          <p className="text-sm text-muted-foreground py-4">Loading requests list...</p>
         ) : requests.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-6 text-center">Không có đơn xin đổi role nào ở trạng thái <strong>{statusFilter}</strong>.</p>
+          <p className="text-sm text-muted-foreground py-6 text-center">No role change requests found with status <strong>{statusFilter}</strong>.</p>
         ) : (
           <div className="space-y-3">
             {requests.map((req) => (
@@ -434,7 +434,7 @@ function RoleRequestsAdminSection() {
                       <span>{req.currentRole}</span>
                       <ArrowRight className="size-3 text-brand" />
                       <span className="text-brand font-bold">{req.requestedRole}</span>
-                      <span className="text-muted-foreground/60">• {new Date(req.createdAt).toLocaleString("vi-VN")}</span>
+                      <span className="text-muted-foreground/60">• {new Date(req.createdAt).toLocaleString("en-US")}</span>
                     </div>
                   </div>
 
@@ -460,7 +460,7 @@ function RoleRequestsAdminSection() {
                           className="px-3 py-1 rounded-lg text-xs font-semibold bg-success/10 text-success border border-success/30 hover:bg-success/20 transition-colors flex items-center gap-1"
                         >
                           <UserCheck className="size-3.5" />
-                          Duyệt
+                          Approve
                         </button>
                         <button
                           type="button"
@@ -472,7 +472,7 @@ function RoleRequestsAdminSection() {
                           className="px-3 py-1 rounded-lg text-xs font-semibold bg-destructive/10 text-destructive border border-destructive/30 hover:bg-destructive/20 transition-colors flex items-center gap-1"
                         >
                           <UserX className="size-3.5" />
-                          Từ chối
+                          Reject
                         </button>
                       </div>
                     )}
@@ -482,7 +482,7 @@ function RoleRequestsAdminSection() {
                 {/* Reason HTML */}
                 {req.reason && (
                   <div className="p-3 bg-background/60 rounded-lg border border-border/50 text-xs leading-relaxed space-y-1">
-                    <div className="text-[10px] font-semibold uppercase text-muted-foreground">Lý do trình bày:</div>
+                    <div className="text-[10px] font-semibold uppercase text-muted-foreground">Submitted Reason:</div>
                     <div
                       className="prose prose-xs dark:prose-invert max-w-none text-foreground"
                       dangerouslySetInnerHTML={{ __html: req.reason }}
@@ -499,17 +499,17 @@ function RoleRequestsAdminSection() {
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 text-brand hover:underline font-medium"
                     >
-                      <ExternalLink className="size-3" /> Link minh chứng chứng minh
+                      <ExternalLink className="size-3" /> Submitted Proof Link
                     </a>
                   ) : (
-                    <span className="text-muted-foreground italic">Không đính kèm link minh chứng</span>
+                    <span className="text-muted-foreground italic">No proof link attached</span>
                   )}
 
                   {req.status === "REJECTED" && req.rejectionReasonText && (
-                    <span className="text-destructive font-medium">Lý do từ chối: {req.rejectionReasonText}</span>
+                    <span className="text-destructive font-medium">Rejection Reason: {req.rejectionReasonText}</span>
                   )}
                   {req.status === "APPROVED" && req.reviewedByEmail && (
-                    <span className="text-muted-foreground">Duyệt bởi: {req.reviewedByEmail}</span>
+                    <span className="text-muted-foreground">Approved by: {req.reviewedByEmail}</span>
                   )}
                 </div>
               </div>
@@ -518,7 +518,7 @@ function RoleRequestsAdminSection() {
         )
       ) : (
         logs.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-6 text-center">Chưa có bản ghi nhật ký đổi role nào.</p>
+          <p className="text-sm text-muted-foreground py-6 text-center">No role change logs available.</p>
         ) : (
           <div className="divide-y divide-border/60 border border-border/80 rounded-xl overflow-hidden">
             {logs.map((log) => (
@@ -527,11 +527,11 @@ function RoleRequestsAdminSection() {
                   <div className="font-semibold text-foreground">
                     {log.targetUserEmail} <span className="font-mono text-muted-foreground font-normal">({log.oldRole} → {log.newRole})</span>
                   </div>
-                  <div className="text-muted-foreground">{log.reason || "Đổi role thành công"}</div>
+                  <div className="text-muted-foreground">{log.reason || "Role changed successfully"}</div>
                 </div>
                 <div className="text-right shrink-0">
                   <div className="font-mono text-[11px] text-brand">{log.operatorEmail}</div>
-                  <div className="text-[10px] text-muted-foreground">{new Date(log.createdAt).toLocaleString("vi-VN")}</div>
+                  <div className="text-[10px] text-muted-foreground">{new Date(log.createdAt).toLocaleString("en-US")}</div>
                 </div>
               </div>
             ))}

@@ -192,33 +192,31 @@ function ProfilePage() {
                   hint="Email is your account identifier and cannot be changed"
                 />
 
-                {/* Role field with upgrade request action / status banner */}
+                {/* Role field with upgrade request action inside input / status banner */}
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                      System Role
-                    </label>
+                  <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    System Role
+                  </label>
 
-                    {/* Show request button if no pending request */}
+                  <div className="relative flex items-center">
+                    <input
+                      type="text"
+                      disabled
+                      value={displayRole}
+                      className="w-full h-10 pl-3.5 pr-44 rounded-lg border border-border bg-secondary/50 text-foreground text-sm font-medium opacity-80 cursor-not-allowed"
+                    />
+
+                    {/* Request button positioned directly inside input bar */}
                     {!pendingRequest && !isAdminUser(user) && (
                       <button
                         type="button"
                         onClick={() => setShowRoleModal(true)}
-                        className="inline-flex items-center gap-1.5 text-xs font-medium text-brand hover:underline"
+                        className="absolute right-1.5 h-7 px-3 rounded-md text-xs font-semibold bg-brand/15 text-brand hover:bg-brand/25 border border-brand/30 transition-all flex items-center gap-1.5"
                       >
                         <Sparkles className="size-3.5" />
                         <span>Request Role Change</span>
                       </button>
                     )}
-                  </div>
-
-                  <div className="relative">
-                    <input
-                      type="text"
-                      disabled
-                      value={displayRole}
-                      className="w-full h-10 px-3 rounded-lg border border-border bg-secondary/50 text-foreground text-sm font-medium opacity-80 cursor-not-allowed"
-                    />
                   </div>
 
                   {/* Pending Request Status Banner */}
@@ -250,7 +248,7 @@ function ProfilePage() {
                   <button
                     type="submit"
                     disabled={saving}
-                    className="h-10 px-6 rounded-lg text-sm font-semibold text-brand-foreground glow-brand disabled:opacity-60 transition-all hover:brightness-110"
+                    className="h-10 px-6 rounded-lg text-sm font-semibold text-brand-foreground glow-brand opacity-90 hover:opacity-100 disabled:opacity-50 transition-all hover:brightness-105 shadow-sm"
                     style={{ background: "var(--gradient-brand)" }}
                   >
                     {saving ? "Saving..." : "Save Changes"}
@@ -262,7 +260,7 @@ function ProfilePage() {
             <RoleRequestModal
               open={showRoleModal}
               onOpenChange={setShowRoleModal}
-              currentRole={user.role}
+              currentRole={user.rawRole || user.role}
               onSuccess={() => void refetchPendingRequest()}
             />
           </TabsContent>
@@ -317,7 +315,7 @@ function ProfilePage() {
                   <button
                     type="submit"
                     disabled={changingPw || Boolean(confirmPasswordStatus && confirmPasswordStatus.type === "error")}
-                    className="h-10 px-6 rounded-lg text-sm font-semibold text-brand-foreground glow-brand disabled:opacity-60 transition-all hover:brightness-110 flex items-center gap-2"
+                    className="h-10 px-6 rounded-lg text-sm font-semibold text-brand-foreground glow-brand opacity-90 hover:opacity-100 disabled:opacity-50 transition-all hover:brightness-105 shadow-sm flex items-center gap-2"
                     style={{ background: "var(--gradient-brand)" }}
                   >
                     <KeyRound className="w-4 h-4" />

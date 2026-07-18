@@ -43,7 +43,7 @@ export function RoleRequestRejectModal({ request, open, onOpenChange, onSuccess 
   const handleReject = async (e: React.FormEvent) => {
     e.preventDefault();
     if (rejectionReason === "OTHER" && !customReason.trim()) {
-      toast.error("Vui lòng nhập lý do cụ thể khi chọn OTHER");
+      toast.error("Please enter a specific note when selecting OTHER");
       return;
     }
 
@@ -55,11 +55,11 @@ export function RoleRequestRejectModal({ request, open, onOpenChange, onSuccess 
           customReason: rejectionReason === "OTHER" ? customReason.trim() : undefined,
         } as any,
       });
-      toast.success(`Đã từ chối đơn của ${request.userEmail}`);
+      toast.success(`Rejected role request for ${request.userEmail}`);
       onOpenChange(false);
       if (onSuccess) onSuccess();
     } catch (err) {
-      const msg = err instanceof ApiError ? err.message : "Thao tác từ chối thất bại";
+      const msg = err instanceof ApiError ? err.message : "Rejection failed";
       toast.error(msg);
     }
   };
@@ -70,35 +70,29 @@ export function RoleRequestRejectModal({ request, open, onOpenChange, onSuccess 
         <DialogHeader className="space-y-2">
           <div className="flex items-center gap-2 text-destructive">
             <AlertOctagon className="size-5" />
-            <DialogTitle className="text-xl font-bold">Từ chối đơn xin đổi role</DialogTitle>
+            <DialogTitle className="text-xl font-bold">Reject Role Change Request</DialogTitle>
           </div>
           <DialogDescription className="text-muted-foreground text-sm">
-            Xác nhận từ chối yêu cầu từ <strong>{request.userName}</strong> ({request.userEmail}) xin chuyển sang <strong>{request.requestedRole}</strong>.
+            Confirm rejection of request from <strong>{request.userName}</strong> ({request.userEmail}) requesting <strong>{request.requestedRole}</strong>.
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleReject} className="space-y-4 py-2">
           <div className="space-y-2">
-            <Label className="text-sm font-medium">Lý do từ chối (Vui lòng chọn từ danh sách)</Label>
+            <Label className="text-sm font-medium">Rejection Reason (Select from list)</Label>
             <Select
               value={rejectionReason}
               onValueChange={(val) => setRejectionReason(val as RoleRequestRejectionReason)}
             >
-              <SelectTrigger className="w-full bg-secondary/30 border-border">
-                <SelectValue placeholder="Chọn lý do từ chối..." />
+              <SelectTrigger className="w-full bg-secondary/30 border-border text-left font-medium text-sm">
+                <SelectValue placeholder="Select rejection reason..." />
               </SelectTrigger>
               <SelectContent>
-                {REASON_OPTIONS.map((code) => {
-                  const item = REJECTION_REASON_LABELS[code];
-                  return (
-                    <SelectItem key={code} value={code}>
-                      <div className="py-1">
-                        <div className="font-semibold text-sm">{code} — {item.title}</div>
-                        <div className="text-xs text-muted-foreground">{item.desc}</div>
-                      </div>
-                    </SelectItem>
-                  );
-                })}
+                {REASON_OPTIONS.map((code) => (
+                  <SelectItem key={code} value={code}>
+                    {code.replace("_", " ")}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -107,21 +101,21 @@ export function RoleRequestRejectModal({ request, open, onOpenChange, onSuccess 
           {rejectionReason === "OTHER" && (
             <div className="space-y-1.5 animate-in fade-in-50 duration-200">
               <Label className="text-sm font-medium text-destructive">
-                Chi tiết lý do từ chối <span className="text-destructive">*</span>
+                Detailed Rejection Note <span className="text-destructive">*</span>
               </Label>
               <textarea
                 value={customReason}
                 onChange={(e) => setCustomReason(e.target.value)}
-                placeholder="Nhập chi tiết hướng dẫn hoặc lý do cụ thể gửi tới người dùng..."
+                placeholder="Enter detailed explanation or feedback for the user..."
                 className="w-full min-h-[90px] p-3 rounded-lg border border-border bg-secondary/30 text-sm outline-none focus:border-brand transition-all resize-none"
               />
             </div>
           )}
 
           <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-xl text-xs space-y-1">
-            <p className="font-semibold text-destructive">Lưu ý hệ thống thông báo:</p>
+            <p className="font-semibold text-destructive">System Notification Preview:</p>
             <p className="text-muted-foreground">
-              Người dùng sẽ nhận được thông báo tự động với nội dung mô tả lý do: <br />
+              The user will receive an automated notification containing: <br />
               <span className="font-mono italic text-foreground block mt-1">
                 "{rejectionReason === "OTHER" && customReason.trim() ? customReason : REJECTION_REASON_LABELS[rejectionReason].desc}"
               </span>
@@ -135,7 +129,7 @@ export function RoleRequestRejectModal({ request, open, onOpenChange, onSuccess 
               onClick={() => onOpenChange(false)}
               disabled={rejectMutation.isPending}
             >
-              Hủy
+              Cancel
             </Button>
             <Button
               type="submit"
@@ -143,7 +137,7 @@ export function RoleRequestRejectModal({ request, open, onOpenChange, onSuccess 
               disabled={rejectMutation.isPending}
               className="font-semibold"
             >
-              {rejectMutation.isPending ? "Đang xử lý..." : "Xác nhận Từ chối"}
+              {rejectMutation.isPending ? "Processing..." : "Confirm Rejection"}
             </Button>
           </DialogFooter>
         </form>
