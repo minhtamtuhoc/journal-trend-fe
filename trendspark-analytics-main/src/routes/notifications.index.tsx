@@ -20,6 +20,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Settings,
+  Sparkles,
+  UserCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import { ApiError } from "@/api/errors";
@@ -36,6 +38,7 @@ import {
 
 import { z } from "zod";
 import { groupNotifications, type NotificationGroup, type PaperSummary } from "@/utils/notification-grouper";
+import { RoleRejectionDetailModal } from "@/components/RoleRejectionDetailModal";
 
 
 const notificationsSearchSchema = z.object({
@@ -47,12 +50,14 @@ export const Route = createFileRoute("/notifications/")({
   validateSearch: (s) => notificationsSearchSchema.parse(s),
 });
 
-const getNotificationIcon = (uiType: "paper" | "trend" | "system") => {
+const getNotificationIcon = (uiType: "paper" | "trend" | "system" | "role") => {
   switch (uiType) {
     case "paper":
       return FileText;
     case "trend":
       return TrendingUp;
+    case "role":
+      return Sparkles;
     case "system":
       return Bell;
     default:
@@ -107,7 +112,7 @@ function NotificationGroupCard({
   const Icon = getNotificationIcon(group.uiType);
 
   const getGroupTitleText = () => {
-    if (group.uiType === "system") {
+    if (group.uiType === "system" || group.uiType === "role") {
       return group.keyword;
     }
     const count = group.papers.length;
@@ -140,11 +145,15 @@ function NotificationGroupCard({
           </span>
           {group.unread && <span className="size-1.5 rounded-full bg-brand shrink-0" />}
         </div>
-        {group.papers.length > 0 && (
+        {group.uiType === "role" ? (
+          <div className="text-xs text-brand font-medium mt-1 hover:underline flex items-center gap-1">
+            <span>{group.keyword.includes("từ chối") ? "Nhấn để xem lý do từ chối từ Admin ➔" : "Nhấn để xem vai trò mới trong trang Cá nhân ➔"}</span>
+          </div>
+        ) : group.papers.length > 0 ? (
           <div className="text-xs text-muted-foreground mt-1.5 line-clamp-1 italic font-serif">
             Latest: "{group.papers[0]?.title}"
           </div>
-        )}
+        ) : null}
       </div>
       <div className="flex items-center gap-3 shrink-0 self-center">
         <div className="text-[10px] font-mono text-muted-foreground shrink-0">
@@ -241,6 +250,8 @@ function NotificationsPage() {
   const [notifyJournals, setNotifyJournals] = useState(user?.notifyJournals ?? true);
   const [notifyEmail, setNotifyEmail] = useState(user?.notifyEmail ?? true);
 
+  const [selectedRejection, setSelectedRejection] = useState<{ message: string; createdAt: string } | null>(null);
+
   useEffect(() => {
     if (user) {
       setNotifyKeywords(user.notifyKeywords ?? true);
@@ -309,6 +320,22 @@ function NotificationsPage() {
   };
 
   const handleGroupClick = (group: NotificationGroup) => {
+    if (group.uiType === "role" || group.key.startsWith("role-request-")) {
+      if (group.unread && group.unreadIds.length > 0) {
+        void markMultiple.mutateAsync(group.unreadIds);
+      }
+      const isRejected = group.keyword.includes("từ chối") || (group.papers[0]?.title && group.papers[0].title.toLowerCase().includes("rejected"));
+      if (isRejected) {
+        setSelectedRejection({
+          message: group.papers[0]?.title || group.keyword,
+          createdAt: group.latestCreatedAt,
+        });
+      } else {
+        void navigate({ to: "/profile" });
+      }
+      return;
+    }
+
     const groupId = group.keyword.toLowerCase() + "~" + group.triggerType;
     void navigate({
       to: `/notifications/${encodeURIComponent(groupId)}`,
@@ -581,6 +608,13 @@ function NotificationsPage() {
           </form>
         </SheetContent>
       </Sheet>
+
+      <RoleRejectionDetailModal
+        open={Boolean(selectedRejection)}
+        onOpenChange={(open) => !open && setSelectedRejection(null)}
+        message={selectedRejection?.message}
+        createdAt={selectedRejection?.createdAt}
+      />
     </AppLayout>
   );
 }

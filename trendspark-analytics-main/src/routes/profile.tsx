@@ -1,12 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppLayout, PageHeader } from "@/components/AppLayout";
 import { Card } from "@/components/Card";
-import { useAuth } from "@/auth";
+import { useAuth, isAdminUser } from "@/auth";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { ApiError } from "@/api/errors";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { User, ShieldCheck, KeyRound, Eye, EyeOff, Lock, CheckCircle2 } from "lucide-react";
+import { User, ShieldCheck, KeyRound, Eye, EyeOff, Lock, CheckCircle2, Sparkles, Clock, ExternalLink, AlertCircle } from "lucide-react";
+import { useMyRoleRequest } from "@/hooks/data/use-role-request";
+import { RoleRequestModal } from "@/components/RoleRequestModal";
 
 export const Route = createFileRoute("/profile")({ component: ProfilePage });
 
@@ -14,6 +16,9 @@ function ProfilePage() {
   const { user, updateProfile, changePassword } = useAuth();
   const [name, setName] = useState(user?.name ?? "");
   const [saving, setSaving] = useState(false);
+  const [showRoleModal, setShowRoleModal] = useState(false);
+
+  const { data: pendingRequest, refetch: refetchPendingRequest } = useMyRoleRequest();
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -22,6 +27,9 @@ function ProfilePage() {
   const [showNewPw, setShowNewPw] = useState(false);
   const [showConfirmPw, setShowConfirmPw] = useState(false);
   const [changingPw, setChangingPw] = useState(false);
+  const [currentPwError, setCurrentPwError] = useState<string | null>(null);
+  const [newPwError, setNewPwError] = useState<string | null>(null);
+  const [confirmPwError, setConfirmPwError] = useState<string | null>(null);
 
   useEffect(() => {
     if (user?.name) setName(user.name);
@@ -29,19 +37,36 @@ function ProfilePage() {
 
   if (!user) return null;
 
+  const displayRole = user.rawRole || user.role;
+
+  const handleCurrentPwChange = (val: string) => {
+    setCurrentPassword(val);
+    if (currentPwError) setCurrentPwError(null);
+  };
+
+  const handleNewPwChange = (val: string) => {
+    setNewPassword(val);
+    if (newPwError) setNewPwError(null);
+  };
+
+  const handleConfirmPwChange = (val: string) => {
+    setConfirmPassword(val);
+    if (confirmPwError) setConfirmPwError(null);
+  };
+
   const onSubmitProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) {
-      toast.error("Họ và tên không được để trống");
+      toast.error("Full name cannot be empty");
       return;
     }
     setSaving(true);
     try {
       await updateProfile(trimmed);
-      toast.success("Cập nhật thông tin cá nhân thành công");
+      toast.success("Profile updated successfully");
     } catch (err) {
-      const msg = err instanceof ApiError ? err.message : "Cập nhật thất bại";
+      const msg = err instanceof ApiError ? err.message : "Profile update failed";
       toast.error(msg);
     } finally {
       setSaving(false);
@@ -50,47 +75,89 @@ function ProfilePage() {
 
   const onChangePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setCurrentPwError(null);
+    setNewPwError(null);
+    setConfirmPwError(null);
+
+    let hasBlankError = false;
+
     if (!currentPassword) {
-      toast.error("Vui lòng nhập mật khẩu hiện tại");
-      return;
+      setCurrentPwError("Please enter your current password");
+      hasBlankError = true;
     }
     if (!newPassword) {
-      toast.error("Vui lòng nhập mật khẩu mới");
+      setNewPwError("Please enter a new password");
+      hasBlankError = true;
+    }
+    if (!confirmPassword) {
+      setConfirmPwError("Please confirm your new password");
+      hasBlankError = true;
+    }
+
+    if (hasBlankError) {
       return;
     }
-    if (newPassword.length < 8) {
-      toast.error("Mật khẩu mới phải có ít nhất 8 ký tự");
+
+    if (!hasMinLength || !hasUppercase || !hasDigit) {
+      setNewPwError("New password must be at least 8 characters long and contain at least one uppercase letter and one digit (0-9)");
       return;
     }
     if (newPassword !== confirmPassword) {
-      toast.error("Mật khẩu xác nhận không trùng khớp");
+      setConfirmPwError("Confirm password does not match new password");
       return;
     }
 
     setChangingPw(true);
     try {
       await changePassword(currentPassword, newPassword);
-      toast.success("Đổi mật khẩu thành công!");
+      toast.success("Password changed successfully!");
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
+      setCurrentPwError(null);
+      setNewPwError(null);
+      setConfirmPwError(null);
     } catch (err) {
-      const msg = err instanceof ApiError ? err.message : "Đổi mật khẩu thất bại";
-      toast.error(msg);
+      const msg = err instanceof ApiError ? err.message : "Password change failed";
+      if (
+        msg.toLowerCase().includes("current password") ||
+        msg.toLowerCase().includes("incorrect")
+      ) {
+        setCurrentPwError("Incorrect current password. Please check and try again.");
+      } else {
+        toast.error(msg);
+      }
     } finally {
       setChangingPw(false);
     }
   };
 
-  // Password requirements calculation
+  // Password requirements calculation (matching BE PasswordValidator: min 8, uppercase, digit)
   const hasMinLength = newPassword.length >= 8;
   const hasUppercase = /[A-Z]/.test(newPassword);
   const hasLowercase = /[a-z]/.test(newPassword);
-  const hasNumberOrSpecial = /[0-9!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(newPassword);
+  const hasDigit = /[0-9]/.test(newPassword);
+
+  const confirmPasswordStatus =
+    confirmPassword.length > 0
+      ? confirmPassword === newPassword
+        ? { type: "success" as const, text: "Passwords match" }
+        : { type: "error" as const, text: "Confirm password does not match new password" }
+      : undefined;
+
+  const formattedDate = pendingRequest?.createdAt
+    ? new Date(pendingRequest.createdAt).toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "";
 
   return (
     <AppLayout>
-      <PageHeader title="Profile Settings" subtitle="Quản lý thông tin tài khoản và bảo mật cá nhân" />
+      <PageHeader title="Profile Settings" subtitle="Manage your account information and personal security" />
 
       <div className="max-w-3xl mx-auto w-full">
         <Tabs defaultValue="account" className="w-full">
@@ -100,7 +167,7 @@ function ProfilePage() {
               className="flex items-center justify-center gap-2 h-10 rounded-lg text-sm font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
             >
               <User className="w-4 h-4 text-brand" />
-              <span>Thông tin tài khoản</span>
+              <span>Account Information</span>
             </TabsTrigger>
 
             <TabsTrigger
@@ -108,23 +175,76 @@ function ProfilePage() {
               className="flex items-center justify-center gap-2 h-10 rounded-lg text-sm font-medium transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
             >
               <ShieldCheck className="w-4 h-4 text-brand" />
-              <span>Đổi mật khẩu & Bảo mật</span>
+              <span>Password & Security</span>
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="account">
-            <Card title="Thông tin cá nhân">
+            <Card title="Personal Information">
               <form onSubmit={onSubmitProfile} className="space-y-5">
-                <Field label="Họ và tên" value={name} onChange={setName} placeholder="Nhập họ và tên..." />
+                <Field label="Full Name" value={name} onChange={setName} placeholder="Enter your full name..." />
                 <Field
-                  label="Địa chỉ Email"
+                  label="Email Address"
                   value={user.email}
                   onChange={() => {}}
                   type="email"
                   disabled
-                  hint="Email là định danh tài khoản và không thể tự thay đổi"
+                  hint="Email is your account identifier and cannot be changed"
                 />
-                <Field label="Vai trò hệ thống" value={user.role} onChange={() => {}} disabled />
+
+                {/* Role field with upgrade request action / status banner */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      System Role
+                    </label>
+
+                    {/* Show request button if no pending request */}
+                    {!pendingRequest && !isAdminUser(user) && (
+                      <button
+                        type="button"
+                        onClick={() => setShowRoleModal(true)}
+                        className="inline-flex items-center gap-1.5 text-xs font-medium text-brand hover:underline"
+                      >
+                        <Sparkles className="size-3.5" />
+                        <span>Request Role Change</span>
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="relative">
+                    <input
+                      type="text"
+                      disabled
+                      value={displayRole}
+                      className="w-full h-10 px-3 rounded-lg border border-border bg-secondary/50 text-foreground text-sm font-medium opacity-80 cursor-not-allowed"
+                    />
+                  </div>
+
+                  {/* Pending Request Status Banner */}
+                  {pendingRequest && (
+                    <div className="p-3 bg-brand/10 border border-brand/30 rounded-xl space-y-1 text-xs">
+                      <div className="flex items-center justify-between font-semibold text-brand">
+                        <span className="flex items-center gap-1.5">
+                          <Clock className="size-3.5 animate-spin" />
+                          Pending Review: {pendingRequest.currentRole} → {pendingRequest.requestedRole}
+                        </span>
+                        <span className="text-[11px] font-mono text-muted-foreground">{formattedDate}</span>
+                      </div>
+                      {pendingRequest.proofUrl && (
+                        <a
+                          href={pendingRequest.proofUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-[11px] text-brand hover:underline"
+                        >
+                          <ExternalLink className="size-3" />
+                          Submitted Proof
+                        </a>
+                      )}
+                    </div>
+                  )}
+                </div>
 
                 <div className="pt-2">
                   <button
@@ -133,64 +253,75 @@ function ProfilePage() {
                     className="h-10 px-6 rounded-lg text-sm font-semibold text-brand-foreground glow-brand disabled:opacity-60 transition-all hover:brightness-110"
                     style={{ background: "var(--gradient-brand)" }}
                   >
-                    {saving ? "Đang lưu..." : "Lưu thay đổi"}
+                    {saving ? "Saving..." : "Save Changes"}
                   </button>
                 </div>
               </form>
             </Card>
+
+            <RoleRequestModal
+              open={showRoleModal}
+              onOpenChange={setShowRoleModal}
+              currentRole={user.role}
+              onSuccess={() => void refetchPendingRequest()}
+            />
           </TabsContent>
 
           <TabsContent value="security">
-            <Card title="Cập nhật mật khẩu">
+            <Card title="Update Password">
               <form onSubmit={onChangePasswordSubmit} className="space-y-5">
                 <PasswordField
-                  label="Mật khẩu hiện tại"
+                  label="Current Password"
                   value={currentPassword}
-                  onChange={setCurrentPassword}
+                  onChange={handleCurrentPwChange}
                   show={showCurrentPw}
                   toggleShow={() => setShowCurrentPw(!showCurrentPw)}
-                  placeholder="Nhập mật khẩu hiện tại..."
-                  hint="Nhập mật khẩu bạn đang sử dụng để xác minh"
+                  placeholder="Enter current password..."
+                  hint="Enter your current password to verify identity"
+                  error={currentPwError || undefined}
                 />
 
                 <PasswordField
-                  label="Mật khẩu mới"
+                  label="New Password"
                   value={newPassword}
-                  onChange={setNewPassword}
+                  onChange={handleNewPwChange}
                   show={showNewPw}
                   toggleShow={() => setShowNewPw(!showNewPw)}
-                  placeholder="Nhập mật khẩu mới..."
+                  placeholder="Enter new password..."
+                  error={newPwError || undefined}
                 />
 
                 {/* Password strength guide */}
                 {newPassword.length > 0 && (
                   <div className="p-3 bg-secondary/30 rounded-lg border border-border/40 text-xs space-y-1.5">
-                    <p className="font-semibold text-muted-foreground mb-1">Yêu cầu mật khẩu an toàn:</p>
-                    <RequirementItem met={hasMinLength} text="Tối thiểu 8 ký tự" />
-                    <RequirementItem met={hasUppercase} text="Chứa ít nhất 1 chữ cái in hoa (A-Z)" />
-                    <RequirementItem met={hasLowercase} text="Chứa ít nhất 1 chữ cái in thường (a-z)" />
-                    <RequirementItem met={hasNumberOrSpecial} text="Chứa ít nhất 1 chữ số hoặc ký tự đặc biệt" />
+                    <p className="font-semibold text-muted-foreground mb-1">Password Security Requirements:</p>
+                    <RequirementItem met={hasMinLength} text="At least 8 characters long" />
+                    <RequirementItem met={hasUppercase} text="Contains at least 1 uppercase letter (A-Z)" />
+                    <RequirementItem met={hasLowercase} text="Contains at least 1 lowercase letter (a-z)" />
+                    <RequirementItem met={hasDigit} text="Contains at least 1 digit (0-9)" />
                   </div>
                 )}
 
                 <PasswordField
-                  label="Xác nhận mật khẩu mới"
+                  label="Confirm New Password"
                   value={confirmPassword}
-                  onChange={setConfirmPassword}
+                  onChange={handleConfirmPwChange}
                   show={showConfirmPw}
                   toggleShow={() => setShowConfirmPw(!showConfirmPw)}
-                  placeholder="Nhập lại mật khẩu mới..."
+                  placeholder="Re-enter new password..."
+                  error={confirmPwError || undefined}
+                  statusMessage={!confirmPwError ? confirmPasswordStatus : undefined}
                 />
 
                 <div className="pt-2">
                   <button
                     type="submit"
-                    disabled={changingPw}
+                    disabled={changingPw || Boolean(confirmPasswordStatus && confirmPasswordStatus.type === "error")}
                     className="h-10 px-6 rounded-lg text-sm font-semibold text-brand-foreground glow-brand disabled:opacity-60 transition-all hover:brightness-110 flex items-center gap-2"
                     style={{ background: "var(--gradient-brand)" }}
                   >
                     <KeyRound className="w-4 h-4" />
-                    <span>{changingPw ? "Đang cập nhật..." : "Cập nhật mật khẩu"}</span>
+                    <span>{changingPw ? "Updating..." : "Update Password"}</span>
                   </button>
                 </div>
               </form>
@@ -243,6 +374,8 @@ function PasswordField({
   toggleShow,
   placeholder,
   hint,
+  error,
+  statusMessage,
 }: {
   label: string;
   value: string;
@@ -251,7 +384,12 @@ function PasswordField({
   toggleShow: () => void;
   placeholder?: string;
   hint?: string;
+  error?: string;
+  statusMessage?: { type: "success" | "error"; text: string };
 }) {
+  const isError = Boolean(error) || (statusMessage && statusMessage.type === "error");
+  const isSuccess = statusMessage && statusMessage.type === "success";
+
   return (
     <div>
       <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{label}</label>
@@ -261,7 +399,13 @@ function PasswordField({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          className="w-full h-10 pl-3.5 pr-10 bg-secondary/40 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand/40 transition-all"
+          className={`w-full h-10 pl-3.5 pr-10 bg-secondary/40 border rounded-lg text-sm outline-none transition-all ${
+            isError
+              ? "border-destructive focus:ring-2 focus:ring-destructive/30"
+              : isSuccess
+              ? "border-emerald-500/80 focus:ring-2 focus:ring-emerald-500/30"
+              : "border-border focus:ring-2 focus:ring-brand/40"
+          }`}
         />
         <button
           type="button"
@@ -271,7 +415,28 @@ function PasswordField({
           {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
         </button>
       </div>
-      {hint ? <p className="text-[11px] text-muted-foreground mt-1">{hint}</p> : null}
+
+      {error ? (
+        <div className="flex items-center gap-1.5 text-xs text-destructive mt-1 font-medium animate-in fade-in-50">
+          <AlertCircle className="size-3.5 shrink-0" />
+          <span>{error}</span>
+        </div>
+      ) : statusMessage ? (
+        <div
+          className={`flex items-center gap-1.5 text-xs mt-1 font-medium animate-in fade-in-50 ${
+            statusMessage.type === "success" ? "text-emerald-500" : "text-destructive"
+          }`}
+        >
+          {statusMessage.type === "success" ? (
+            <CheckCircle2 className="size-3.5 shrink-0" />
+          ) : (
+            <AlertCircle className="size-3.5 shrink-0" />
+          )}
+          <span>{statusMessage.text}</span>
+        </div>
+      ) : hint ? (
+        <p className="text-[11px] text-muted-foreground mt-1">{hint}</p>
+      ) : null}
     </div>
   );
 }

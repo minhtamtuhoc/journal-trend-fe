@@ -85,7 +85,13 @@ export class ApiClient {
                     body: JSON.stringify({ refreshToken }),
                   });
                   if (!refreshRes.ok) {
-                    throw new Error("Token refresh request failed");
+                    if (refreshRes.status === 400 || refreshRes.status === 401 || refreshRes.status === 403) {
+                      authStorage.clearSession();
+                      if (typeof window !== "undefined") {
+                        window.location.href = "/login";
+                      }
+                    }
+                    throw new Error(`Token refresh failed with status ${refreshRes.status}`);
                   }
                   const refreshJson = await refreshRes.json();
                   const tokenData = refreshJson?.data as { accessToken: string; refreshToken: string } | undefined;
@@ -103,10 +109,6 @@ export class ApiClient {
                   }
                   return tokenData.accessToken;
                 } catch (err) {
-                  authStorage.clearSession();
-                  if (typeof window !== "undefined") {
-                    window.location.href = "/login";
-                  }
                   return null;
                 } finally {
                   refreshPromise = null;

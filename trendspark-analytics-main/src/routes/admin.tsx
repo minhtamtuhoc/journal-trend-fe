@@ -3,12 +3,15 @@ import { AppLayout, PageHeader } from "@/components/AppLayout";
 import { Card } from "@/components/Card";
 import { useAdminOverview, useAdminSources, useUpdateAdminSource, useApprovePaper, useDeletePaper, usePendingReview } from "@/hooks/data/use-admin";
 import { useState } from "react";
-import { RefreshCw, CheckCircle2, XCircle, AlertTriangle, Activity } from "lucide-react";
+import { RefreshCw, CheckCircle2, XCircle, AlertTriangle, Activity, UserCheck, UserX, ExternalLink, ArrowRight, History } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth, isAdminUser } from "@/auth";
 import { useQueryClient } from "@tanstack/react-query";
 import { getServices, queryKeys } from "@/services";
 import { ApiError } from "@/api/errors";
+import { useAdminRoleRequests, useApproveRoleRequest, useRoleLogs } from "@/hooks/data/use-role-request";
+import { RoleRequestRejectModal } from "@/components/RoleRequestRejectModal";
+import type { RoleRequestStatus, RoleUpgradeRequestResponse, RoleChangeLogResponse } from "@/types/role-request";
 
 export const Route = createFileRoute("/admin")({ component: AdminPage });
 
@@ -299,6 +302,8 @@ function AdminPage() {
         </Card>
       </div>
 
+      <RoleRequestsAdminSection />
+
       <Card
         title="Audit Logs"
         action={
@@ -335,5 +340,211 @@ function AdminPage() {
         </div>
       </Card>
     </AppLayout>
+  );
+}
+
+function RoleRequestsAdminSection() {
+  const [statusFilter, setStatusFilter] = useState<RoleRequestStatus>("PENDING");
+  const [page, setPage] = useState(0);
+  const [rejectingRequest, setRejectingRequest] = useState<RoleUpgradeRequestResponse | null>(null);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [subTab, setSubTab] = useState<"requests" | "logs">("requests");
+
+  const { data: requestsPage, isLoading: isLoadingRequests, refetch: refetchRequests } = useAdminRoleRequests(statusFilter, page, 20);
+  const approveMutation = useApproveRoleRequest();
+  const { data: roleLogsPage } = useRoleLogs(undefined, 0, 20);
+
+  const requests: RoleUpgradeRequestResponse[] = requestsPage?.content ?? [];
+  const logs: RoleChangeLogResponse[] = roleLogsPage?.content ?? [];
+
+  const handleApprove = async (req: RoleUpgradeRequestResponse) => {
+    try {
+      await approveMutation.mutateAsync({ requestId: req.id });
+      toast.success(`Đã duyệt nâng role thành công cho ${req.userName} (${req.requestedRole})`);
+      void refetchRequests();
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.message : "Duyệt thất bại";
+      toast.error(msg);
+    }
+  };
+
+  return (
+    <Card className="mb-6" title="Quản lý Yêu cầu Đổi Role & Lịch sử">
+      {/* Sub tabs & status filter */}
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border/60 pb-4 mb-4">
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setSubTab("requests")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+              subTab === "requests" ? "bg-brand text-brand-foreground" : "bg-secondary/40 text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            Đơn yêu cầu ({statusFilter})
+          </button>
+          <button
+            type="button"
+            onClick={() => setSubTab("logs")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 ${
+              subTab === "logs" ? "bg-brand text-brand-foreground" : "bg-secondary/40 text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <History className="size-3.5" />
+            Nhật ký đổi role (Role Logs)
+          </button>
+        </div>
+
+        {subTab === "requests" && (
+          <div className="flex gap-1 bg-secondary/30 p-1 rounded-lg border border-border/50">
+            {(["PENDING", "APPROVED", "REJECTED"] as RoleRequestStatus[]).map((st) => (
+              <button
+                key={st}
+                type="button"
+                onClick={() => {
+                  setStatusFilter(st);
+                  setPage(0);
+                }}
+                className={`px-2.5 py-1 rounded text-xs font-medium transition-all ${
+                  statusFilter === st ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {st}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {subTab === "requests" ? (
+        isLoadingRequests ? (
+          <p className="text-sm text-muted-foreground py-4">Đang tải danh sách đơn...</p>
+        ) : requests.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-6 text-center">Không có đơn xin đổi role nào ở trạng thái <strong>{statusFilter}</strong>.</p>
+        ) : (
+          <div className="space-y-3">
+            {requests.map((req) => (
+              <div key={req.id} className="p-4 rounded-xl border border-border bg-secondary/20 space-y-3">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <div className="font-semibold text-sm text-foreground flex items-center gap-2">
+                      <span>{req.userName}</span>
+                      <span className="text-xs font-normal text-muted-foreground">({req.userEmail})</span>
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1.5 font-mono">
+                      <span>{req.currentRole}</span>
+                      <ArrowRight className="size-3 text-brand" />
+                      <span className="text-brand font-bold">{req.requestedRole}</span>
+                      <span className="text-muted-foreground/60">• {new Date(req.createdAt).toLocaleString("vi-VN")}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider ${
+                        req.status === "PENDING"
+                          ? "bg-warning/20 text-warning"
+                          : req.status === "APPROVED"
+                          ? "bg-success/20 text-success"
+                          : "bg-destructive/20 text-destructive"
+                      }`}
+                    >
+                      {req.status}
+                    </span>
+
+                    {req.status === "PENDING" && (
+                      <div className="flex gap-1.5 ml-2">
+                        <button
+                          type="button"
+                          disabled={approveMutation.isPending}
+                          onClick={() => handleApprove(req)}
+                          className="px-3 py-1 rounded-lg text-xs font-semibold bg-success/10 text-success border border-success/30 hover:bg-success/20 transition-colors flex items-center gap-1"
+                        >
+                          <UserCheck className="size-3.5" />
+                          Duyệt
+                        </button>
+                        <button
+                          type="button"
+                          disabled={approveMutation.isPending}
+                          onClick={() => {
+                            setRejectingRequest(req);
+                            setShowRejectModal(true);
+                          }}
+                          className="px-3 py-1 rounded-lg text-xs font-semibold bg-destructive/10 text-destructive border border-destructive/30 hover:bg-destructive/20 transition-colors flex items-center gap-1"
+                        >
+                          <UserX className="size-3.5" />
+                          Từ chối
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Reason HTML */}
+                {req.reason && (
+                  <div className="p-3 bg-background/60 rounded-lg border border-border/50 text-xs leading-relaxed space-y-1">
+                    <div className="text-[10px] font-semibold uppercase text-muted-foreground">Lý do trình bày:</div>
+                    <div
+                      className="prose prose-xs dark:prose-invert max-w-none text-foreground"
+                      dangerouslySetInnerHTML={{ __html: req.reason }}
+                    />
+                  </div>
+                )}
+
+                {/* Proof Link & Rejection Reason note */}
+                <div className="flex flex-wrap items-center justify-between text-xs pt-1 border-t border-border/40 gap-2">
+                  {req.proofUrl ? (
+                    <a
+                      href={req.proofUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-brand hover:underline font-medium"
+                    >
+                      <ExternalLink className="size-3" /> Link minh chứng chứng minh
+                    </a>
+                  ) : (
+                    <span className="text-muted-foreground italic">Không đính kèm link minh chứng</span>
+                  )}
+
+                  {req.status === "REJECTED" && req.rejectionReasonText && (
+                    <span className="text-destructive font-medium">Lý do từ chối: {req.rejectionReasonText}</span>
+                  )}
+                  {req.status === "APPROVED" && req.reviewedByEmail && (
+                    <span className="text-muted-foreground">Duyệt bởi: {req.reviewedByEmail}</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )
+      ) : (
+        logs.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-6 text-center">Chưa có bản ghi nhật ký đổi role nào.</p>
+        ) : (
+          <div className="divide-y divide-border/60 border border-border/80 rounded-xl overflow-hidden">
+            {logs.map((log) => (
+              <div key={log.id} className="p-3 bg-secondary/10 flex items-center justify-between text-xs gap-4">
+                <div className="space-y-0.5">
+                  <div className="font-semibold text-foreground">
+                    {log.targetUserEmail} <span className="font-mono text-muted-foreground font-normal">({log.oldRole} → {log.newRole})</span>
+                  </div>
+                  <div className="text-muted-foreground">{log.reason || "Đổi role thành công"}</div>
+                </div>
+                <div className="text-right shrink-0">
+                  <div className="font-mono text-[11px] text-brand">{log.operatorEmail}</div>
+                  <div className="text-[10px] text-muted-foreground">{new Date(log.createdAt).toLocaleString("vi-VN")}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )
+      )}
+
+      <RoleRequestRejectModal
+        request={rejectingRequest}
+        open={showRejectModal}
+        onOpenChange={setShowRejectModal}
+        onSuccess={() => void refetchRequests()}
+      />
+    </Card>
   );
 }
