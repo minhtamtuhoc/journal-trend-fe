@@ -21,6 +21,7 @@ type AuthContextValue = {
     notifyJournals: boolean;
     notifyEmail: boolean;
   }) => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -129,6 +130,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(normalizeUser(session.user));
   }, []);
 
+  const changePassword = useCallback(async (currentPassword: string, newPassword: string) => {
+    await getServices().auth.changePassword(currentPassword, newPassword);
+  }, []);
+
   const value = useMemo(
     () => ({
       user,
@@ -139,8 +144,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       logout,
       updateProfile,
       updateNotificationPreferences,
+      changePassword,
     }),
-    [user, isLoading, initializing, login, register, logout, updateProfile, updateNotificationPreferences],
+    [user, isLoading, initializing, login, register, logout, updateProfile, updateNotificationPreferences, changePassword],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

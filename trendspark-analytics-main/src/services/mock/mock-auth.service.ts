@@ -86,5 +86,9 @@ export class MockAuthService implements AuthService {
   async resetPassword(token: string, newPassword: string): Promise<void> {
     await new Promise((r) => setTimeout(r, AUTH_DELAY_MS));
   }
+
+  async changePassword(currentPassword: string, newPassword: string): Promise<void> {
+    await new Promise((r) => setTimeout(r, AUTH_DELAY_MS));
+  }
 }
 

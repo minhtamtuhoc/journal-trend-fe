@@ -14,4 +14,5 @@ export interface AuthService {
   }): Promise<AuthSession>;
   forgotPassword(email: string): Promise<void>;
   resetPassword(token: string, newPassword: string): Promise<void>;
+  changePassword(currentPassword: string, newPassword: string): Promise<void>;
 }

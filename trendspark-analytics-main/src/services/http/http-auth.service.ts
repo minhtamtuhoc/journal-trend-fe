@@ -87,5 +87,9 @@ export class HttpAuthService implements AuthService {
   async resetPassword(token: string, newPassword: string): Promise<void> {
     await apiClient.post("/auth/reset-password", { token, newPassword });
   }
+
+  async changePassword(currentPassword: string, newPassword: string): Promise<void> {
+    await apiClient.post("/v1/auth/change-password", { currentPassword, newPassword });
+  }
 }
 
