@@ -5,6 +5,7 @@ import { ApiError } from "@/api/errors";
 import { AuthShell } from "@/components/AuthShell";
 import { useAuth, type RegisterRole } from "@/auth";
 import { toast } from "sonner";
+import { Eye, EyeOff } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -60,18 +61,32 @@ function Field({
   placeholder?: string;
   error?: string;
 }) {
+  const [showPassword, setShowPassword] = useState(false);
+  const isPasswordField = type === "password";
+
   return (
     <div>
       <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{label}</label>
-      <input
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className={`mt-1 w-full h-10 px-3 bg-secondary/40 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand/40 ${
-          error ? "border-destructive focus:ring-destructive/40" : "border-border"
-        }`}
-      />
+      <div className="relative mt-1">
+        <input
+          type={isPasswordField ? (showPassword ? "text" : "password") : type}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          className={`w-full h-10 pl-3 ${isPasswordField ? "pr-10" : "pr-3"} bg-secondary/40 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand/40 ${
+            error ? "border-destructive focus:ring-destructive/40" : "border-border"
+          }`}
+        />
+        {isPasswordField && (
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors focus:outline-none"
+          >
+            {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+          </button>
+        )}
+      </div>
       {error && <div className="mt-1 text-xs text-destructive">{error}</div>}
     </div>
   );
