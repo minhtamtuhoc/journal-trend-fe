@@ -45,7 +45,7 @@ export function ForecastLineChart({ detail, isLoading }: Props) {
     return (
       <div className="h-[350px] w-full rounded-2xl border border-border bg-secondary/5 flex flex-col items-center justify-center p-6 text-center text-sm text-muted-foreground">
         <p className="font-semibold text-foreground mb-1">No keyword selected</p>
-        <p className="text-xs max-w-sm">Select a keyword from the forecast ranking to view its 6-month prediction chart.</p>
+        <p className="text-xs max-w-sm">Select a keyword from the forecast ranking to view its prediction chart.</p>
       </div>
     );
   }
@@ -80,13 +80,15 @@ export function ForecastLineChart({ detail, isLoading }: Props) {
 
   const nowLabel = nowIndex !== -1 ? chartData[nowIndex].label : "";
 
+  const monthsCount = detail.forecastMonthsCount ?? detail.forecastMonths?.length ?? 6;
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-start">
         <div>
           <h4 className="text-sm font-bold text-foreground">Forecast Chart: {detail.term}</h4>
           <p className="text-xs text-muted-foreground font-mono mt-0.5">
-            sTPS Potential Score: <strong className="text-brand">{detail.potentialScore}</strong> · 6M Growth: <strong className="text-success">+{detail.predictedGrowthRate.toFixed(1)}%</strong>
+            sTPS Potential Score: <strong className="text-brand">{detail.potentialScore}</strong> · {monthsCount}M Growth: <strong className="text-success">+{detail.predictedGrowthRate.toFixed(1)}%</strong>
           </p>
         </div>
       </div>
@@ -146,7 +148,7 @@ export function ForecastLineChart({ detail, isLoading }: Props) {
             />
             <Line
               type="monotone"
-              name="6-month forecast"
+              name={`${monthsCount}-month forecast`}
               dataKey="forecast"
               stroke="#a855f7"
               strokeWidth={2.5}
@@ -161,3 +163,4 @@ export function ForecastLineChart({ detail, isLoading }: Props) {
     </div>
   );
 }
+

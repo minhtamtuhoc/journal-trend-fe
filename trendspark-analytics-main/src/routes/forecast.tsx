@@ -9,6 +9,12 @@ import { RefreshCw, AlertTriangle } from "lucide-react";
 import { useAuth, isStudentUser } from "@/auth";
 import { toast } from "sonner";
 import { ApiError } from "@/api/errors";
+import {
+  FORECAST_MONTHS_MIN,
+  FORECAST_MONTHS_MAX,
+  FORECAST_MONTHS_DEFAULT,
+} from "@/types/forecast";
+
 
 export const Route = createFileRoute("/forecast")({
   component: ForecastPage,
@@ -33,9 +39,19 @@ function ForecastPage() {
     );
   }
 
+  const [monthsRaw, setMonthsRaw] = useState<number>(FORECAST_MONTHS_DEFAULT);
+  const [months, setMonths] = useState<number>(FORECAST_MONTHS_DEFAULT);
+
+  // Debounce months changes to avoid spamming API while dragging slider
+  useEffect(() => {
+    const t = setTimeout(() => setMonths(monthsRaw), 300);
+    return () => clearTimeout(t);
+  }, [monthsRaw]);
+
   const [selectedKeywordId, setSelectedKeywordId] = useState<number | null>(null);
-  const { data: forecastList = [], isLoading: loadingList } = useForecastList(10);
-  const { data: forecastDetail, isLoading: loadingDetail } = useForecastDetail(selectedKeywordId);
+
+  const { data: forecastList = [], isLoading: loadingList } = useForecastList(10, months);
+  const { data: forecastDetail, isLoading: loadingDetail } = useForecastDetail(selectedKeywordId, months);
   const runForecast = useRunForecast();
 
   // Automatically select the first keyword in the list if none is selected
@@ -46,17 +62,20 @@ function ForecastPage() {
   }, [forecastList, selectedKeywordId]);
 
   const handleRun = () => {
-    runForecast.mutate(10, {
-      onSuccess: (items) => {
-        toast.success(`Forecast generated for ${items.length} keyword(s)`);
-        if (items.length > 0) {
-          setSelectedKeywordId(items[0].keywordId);
-        }
-      },
-      onError: (err) => {
-        toast.error(err instanceof ApiError ? err.message : "Failed to run forecast");
-      },
-    });
+    runForecast.mutate(
+      { limit: 10, months },
+      {
+        onSuccess: (items) => {
+          toast.success(`Forecast generated for ${items.length} keyword(s)`);
+          if (items.length > 0) {
+            setSelectedKeywordId(items[0].keywordId);
+          }
+        },
+        onError: (err) => {
+          toast.error(err instanceof ApiError ? err.message : "Failed to run forecast");
+        },
+      }
+    );
   };
 
   const isPending = runForecast.isPending;
@@ -65,17 +84,36 @@ function ForecastPage() {
     <AppLayout>
       <PageHeader
         title="Hot Topic Forecast"
-        subtitle="Predicting the most promising research keywords for the next 6 months"
+        subtitle={`Predicting the most promising research keywords for the next ${monthsRaw} month(s)`}
         action={
-          <button
-            onClick={handleRun}
-            disabled={isPending || loadingList}
-            className="inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-semibold text-brand-foreground glow-brand transition-transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:scale-100 disabled:pointer-events-none"
-            style={{ background: "var(--gradient-brand)" }}
-          >
-            <RefreshCw className={`size-4 ${isPending ? "animate-spin" : ""}`} />
-            {isPending ? "Running…" : "Run Forecast"}
-          </button>
+          <div className="flex items-center gap-3">
+            {/* Range Slider for full 1-12 Months Selection */}
+            <div className="flex items-center gap-2 bg-secondary/30 border border-border/60 px-3 py-1.5 rounded-lg">
+              <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">Horizon:</span>
+              <input
+                type="range"
+                min={FORECAST_MONTHS_MIN}
+                max={FORECAST_MONTHS_MAX}
+                step={1}
+                value={monthsRaw}
+                onChange={(e) => setMonthsRaw(Number(e.target.value))}
+                className="w-28 accent-brand cursor-pointer"
+              />
+              <span className="text-xs font-semibold font-mono w-7 text-center text-foreground">
+                {monthsRaw}M
+              </span>
+            </div>
+
+            <button
+              onClick={handleRun}
+              disabled={isPending || loadingList}
+              className="inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-semibold text-brand-foreground glow-brand transition-transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:scale-100 disabled:pointer-events-none"
+              style={{ background: "var(--gradient-brand)" }}
+            >
+              <RefreshCw className={`size-4 ${isPending ? "animate-spin" : ""}`} />
+              {isPending ? "Running…" : "Run Forecast"}
+            </button>
+          </div>
         }
       />
       <div className="space-y-8">
@@ -83,6 +121,7 @@ function ForecastPage() {
           <HotTopicForecastCard
             items={forecastList}
             isLoading={loadingList || isPending}
+            months={months}
             selectedKeywordId={selectedKeywordId}
             onSelect={setSelectedKeywordId}
           />
@@ -97,3 +136,6 @@ function ForecastPage() {
     </AppLayout>
   );
 }
+
+
+
