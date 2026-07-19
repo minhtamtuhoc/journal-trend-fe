@@ -4,13 +4,14 @@ import { Card } from "@/components/Card";
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useAnalyticsSnapshot } from "@/hooks/data/use-analytics";
 import { useFollowedTopics, useFollowTopic, useUnfollowTopic, useFollowedAuthors, useFollowAuthor, useUnfollowAuthor } from "@/hooks/data/use-follows";
-import { Flame, TrendingUp, Sparkles, Brain, CheckCircle, Lightbulb, RefreshCw, X } from "lucide-react";
+import { Flame, TrendingUp, Sparkles, Brain, CheckCircle, Lightbulb, RefreshCw, X, History } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/auth";
 import { ApiError } from "@/api/errors";
-import { useQueries, useMutation, useQuery } from "@tanstack/react-query";
+import { useQueries, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useDashboardSummary, KeywordChartResponse, KeywordChartPointDto } from "@/hooks/data/use-dashboard";
 import { apiClient } from "@/api/client";
+import { AiHistoryDrawer } from "@/components/AiHistoryDrawer";
 import { mockQueryDefaults } from "@/hooks/data/query-options";
 import { useMemo, useState, useEffect } from "react";
 import {
@@ -220,6 +221,8 @@ function TrendsPage() {
     timestamp: string;
   }
 
+  const queryClient = useQueryClient();
+  const [isHistoryDrawerOpen, setIsHistoryDrawerOpen] = useState(false);
   const aiStorageKey = user?.email ? `journal_trend_ai_analysis_${user.email.toLowerCase()}` : null;
   const [savedAiAnalysis, setSavedAiAnalysis] = useState<StoredAiAnalysis | null>(null);
 
@@ -257,7 +260,7 @@ function TrendsPage() {
     },
     onSuccess: (data) => {
       const now = new Date();
-      const timestamp = `${now.toLocaleDateString("vi-VN")} ${now.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`;
+      const timestamp = `${now.toLocaleDateString("en-US")} ${now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}`;
       const stored: StoredAiAnalysis = { data, timestamp };
       setSavedAiAnalysis(stored);
       if (aiStorageKey) {
@@ -265,6 +268,7 @@ function TrendsPage() {
           localStorage.setItem(aiStorageKey, JSON.stringify(stored));
         } catch {}
       }
+      queryClient.invalidateQueries({ queryKey: ["ai-history-list"] });
     },
   });
 
@@ -503,47 +507,91 @@ function TrendsPage() {
                     <Sparkles className="size-4 text-brand animate-pulse" />
                     <h4 className="text-xs font-bold text-foreground uppercase tracking-wider">AI Trend Analyst</h4>
                   </div>
-                  <button
-                    disabled={aiMutation.isPending || selectedKeywordIds.length === 0}
-                    onClick={() => {
-                      if (!user) {
-                        toast.error("Please log in to use AI analysis features");
-                        return;
-                      }
-                      aiMutation.mutate({
-                        keywordIds: selectedKeywordIds,
-                        months: 12,
-                      });
-                    }}
-                    className="flex items-center gap-1.5 text-[11px] font-bold px-3.5 py-1.5 bg-brand text-brand-foreground rounded-lg shadow-sm hover:bg-brand/90 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed uppercase"
-                  >
-                    {aiMutation.isPending ? (
-                      <>
-                        <RefreshCw className="size-3 animate-spin" />
-                        Analyzing...
-                      </>
-                    ) : (
-                      <>
-                        <Brain className="size-3" />
-                        Analyze with AI
-                      </>
-                    )}
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => {
+                        if (!user) {
+                          toast.error("Please log in to view AI analysis history");
+                          return;
+                        }
+                        setIsHistoryDrawerOpen(true);
+                      }}
+                      className="flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 bg-secondary text-secondary-foreground border border-border rounded-lg shadow-sm hover:bg-secondary/80 transition-all cursor-pointer"
+                    >
+                      <History className="size-3.5 text-brand" />
+                      History
+                    </button>
+                    <button
+                      disabled={aiMutation.isPending || selectedKeywordIds.length === 0}
+                      onClick={() => {
+                        if (!user) {
+                          toast.error("Please log in to use AI analysis features");
+                          return;
+                        }
+                        aiMutation.mutate({
+                          keywordIds: selectedKeywordIds,
+                          months: 12,
+                        });
+                      }}
+                      className="flex items-center gap-1.5 text-[11px] font-bold px-3.5 py-1.5 bg-brand text-brand-foreground rounded-lg shadow-sm hover:bg-brand/90 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed uppercase"
+                    >
+                      {aiMutation.isPending ? (
+                        <>
+                          <RefreshCw className="size-3 animate-spin" />
+                          Analyzing...
+                        </>
+                      ) : (
+                        <>
+                          <Brain className="size-3" />
+                          Analyze with AI
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
 
                 {aiMutation.isPending && (
-                  <div className="p-6 border border-border rounded-xl bg-card/40 flex flex-col items-center justify-center text-center space-y-2">
-                    <div className="relative flex items-center justify-center">
-                      <div className="absolute size-8 bg-brand/10 rounded-full animate-ping" />
-                      <div className="relative size-8 bg-brand/20 rounded-full flex items-center justify-center text-brand">
-                        <Sparkles className="size-4 animate-pulse" />
+                  <div className="p-6 border border-brand/30 rounded-xl bg-card/60 space-y-5 animate-pulse shadow-sm">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-border/60">
+                      <div className="flex items-center gap-2.5">
+                        <div className="size-8 bg-brand/20 rounded-lg flex items-center justify-center text-brand">
+                          <Sparkles className="size-4 animate-spin text-brand" />
+                        </div>
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-foreground">Groq AI model is synthesizing report...</span>
+                            <span className="text-[10px] text-muted-foreground">({selectedKeywordIds.length} keywords over 12 months)</span>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground">Generating comparative analysis, top growing fields, and strategic recommendations</p>
+                        </div>
+                      </div>
+                      <div className="h-6 w-36 bg-brand/15 rounded-full border border-brand/20 animate-pulse" />
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="h-3 w-40 bg-secondary/80 rounded-md" />
+                      <div className="space-y-1.5 pt-1">
+                        <div className="h-3 w-full bg-secondary/50 rounded-md" />
+                        <div className="h-3 w-[92%] bg-secondary/50 rounded-md" />
+                        <div className="h-3 w-[78%] bg-secondary/50 rounded-md" />
                       </div>
                     </div>
-                    <div className="space-y-0.5">
-                      <p className="text-xs font-bold text-foreground">Groq AI model is processing data</p>
-                      <p className="text-[10px] text-muted-foreground max-w-sm">
-                        Synthesizing info and comparing trends for {selectedKeywordIds.length} selected keywords over the past 12 months to generate deep insights...
-                      </p>
+
+                    <div className="space-y-2">
+                      <div className="h-3 w-36 bg-secondary/80 rounded-md" />
+                      <div className="flex gap-2">
+                        <div className="h-6 w-28 bg-brand/10 border border-brand/20 rounded-full" />
+                        <div className="h-6 w-36 bg-brand/10 border border-brand/20 rounded-full" />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="h-3 w-32 bg-secondary/80 rounded-md" />
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+                        <div className="h-16 bg-secondary/40 rounded-xl p-3 border border-border/40" />
+                        <div className="h-16 bg-secondary/40 rounded-xl p-3 border border-border/40" />
+                        <div className="h-16 bg-secondary/40 rounded-xl p-3 border border-border/40" />
+                      </div>
                     </div>
                   </div>
                 )}
@@ -554,7 +602,7 @@ function TrendsPage() {
                   </div>
                 )}
 
-                {(() => {
+                {!aiMutation.isPending && (() => {
                   if (!savedAiAnalysis) return null;
                   const { data, timestamp } = savedAiAnalysis;
 
@@ -570,7 +618,7 @@ function TrendsPage() {
                             <p className="text-[10px] text-muted-foreground flex items-center gap-1.5 flex-wrap">
                               <span>Deep analysis by Groq AI model</span>
                               <span>•</span>
-                              <span className="font-mono text-brand font-semibold">Thời gian phân tích: {timestamp}</span>
+                              <span className="font-mono text-brand font-semibold">Analysis Time: {timestamp}</span>
                             </p>
                           </div>
                         </div>
@@ -634,6 +682,20 @@ function TrendsPage() {
                     </div>
                   );
                 })()}
+
+                <AiHistoryDrawer
+                  open={isHistoryDrawerOpen}
+                  onOpenChange={setIsHistoryDrawerOpen}
+                  onSelectHistory={(data, timestamp) => {
+                    const stored = { data, timestamp };
+                    setSavedAiAnalysis(stored);
+                    if (aiStorageKey) {
+                      try {
+                        localStorage.setItem(aiStorageKey, JSON.stringify(stored));
+                      } catch {}
+                    }
+                  }}
+                />
               </div>
             </>
           )}
