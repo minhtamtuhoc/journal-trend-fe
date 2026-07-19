@@ -4,6 +4,7 @@ import { z } from "zod";
 import { AuthShell } from "@/components/AuthShell";
 import { toast } from "sonner";
 import { getServices } from "@/services";
+import { Eye, EyeOff } from "lucide-react";
 
 const searchSchema = z.object({
   token: z.string().catch(""),
@@ -21,6 +22,8 @@ function ResetPasswordPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const isTokenInvalid = !token || token.trim() === "";
 
@@ -82,14 +85,23 @@ function ResetPasswordPage() {
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
               New Password
             </label>
-            <input
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              disabled={loading}
-              placeholder="Min 8 characters"
-              className="mt-1 w-full h-10 px-3 bg-secondary/40 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand/40 disabled:opacity-50"
-            />
+            <div className="relative mt-1">
+              <input
+                type={showNewPassword ? "text" : "password"}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                disabled={loading}
+                placeholder="Min 8 characters"
+                className="w-full h-10 pl-3 pr-10 bg-secondary/40 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand/40 disabled:opacity-50"
+              />
+              <button
+                type="button"
+                onClick={() => setShowNewPassword(!showNewPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors focus:outline-none"
+              >
+                {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
             {showPasswordError && (
               <div className="mt-1 text-xs text-destructive">
                 Password must be at least 8 characters
@@ -101,14 +113,23 @@ function ResetPasswordPage() {
             <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
               Confirm Password
             </label>
-            <input
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              disabled={loading}
-              placeholder="Confirm your password"
-              className="mt-1 w-full h-10 px-3 bg-secondary/40 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand/40 disabled:opacity-50"
-            />
+            <div className="relative mt-1">
+              <input
+                type={showConfirmPassword ? "text" : "password"}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                disabled={loading}
+                placeholder="Confirm your password"
+                className="w-full h-10 pl-3 pr-10 bg-secondary/40 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand/40 disabled:opacity-50"
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors focus:outline-none"
+              >
+                {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
             {showConfirmError && (
               <div className="mt-1 text-xs text-destructive">
                 Passwords do not match
