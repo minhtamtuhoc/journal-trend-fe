@@ -11,6 +11,7 @@ export type KpiCardsDto = {
   trendingTopicsCount: number;
   lastSyncStatus: string;
   lastSyncTime: string | null;
+  papersSynced?: number;
 };
 
 export type TopicKeywordDto = {

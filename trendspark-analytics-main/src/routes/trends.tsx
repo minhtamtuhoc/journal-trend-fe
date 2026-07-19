@@ -22,6 +22,14 @@ import {
 } from "@/components/ui/select";
 
 
+import {
+  Tooltip as UiTooltip,
+  TooltipTrigger as UiTooltipTrigger,
+  TooltipContent as UiTooltipContent,
+  TooltipProvider as UiTooltipProvider,
+} from "@/components/ui/tooltip";
+
+
 export const Route = createFileRoute("/trends")({ component: TrendsPage });
 
 const tooltipStyle = {
@@ -309,43 +317,40 @@ function TrendsPage() {
     ...mockQueryDefaults,
   });
 
-  const filteredCompareKeywords = useMemo(() => {
-    return compareKeywords.filter((k) => k.count !== null && k.count > 0);
-  }, [compareKeywords]);
-
   // Helper to get comparison info for the bottom table row-by-row
-  const getCompareRowData = (bk: any, index: number) => {
-    const tk = TRENDING_KEYWORDS.find(k => k.term === bk.term);
-    if (tk) {
-      const rank_in_top = TRENDING_KEYWORDS.findIndex(k => k.term === bk.term) + 1;
-      const rank_in_bottom = index + 1;
+  const getCompareRowData = (tk: any, index: number) => {
+    const bk = compareKeywords.find(k => k.term === tk.term && k.count !== null && k.count > 0);
+    const currentRank = index + 1;
+
+    if (bk) {
+      const activeCompareKeywords = compareKeywords.filter(k => k.count !== null && k.count > 0);
+      const rankInCompare = activeCompareKeywords.findIndex(k => k.term === tk.term) + 1;
       return {
-        key: bk.id,
-        id: bk.id,
-        term: bk.term,
+        key: tk.id,
+        id: tk.id,
+        term: tk.term,
         count: bk.count,
         trendScore: bk.trendScore,
         monthsTrending: bk.monthsTrending,
-        isReplaced: false,
-        replacingTerm: null,
+        isNew: false,
+        rankInCompare,
         diffPapers: tk.count - bk.count,
         diffScore: tk.trendScore - bk.trendScore,
-        diffRank: rank_in_bottom - rank_in_top,
+        diffRank: rankInCompare - currentRank, // positive means rank improved (e.g. was 10, now 2 => 10 - 2 = +8)
       };
     }
 
-    const replacingTk = TRENDING_KEYWORDS[index];
     return {
-      key: bk.id,
-      id: bk.id,
-      term: bk.term,
-      count: bk.count,
-      trendScore: bk.trendScore,
-      monthsTrending: bk.monthsTrending,
-      isReplaced: true,
-      replacingTerm: replacingTk ? replacingTk.term : null,
-      diffPapers: null,
-      diffScore: null,
+      key: tk.id,
+      id: tk.id,
+      term: tk.term,
+      count: 0,
+      trendScore: 0,
+      monthsTrending: 0,
+      isNew: true,
+      rankInCompare: null,
+      diffPapers: tk.count,
+      diffScore: tk.trendScore,
       diffRank: null,
     };
   };
@@ -384,10 +389,11 @@ function TrendsPage() {
   }, [combinedChartData]);
 
   return (
-    <AppLayout>
-      <PageHeader
-        title="Trend Analytics"
-      />
+    <UiTooltipProvider>
+      <AppLayout>
+        <PageHeader
+          title="Trend Analytics"
+        />
 
       <div className="mb-6">
         <Card title="Historical Trend Scores of Top 10 Keywords (%)">
@@ -701,14 +707,43 @@ function TrendsPage() {
                       </td>
                       <td className="py-3 text-right font-mono text-muted-foreground px-4 w-24">{k.count}</td>
                       <td
-                        className={`py-3 text-right font-mono px-4 w-28 ${k.trendScore >= 15
+                        className={`py-3 text-right font-mono px-4 w-28 cursor-help ${k.trendScore >= 15
                             ? "text-success"
                             : k.trendScore < 0
                               ? "text-destructive"
                               : "text-muted-foreground"
                           }`}
                       >
-                        {k.trendScore > 0 ? "+" : ""}{k.trendScore.toFixed(1)}%
+                        <UiTooltip>
+                          <UiTooltipTrigger asChild>
+                            <span className="underline decoration-dotted underline-offset-4 hover:opacity-85 transition-opacity">
+                              {k.trendScore > 0 ? `+${k.trendScore.toFixed(1)}%` : k.trendScore < 0 ? `▼ ${Math.abs(k.trendScore).toFixed(1)}%` : "0.0%"}
+                            </span>
+                          </UiTooltipTrigger>
+                          <UiTooltipContent side="top" align="end" className="p-3 max-w-[280px] bg-popover text-popover-foreground border border-border shadow-lg rounded-xl">
+                            <div className="space-y-1.5 text-xs font-sans">
+                              <p className="font-bold text-brand uppercase tracking-wider text-[10px]">Trend Score Explanation</p>
+                              <div className="text-[11px] text-muted-foreground leading-relaxed">
+                                <p className="font-medium text-foreground mb-1">Formula:</p>
+                                <code className="block bg-secondary/40 p-1.5 rounded-md font-mono text-[10px] mb-2 text-center text-foreground">
+                                  ((Current - Previous) / Previous) * 100%
+                                </code>
+                                <p className="font-medium text-foreground mb-1">Values for this month:</p>
+                                <ul className="list-disc pl-4 space-y-0.5 font-mono text-[10px]">
+                                  <li>Current: <span className="text-foreground font-bold">{k.count}</span> papers</li>
+                                  <li>Previous: <span className="text-foreground font-bold">
+                                    {k.trendScore === 100 && k.count <= 1 ? 0 : Math.max(0, Math.round(k.count / (k.trendScore / 100 + 1)))}
+                                  </span> papers</li>
+                                </ul>
+                                <p className="mt-2 text-[10px] border-t border-border pt-1.5 leading-snug">
+                                  {k.trendScore === 100 && k.count <= 1 
+                                    ? "Growth is +100% because this topic is newly introduced (went from 0 to 1 publication)." 
+                                    : `The topic grew/declined by ${k.trendScore > 0 ? '+' : ''}${k.trendScore.toFixed(1)}% relative to its previous volume.`}
+                                </p>
+                              </div>
+                            </div>
+                          </UiTooltipContent>
+                        </UiTooltip>
                       </td>
                       <td className="py-3 text-right pl-4 w-20">
                         <button
@@ -832,7 +867,7 @@ function TrendsPage() {
               <div className="h-[200px] flex items-center justify-center text-sm text-muted-foreground animate-pulse font-medium">
                 Loading data for {compareMonth.name} {compareMonth.year}...
               </div>
-            ) : filteredCompareKeywords.length === 0 ? (
+            ) : compareKeywords.length === 0 ? (
               <div className="h-[200px] flex items-center justify-center text-sm text-muted-foreground font-medium">
                 No trend data available for this month.
               </div>
@@ -849,14 +884,16 @@ function TrendsPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
-                    {filteredCompareKeywords.slice(0, 8).map((bk, index) => {
-                      const rowData = getCompareRowData(bk, index);
+                    {TRENDING_KEYWORDS.map((tk, index) => {
+                      const rowData = getCompareRowData(tk, index);
                       const followed = isTopicFollowed(rowData.id);
                       return (
                         <tr key={rowData.key} className="hover:bg-secondary/40 transition-colors">
                           <td className="py-3 text-left font-mono text-muted-foreground w-12">
                             <div className="flex flex-col items-start justify-center">
-                              <span className="font-medium text-muted-foreground">#{index + 1}</span>
+                              <span className="font-medium text-muted-foreground">
+                                {rowData.rankInCompare !== null ? `#${rowData.rankInCompare}` : "—"}
+                              </span>
                               {rowData.diffRank !== null ? (
                                 <span
                                   className={`text-[10px] font-semibold flex items-center gap-0.5 ${
@@ -870,12 +907,12 @@ function TrendsPage() {
                                   {rowData.diffRank > 0
                                     ? `▲ +${rowData.diffRank}`
                                     : rowData.diffRank < 0
-                                      ? `▼ ${rowData.diffRank}`
+                                      ? `▼ ${Math.abs(rowData.diffRank)}`
                                       : `▬ 0`}
                                 </span>
                               ) : (
-                                <span className="text-[10px] text-warning font-semibold flex items-center gap-0.5" title="Replaced">
-                                  ↻
+                                <span className="text-[10px] text-brand font-semibold" title="New entry in Top 8">
+                                  NEW
                                 </span>
                               )}
                             </div>
@@ -890,9 +927,9 @@ function TrendsPage() {
                               >
                                 {rowData.term}
                               </Link>
-                              {rowData.isReplaced && (
-                                <span className="text-[10px] text-destructive/80 font-normal mt-0.5 flex items-center gap-1 block truncate max-w-[200px]" title={`Replaced by: "${rowData.replacingTerm ?? '—'}"`}>
-                                  <span className="text-warning font-bold">↻</span> Replaced by: "{rowData.replacingTerm ?? '—'}"
+                              {rowData.isNew && (
+                                <span className="text-[10px] text-brand/80 font-normal mt-0.5" title="New keyword not ranked in the comparison month">
+                                  ✨ New Topic
                                 </span>
                               )}
                             </div>
@@ -900,7 +937,7 @@ function TrendsPage() {
                           <td className="py-3 text-right font-mono px-4 w-24">
                             <div className="flex flex-col items-end justify-center">
                               <span className="text-foreground font-medium">
-                                {rowData.count !== null ? rowData.count : "—"}
+                                {rowData.count !== null ? rowData.count.toLocaleString() : "0"}
                               </span>
                               {rowData.diffPapers !== null && (
                                 <span
@@ -913,47 +950,106 @@ function TrendsPage() {
                                   }`}
                                 >
                                   {rowData.diffPapers > 0
-                                    ? `▲ +${rowData.diffPapers}`
+                                    ? `▲ +${rowData.diffPapers.toLocaleString()}`
                                     : rowData.diffPapers < 0
-                                      ? `▼ ${rowData.diffPapers}`
+                                      ? `▼ ${Math.abs(rowData.diffPapers).toLocaleString()}`
                                       : `▬ 0`}
                                 </span>
                               )}
                             </div>
                           </td>
-                          <td className="py-3 text-right font-mono px-4 w-28">
+                          <td
+                            className={`py-3 text-right font-mono px-4 w-28 ${
+                              rowData.trendScore !== null ? "cursor-help" : ""
+                            }`}
+                          >
                             <div className="flex flex-col items-end justify-center">
-                              <span
-                                className={`font-semibold ${
-                                  rowData.trendScore !== null
-                                    ? rowData.trendScore >= 15
-                                      ? "text-success"
-                                      : rowData.trendScore < 0
-                                        ? "text-destructive"
-                                        : "text-muted-foreground"
-                                      : "text-muted-foreground/40"
-                                }`}
-                              >
-                                {rowData.trendScore !== null
-                                  ? `${rowData.trendScore > 0 ? "+" : ""}${rowData.trendScore.toFixed(1)}%`
-                                  : "—"}
-                              </span>
+                              <UiTooltip>
+                                <UiTooltipTrigger asChild>
+                                  <span
+                                    className={`font-semibold ${
+                                      rowData.trendScore !== null
+                                        ? `underline decoration-dotted underline-offset-4 hover:opacity-85 transition-opacity ${
+                                            rowData.trendScore >= 15
+                                              ? "text-success"
+                                              : rowData.trendScore < 0
+                                                ? "text-destructive"
+                                                : "text-muted-foreground"
+                                          }`
+                                        : "text-muted-foreground/40"
+                                    }`}
+                                  >
+                                    {rowData.trendScore !== null
+                                      ? rowData.trendScore > 0
+                                        ? `+${rowData.trendScore.toFixed(1)}%`
+                                        : rowData.trendScore < 0
+                                          ? `▼ ${Math.abs(rowData.trendScore).toFixed(1)}%`
+                                          : "0.0%"
+                                      : "0.0%"}
+                                  </span>
+                                </UiTooltipTrigger>
+                                <UiTooltipContent side="top" align="end" className="p-3 max-w-[280px] bg-popover text-popover-foreground border border-border shadow-lg rounded-xl">
+                                  <div className="space-y-1.5 text-xs font-sans">
+                                    <p className="font-bold text-brand uppercase tracking-wider text-[10px]">
+                                      Historical Trend Score ({compareMonth.name} {compareMonth.year})
+                                    </p>
+                                    <div className="text-[11px] text-muted-foreground leading-relaxed">
+                                      {rowData.trendScore !== null ? (
+                                        <>
+                                          <p className="font-medium text-foreground mb-1 font-sans">Formula:</p>
+                                          <code className="block bg-secondary/40 p-1.5 rounded-md font-mono text-[10px] mb-2 text-center text-foreground font-semibold">
+                                            ((Current - Previous) / Previous) * 100%
+                                          </code>
+                                          <p className="font-medium text-foreground mb-1 font-sans">Values for {compareMonth.name}:</p>
+                                          <ul className="list-disc pl-4 space-y-0.5 font-mono text-[10px]">
+                                            <li>Current: <span className="text-foreground font-bold">{rowData.count ?? 0}</span> papers</li>
+                                            <li>Previous: <span className="text-foreground font-bold">
+                                              {rowData.trendScore === 100 && (rowData.count ?? 0) <= 1 ? 0 : Math.max(0, Math.round((rowData.count ?? 0) / (rowData.trendScore / 100 + 1)))}
+                                            </span> papers</li>
+                                          </ul>
+                                          <p className="mt-2 text-[10px] border-t border-border pt-1.5 leading-snug">
+                                            {rowData.trendScore === 100 && (rowData.count ?? 0) <= 1 
+                                              ? "Growth is +100% because this topic was newly introduced in this historical month." 
+                                              : `The topic grew/declined by ${rowData.trendScore > 0 ? '+' : ''}${rowData.trendScore.toFixed(1)}% relative to its previous volume.`}
+                                          </p>
+                                        </>
+                                      ) : (
+                                        <p className="leading-snug text-muted-foreground font-sans">
+                                          This topic had no publication data in <span className="text-foreground font-semibold">{compareMonth.name} {compareMonth.year}</span> (0 papers), so its trend score was 0.0%.
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+                                </UiTooltipContent>
+                              </UiTooltip>
                               {rowData.diffScore !== null && (
-                                <span
-                                  className={`text-[10px] font-semibold flex items-center gap-0.5 ${
-                                    rowData.diffScore > 0
-                                      ? "text-success"
-                                      : rowData.diffScore < 0
-                                        ? "text-destructive"
-                                        : "text-muted-foreground/60"
-                                  }`}
-                                >
-                                  {rowData.diffScore > 0
-                                    ? `▲ +${rowData.diffScore.toFixed(1)}%`
-                                    : rowData.diffScore < 0
-                                      ? `▼ ${rowData.diffScore.toFixed(1)}%`
-                                      : `▬ 0.0%`}
-                                </span>
+                                <UiTooltip>
+                                  <UiTooltipTrigger asChild>
+                                    <span
+                                      className={`text-[10px] font-semibold flex items-center gap-0.5 cursor-help ${
+                                        rowData.diffScore > 0
+                                          ? "text-success"
+                                          : rowData.diffScore < 0
+                                            ? "text-destructive"
+                                            : "text-muted-foreground/60"
+                                      }`}
+                                    >
+                                      {rowData.diffScore > 0
+                                        ? `▲ +${rowData.diffScore.toFixed(1)}%`
+                                        : rowData.diffScore < 0
+                                          ? `▼ ${Math.abs(rowData.diffScore).toFixed(1)}%`
+                                          : `▬ 0.0%`}
+                                    </span>
+                                  </UiTooltipTrigger>
+                                  <UiTooltipContent side="right" className="p-2.5 max-w-[240px] bg-popover text-popover-foreground border border-border shadow-md rounded-lg">
+                                    <div className="space-y-1 text-xs font-sans">
+                                      <p className="font-bold text-foreground">Score Comparison Change</p>
+                                      <p className="text-[11px] text-muted-foreground leading-snug">
+                                        Calculated as: <span className="text-foreground font-mono text-[10px]">Current Score ({tk.trendScore > 0 ? '+' : ''}{tk.trendScore.toFixed(1)}%)</span> minus <span className="text-foreground font-mono text-[10px]">Past Score ({rowData.trendScore > 0 ? '+' : ''}{(rowData.trendScore ?? 0).toFixed(1)}%)</span> = <span className="text-foreground font-mono text-[10px]">{rowData.diffScore > 0 ? '+' : ''}{rowData.diffScore.toFixed(1)}%</span>.
+                                      </p>
+                                    </div>
+                                  </UiTooltipContent>
+                                </UiTooltip>
                               )}
                             </div>
                           </td>
@@ -1014,22 +1110,23 @@ function TrendsPage() {
                     <div className="text-[10px] text-muted-foreground">No change</div>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 p-3.5 rounded-xl bg-warning/5 border border-warning/10">
-                  <span className="text-warning font-bold font-mono text-sm shrink-0">↻</span>
+                <div className="flex items-center gap-3 p-3.5 rounded-xl bg-brand/5 border border-brand/10">
+                  <span className="text-brand font-bold font-mono text-sm shrink-0">✨</span>
                   <div>
-                    <div className="font-semibold text-foreground">Replaced</div>
-                    <div className="text-[10px] text-muted-foreground">Fell out of Top list</div>
+                    <div className="font-semibold text-foreground">New Topic</div>
+                    <div className="text-[10px] text-muted-foreground">Not ranked historically</div>
                   </div>
                 </div>
               </div>
               <div className="mt-4 p-3.5 rounded-xl bg-secondary/30 border border-border text-[11px] text-muted-foreground leading-relaxed">
-                <strong className="text-foreground">Replacement Logic:</strong> If a keyword fell out of the current month's trending list, the table indicates which current keyword took its corresponding rank.
+                <strong className="text-foreground">Comparison Logic:</strong> The comparison table displays the historical metrics for the current top 8 trending keywords. This allows you to track their rank, papers, and score changes over time.
               </div>
             </div>
           </Card>
         </div>
       )}
     </AppLayout>
+    </UiTooltipProvider>
   );
 }
 
