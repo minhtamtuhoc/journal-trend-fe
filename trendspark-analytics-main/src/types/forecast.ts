@@ -12,8 +12,9 @@ export type ForecastListItem = {
   keywordId: number;
   term: string;
   domain: string;
-  potentialScore: number;      // sTPS 0-100
-  predictedPapers6m: number;
+  potentialScore: number; // sTPS 0-100
+  predictedPapers: number;
+  forecastMonthsCount: number;
   predictedGrowthRate: number; // %
   forecastReason: ForecastCategory; // mã enum phân loại trả từ BE
   currentPaperCount: number;
@@ -25,9 +26,15 @@ export type ForecastDetail = {
   term: string;
   domain: string;
   potentialScore: number;
-  predictedPapers6m: number;
+  predictedPapers: number;
+  forecastMonthsCount: number;
   predictedGrowthRate: number;
   forecastReason: ForecastCategory;
   historicalMonths: ForecastMonth[]; // 12 tháng (nét liền)
-  forecastMonths: ForecastMonth[];   // 6 tháng (nét đứt)
+  forecastMonths: ForecastMonth[]; // N tháng (nét đứt)
 };
+
+export const FORECAST_MONTHS_MIN = 1;
+export const FORECAST_MONTHS_MAX = 12;
+export const FORECAST_MONTHS_DEFAULT = 6;
+

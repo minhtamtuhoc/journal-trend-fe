@@ -10,11 +10,12 @@ const FALLBACK_BADGE = { label: "Unknown", class: "bg-muted text-muted-foregroun
 type Props = {
   items: ForecastListItem[];
   isLoading: boolean;
+  months?: number;
   selectedKeywordId?: number | null;
   onSelect?: (keywordId: number) => void;
 };
 
-export function HotTopicForecastCard({ items, isLoading, selectedKeywordId, onSelect }: Props) {
+export function HotTopicForecastCard({ items, isLoading, months = 6, selectedKeywordId, onSelect }: Props) {
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-pulse p-4">
@@ -49,6 +50,7 @@ export function HotTopicForecastCard({ items, isLoading, selectedKeywordId, onSe
   const rightItems = items.slice(5, 10);
 
   const renderTable = (sliceItems: ForecastListItem[], startIndex: number) => {
+    const tableMonthsHeader = sliceItems[0]?.forecastMonthsCount ?? months;
     return (
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-left text-sm">
@@ -57,7 +59,7 @@ export function HotTopicForecastCard({ items, isLoading, selectedKeywordId, onSe
               <th className="py-3 px-4 w-12 text-center">#</th>
               <th className="py-3 px-4">Keyword</th>
               <th className="py-3 px-4 text-center">sTPS</th>
-              <th className="py-3 px-4 text-center">6M Forecast</th>
+              <th className="py-3 px-4 text-center">{tableMonthsHeader}M Forecast</th>
               <th className="py-3 px-4 text-center">Growth</th>
               <th className="py-3 px-4">Category</th>
             </tr>
@@ -89,7 +91,7 @@ export function HotTopicForecastCard({ items, isLoading, selectedKeywordId, onSe
                     {item.potentialScore}
                   </td>
                   <td className="py-3 px-4 text-center font-mono">
-                    {item.predictedPapers6m}
+                    {item.predictedPapers}
                   </td>
                   <td className="py-3 px-4 text-center font-mono text-success font-semibold">
                     +{item.predictedGrowthRate.toFixed(1)}%
@@ -107,6 +109,7 @@ export function HotTopicForecastCard({ items, isLoading, selectedKeywordId, onSe
       </div>
     );
   };
+
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
