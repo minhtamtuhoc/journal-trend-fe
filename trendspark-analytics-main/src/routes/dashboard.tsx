@@ -26,7 +26,14 @@ import {
   Hash,
   AlertTriangle,
   ArrowUpRight,
+  TrendingUp,
 } from "lucide-react";
+import {
+  Tooltip as UiTooltip,
+  TooltipTrigger as UiTooltipTrigger,
+  TooltipContent as UiTooltipContent,
+  TooltipProvider as UiTooltipProvider,
+} from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { reportsApi } from "@/services/http/reports-api";
 import { useAuth, isAdminUser, isStudentUser } from "@/auth";
@@ -159,7 +166,8 @@ function DashboardPage() {
   })) || [];
 
   return (
-    <AppLayout>
+    <UiTooltipProvider>
+      <AppLayout>
       <PageHeader
         title="Dashboard Overview"
         subtitle="Scientific journal publication statistics and dynamically derived topic trends"
@@ -232,9 +240,22 @@ function DashboardPage() {
                         {topic.topicName}
                       </div>
                     </div>
-                    <span className={`text-xs font-bold font-mono ${topic.averageTrendScore >= 0 ? "text-success" : "text-destructive"}`}>
-                      {topic.averageTrendScore > 0 ? "+" : ""}{topic.averageTrendScore.toFixed(1)}% avg
-                    </span>
+                    <UiTooltip>
+                      <UiTooltipTrigger asChild>
+                        <span className={`text-xs font-bold font-mono cursor-help px-1.5 py-0.5 rounded bg-secondary/50 border border-border/50 ${topic.averageTrendScore >= 0 ? "text-success" : "text-destructive"}`}>
+                          {topic.averageTrendScore > 0 ? "+" : ""}{topic.averageTrendScore.toFixed(1)}% avg
+                        </span>
+                      </UiTooltipTrigger>
+                      <UiTooltipContent side="top" className="max-w-xs p-3 space-y-1 bg-card border border-border text-foreground shadow-xl rounded-xl z-50">
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-brand">
+                          <TrendingUp className="size-3.5" />
+                          <span>Average Topic Growth</span>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground leading-relaxed">
+                          Tỷ lệ tăng trưởng trung bình của <strong>{topic.trendingKeywordsCount} từ khóa thịnh hành</strong> thuộc chủ đề <span className="text-foreground font-semibold">{topic.topicName}</span> so với tháng trước.
+                        </p>
+                      </UiTooltipContent>
+                    </UiTooltip>
                   </div>
 
                   <div className="flex justify-between items-center text-[10px] text-muted-foreground mb-3 font-mono">
@@ -244,9 +265,16 @@ function DashboardPage() {
 
                   <div className="flex flex-wrap gap-1">
                     {topic.topKeywords.map(kw => (
-                      <span key={kw.term} className="text-[10px] px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground font-mono">
-                        {kw.term} ({kw.trendScore > 0 ? "+" : ""}{kw.trendScore.toFixed(0)}%)
-                      </span>
+                      <UiTooltip key={kw.term}>
+                        <UiTooltipTrigger asChild>
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground font-mono cursor-help hover:bg-secondary/80">
+                            {kw.term} ({kw.trendScore > 0 ? "+" : ""}{kw.trendScore.toFixed(0)}%)
+                          </span>
+                        </UiTooltipTrigger>
+                        <UiTooltipContent side="top" className="p-2 text-[11px] bg-card border border-border text-foreground shadow-lg rounded-lg z-50">
+                          Từ khóa <span className="font-bold text-brand">{kw.term}</span>: tăng trưởng <span className="font-mono font-bold text-success">{kw.trendScore > 0 ? "+" : ""}{kw.trendScore.toFixed(0)}%</span> số bài báo công bố so với tháng trước.
+                        </UiTooltipContent>
+                      </UiTooltip>
                     ))}
                   </div>
                 </Link>
@@ -279,9 +307,22 @@ function DashboardPage() {
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
                     <span className="text-[10px] text-muted-foreground font-mono">{k.paperCount} papers</span>
-                    <span className={`text-xs font-mono font-bold ${k.trendScore >= 0 ? "text-success" : "text-destructive"}`}>
-                      {k.trendScore > 0 ? "+" : ""}{k.trendScore.toFixed(0)}%
-                    </span>
+                    <UiTooltip>
+                      <UiTooltipTrigger asChild>
+                        <span className={`text-xs font-mono font-bold cursor-help px-1.5 py-0.5 rounded hover:bg-secondary/60 ${k.trendScore >= 0 ? "text-success" : "text-destructive"}`}>
+                          {k.trendScore > 0 ? "+" : ""}{k.trendScore.toFixed(0)}%
+                        </span>
+                      </UiTooltipTrigger>
+                      <UiTooltipContent side="left" className="max-w-xs p-3 space-y-1 bg-card border border-border text-foreground shadow-xl rounded-xl z-50">
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-brand">
+                          <Activity className="size-3.5" />
+                          <span>Keyword Growth Rate</span>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground leading-relaxed">
+                          Tỷ lệ thay đổi số bài báo chứa từ khóa <span className="text-foreground font-semibold">"{k.keyword}"</span> ({k.paperCount} bài) so với tháng trước.
+                        </p>
+                      </UiTooltipContent>
+                    </UiTooltip>
                   </div>
                 </Link>
               ))}
@@ -322,7 +363,19 @@ function DashboardPage() {
               <XAxis dataKey="name" stroke={chartTheme.axis} fontSize={11} tickLine={false} axisLine={false} />
               <YAxis yAxisId="left" stroke={chartTheme.axis} fontSize={11} tickLine={false} axisLine={false} label={{ value: 'Paper Count', angle: -90, position: 'insideLeft', style: { fill: 'var(--muted-foreground)', fontSize: 10 } }} />
               <YAxis yAxisId="right" orientation="right" stroke={chartTheme.axis} fontSize={11} tickLine={false} axisLine={false} label={{ value: 'Trend Score (%)', angle: 90, position: 'insideRight', style: { fill: 'var(--muted-foreground)', fontSize: 10 } }} />
-              <Tooltip contentStyle={tooltipStyle()} />
+              <Tooltip
+                contentStyle={tooltipStyle()}
+                formatter={(value: any, name: any) => {
+                  if (name === "Trend Score (%)") {
+                    const numVal = typeof value === "number" ? value : Number(value);
+                    const formattedScore = isNaN(numVal)
+                      ? `${value}%`
+                      : `${numVal > 0 ? "+" : ""}${Number.isInteger(numVal) ? numVal : numVal.toFixed(1)}%`;
+                    return [formattedScore, name];
+                  }
+                  return [value, name];
+                }}
+              />
               <Legend wrapperStyle={{ fontSize: 11 }} />
               <Line yAxisId="left" type="monotone" dataKey="Paper Count" stroke="var(--chart-1)" strokeWidth={2.5} activeDot={{ r: 6 }} />
               <Line yAxisId="right" type="monotone" dataKey="Trend Score (%)" stroke="var(--chart-2)" strokeWidth={2} strokeDasharray="5 5" />
@@ -461,5 +514,6 @@ function DashboardPage() {
         </Card>
       )}
     </AppLayout>
-  );
+  </UiTooltipProvider>
+);
 }
