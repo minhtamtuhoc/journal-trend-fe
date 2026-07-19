@@ -6,9 +6,10 @@ import { useState, useRef, useEffect } from "react";
 import { PaperGraph } from "@/components/PaperGraph";
 import { buildPaperCitationSeries } from "@/utils/paper-series";
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis } from "recharts";
-import { UserPlus, ArrowUpRight, ExternalLink, UserCheck, BookMarked } from "lucide-react";
+import { UserPlus, ArrowUpRight, ExternalLink, UserCheck, BookMarked, Quote } from "lucide-react";
 import { toast } from "sonner";
 import { SaveToCollectionButton } from "@/components/SaveToCollectionButton";
+import { CitationExportModal } from "@/components/CitationExportModal";
 import { useAuth } from "@/auth";
 import { useFollowedJournals, useFollowJournal, useUnfollowJournal, useFollowedTopics, useFollowTopic, useUnfollowTopic, useFollowedAuthors, useFollowAuthor, useUnfollowAuthor } from "@/hooks/data/use-follows";
 import { ApiError } from "@/api/errors";
@@ -24,6 +25,7 @@ function PaperDetailPage() {
   const { data: related = [] } = useRelatedPapers(id, category);
 
   const [activeTab, setActiveTab] = useState<"overview" | "graph">("overview");
+  const [citeModalOpen, setCiteModalOpen] = useState(false);
 
   // References configuration
   const [refLimit, setRefLimit] = useState(50);
@@ -156,6 +158,15 @@ function PaperDetailPage() {
         action={
           <div className="flex gap-2">
             <SaveToCollectionButton paperId={paper.id} paperTitle={paper.title} size="md" />
+            <button
+              type="button"
+              onClick={() => setCiteModalOpen(true)}
+              className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg text-sm font-semibold border border-border bg-secondary/50 hover:bg-secondary transition-colors cursor-pointer text-foreground"
+              title="Export citation for this paper"
+            >
+              <Quote className="size-4 text-brand" />
+              Cite
+            </button>
             {user && journalId ? (
               <button
                 type="button"
@@ -544,6 +555,12 @@ function PaperDetailPage() {
           </Card>
         </div>
       </div>
+
+      <CitationExportModal
+        open={citeModalOpen}
+        onOpenChange={setCiteModalOpen}
+        papers={paper}
+      />
     </AppLayout>
   );
 }

@@ -382,6 +382,7 @@ function TrendsPage() {
         }
 
         timePointsMap[key][keywordName] = pt.trendScore;
+        timePointsMap[key][`${keywordName}_papers`] = pt.paperCount;
       });
     });
 
@@ -416,7 +417,18 @@ function TrendsPage() {
                   <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} />
                   <XAxis dataKey="name" stroke="var(--muted-foreground)" fontSize={11} tickLine={false} axisLine={false} />
                   <YAxis stroke="var(--muted-foreground)" fontSize={11} tickLine={false} axisLine={false} label={{ value: 'Trend Score (%)', angle: -90, position: 'insideLeft', style: { fill: 'var(--muted-foreground)', fontSize: 10 } }} />
-                  <Tooltip contentStyle={tooltipStyle} />
+                  <Tooltip
+                    contentStyle={tooltipStyle}
+                    formatter={(value: any, name: any, item: any) => {
+                      const numVal = typeof value === "number" ? value : Number(value);
+                      const formattedScore = isNaN(numVal)
+                        ? `${value}%`
+                        : `${numVal > 0 ? "+" : ""}${Number.isInteger(numVal) ? numVal : numVal.toFixed(1)}%`;
+                      const papers = item?.payload?.[`${name}_papers`];
+                      const paperStr = papers !== undefined ? ` (${papers} paper${papers !== 1 ? "s" : ""})` : "";
+                      return [`${formattedScore}${paperStr}`, name];
+                    }}
+                  />
                   <Legend wrapperStyle={{ fontSize: 11, paddingTop: 10 }} />
                   {top10Keywords.map((kw, index) => {
                     if (!selectedKeywordIds.includes(kw.keywordId)) return null;

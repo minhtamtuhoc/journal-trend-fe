@@ -4,11 +4,12 @@ import { AppLayout, PageHeader } from "@/components/AppLayout";
 import { Card } from "@/components/Card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { ArrowLeft, ArrowUpRight, Trash2, FolderOpen } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, Trash2, FolderOpen, Quote } from "lucide-react";
 
 import { useCollection, useRemovePaperFromCollection } from "@/hooks/data/use-collections";
 import { usePapersByIds } from "@/hooks/data/use-papers";
 import { SaveToCollectionButton } from "@/components/SaveToCollectionButton";
+import { CitationExportModal } from "@/components/CitationExportModal";
 import { formatTimeAgo } from "@/lib/time";
 import type { Paper } from "@/types/domain";
 
@@ -25,6 +26,8 @@ function CollectionDetailPage() {
   const removeMutation = useRemovePaperFromCollection();
 
   const [sort, setSort] = useState<SortMode>("recent");
+  const [citeModalOpen, setCiteModalOpen] = useState(false);
+  const [selectedPapersForCite, setSelectedPapersForCite] = useState<Paper | Paper[] | null>(null);
 
   if (!isLoadingCollection && !collection) throw notFound();
 
@@ -71,6 +74,19 @@ function CollectionDetailPage() {
             >
               <ArrowLeft className="size-4" /> Back
             </Link>
+            {savedPapers.length > 0 && (
+              <button
+                onClick={() => {
+                  setSelectedPapersForCite(savedPapers);
+                  setCiteModalOpen(true);
+                }}
+                className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-xs font-semibold border border-brand/30 bg-brand/10 text-brand hover:bg-brand/20 transition-all cursor-pointer"
+                title="Export citations for all papers in this collection"
+              >
+                <Quote className="size-3.5" />
+                <span className="hidden sm:inline">Export Citations</span>
+              </button>
+            )}
             <div className="hidden sm:flex items-center gap-2 h-9 px-3 rounded-lg border border-border bg-secondary/20">
               <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Sort</span>
               <select
@@ -163,6 +179,16 @@ function CollectionDetailPage() {
                 </div>
 
                 <div className="shrink-0 flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      setSelectedPapersForCite(p);
+                      setCiteModalOpen(true);
+                    }}
+                    className="p-1.5 rounded-md border border-border hover:border-brand/40 hover:text-brand transition-colors text-muted-foreground"
+                    title="Cite this paper"
+                  >
+                    <Quote className="size-3.5" />
+                  </button>
                   <SaveToCollectionButton paperId={p.id} paperTitle={p.title} />
                   <button
                     onClick={() => onRemove(p.id)}
@@ -186,6 +212,13 @@ function CollectionDetailPage() {
           ))}
         </div>
       )}
+
+      <CitationExportModal
+        open={citeModalOpen}
+        onOpenChange={setCiteModalOpen}
+        papers={selectedPapersForCite}
+        collectionTitle={collection?.name}
+      />
     </AppLayout>
   );
 }
