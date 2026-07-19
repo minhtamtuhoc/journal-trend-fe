@@ -1,4 +1,10 @@
 import type { ForecastCategory, ForecastListItem } from "@/types/forecast";
+import {
+  Tooltip as UiTooltip,
+  TooltipTrigger as UiTooltipTrigger,
+  TooltipContent as UiTooltipContent,
+  TooltipProvider as UiTooltipProvider,
+} from "@/components/ui/tooltip";
 
 const CATEGORY_BADGE: Record<ForecastCategory, { label: string; class: string }> = {
   EARLY_BOOM: { label: "Early Boom",    class: "bg-orange-500/15 text-orange-500 border-orange-500/30" },
@@ -58,8 +64,56 @@ export function HotTopicForecastCard({ items, isLoading, months = 6, selectedKey
             <tr className="border-b border-border text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
               <th className="py-3 px-4 w-12 text-center">#</th>
               <th className="py-3 px-4">Keyword</th>
-              <th className="py-3 px-4 text-center">sTPS</th>
-              <th className="py-3 px-4 text-center">{tableMonthsHeader}M Forecast</th>
+              <th className="py-3 px-4 text-center cursor-help">
+                <UiTooltip>
+                  <UiTooltipTrigger asChild>
+                    <span className="underline decoration-dotted underline-offset-4 hover:opacity-85 transition-opacity">
+                      sTPS
+                    </span>
+                  </UiTooltipTrigger>
+                  <UiTooltipContent side="top" align="center" className="p-3 max-w-[280px] bg-popover text-popover-foreground border border-border shadow-lg rounded-xl">
+                    <div className="space-y-1.5 text-xs font-sans text-left normal-case tracking-normal">
+                      <p className="font-bold text-brand uppercase tracking-wider text-[10px]">
+                        Scaled Trend Potential Score (sTPS)
+                      </p>
+                      <div className="text-[11px] text-muted-foreground leading-relaxed">
+                        <p className="font-medium text-foreground mb-1">Formula:</p>
+                        <code className="block bg-secondary/40 p-1.5 rounded-md font-mono text-[10px] mb-2 text-center text-foreground font-semibold">
+                          (w_slope × Slope_norm + w_acc × Acc_norm + w_vol × Volume_norm) × 100
+                        </code>
+                        <p className="mt-2 text-[10px] border-t border-border pt-1.5 leading-snug">
+                          Standardized composite score (0-100) evaluating growth rate (slope), speed change (acceleration), and overall publication volume.
+                        </p>
+                      </div>
+                    </div>
+                  </UiTooltipContent>
+                </UiTooltip>
+              </th>
+              <th className="py-3 px-4 text-center cursor-help">
+                <UiTooltip>
+                  <UiTooltipTrigger asChild>
+                    <span className="underline decoration-dotted underline-offset-4 hover:opacity-85 transition-opacity">
+                      {tableMonthsHeader}M Forecast
+                    </span>
+                  </UiTooltipTrigger>
+                  <UiTooltipContent side="top" align="center" className="p-3 max-w-[280px] bg-popover text-popover-foreground border border-border shadow-lg rounded-xl">
+                    <div className="space-y-1.5 text-xs font-sans text-left normal-case tracking-normal">
+                      <p className="font-bold text-brand uppercase tracking-wider text-[10px]">
+                        Predicted Publications ({tableMonthsHeader} Months)
+                      </p>
+                      <div className="text-[11px] text-muted-foreground leading-relaxed">
+                        <p className="font-medium text-foreground mb-1">Formula:</p>
+                        <code className="block bg-secondary/40 p-1.5 rounded-md font-mono text-[10px] mb-2 text-center text-foreground font-semibold">
+                          Σ (Slope × Month + Intercept)
+                        </code>
+                        <p className="mt-2 text-[10px] border-t border-border pt-1.5 leading-snug">
+                          Extrapolated total publication count over the next {tableMonthsHeader} months using Linear Regression.
+                        </p>
+                      </div>
+                    </div>
+                  </UiTooltipContent>
+                </UiTooltip>
+              </th>
               <th className="py-3 px-4 text-center">Growth</th>
               <th className="py-3 px-4">Category</th>
             </tr>
@@ -87,11 +141,60 @@ export function HotTopicForecastCard({ items, isLoading, months = 6, selectedKey
                   <td className="py-3 px-4 font-semibold text-foreground truncate max-w-[120px]" title={item.term}>
                     {item.term}
                   </td>
-                  <td className={`py-3 px-4 text-center font-mono ${scoreClass}`}>
-                    {item.potentialScore}
+                  <td className={`py-3 px-4 text-center font-mono cursor-help ${scoreClass}`}>
+                    <UiTooltip>
+                      <UiTooltipTrigger asChild>
+                        <span className="underline decoration-dotted underline-offset-4 hover:opacity-85 transition-opacity">
+                          {item.potentialScore}
+                        </span>
+                      </UiTooltipTrigger>
+                      <UiTooltipContent side="top" align="center" className="p-3 max-w-[280px] bg-popover text-popover-foreground border border-border shadow-lg rounded-xl">
+                        <div className="space-y-1.5 text-xs font-sans text-left">
+                          <p className="font-bold text-brand uppercase tracking-wider text-[10px]">
+                            sTPS - {item.term}
+                          </p>
+                          <div className="text-[11px] text-muted-foreground leading-relaxed">
+                            <p className="font-medium text-foreground mb-1">Formula:</p>
+                            <code className="block bg-secondary/40 p-1.5 rounded-md font-mono text-[10px] mb-2 text-center text-foreground font-semibold">
+                              (w_slope × Slope_norm + w_acc × Acc_norm + w_vol × Volume_norm) × 100
+                            </code>
+                            <p className="font-medium text-foreground mb-1">Calculated Score:</p>
+                            <p className="font-mono text-xs text-foreground font-bold">{item.potentialScore} / 100</p>
+                            <p className="mt-2 text-[10px] border-t border-border pt-1.5 leading-snug">
+                              Composite potential score based on historical growth trajectory and volume.
+                            </p>
+                          </div>
+                        </div>
+                      </UiTooltipContent>
+                    </UiTooltip>
                   </td>
-                  <td className="py-3 px-4 text-center font-mono">
-                    {item.predictedPapers}
+                  <td className="py-3 px-4 text-center font-mono cursor-help">
+                    <UiTooltip>
+                      <UiTooltipTrigger asChild>
+                        <span className="underline decoration-dotted underline-offset-4 hover:opacity-85 transition-opacity">
+                          {item.predictedPapers}
+                        </span>
+                      </UiTooltipTrigger>
+                      <UiTooltipContent side="top" align="center" className="p-3 max-w-[280px] bg-popover text-popover-foreground border border-border shadow-lg rounded-xl">
+                        <div className="space-y-1.5 text-xs font-sans text-left">
+                          <p className="font-bold text-brand uppercase tracking-wider text-[10px]">
+                            {tableMonthsHeader}M Forecast - {item.term}
+                          </p>
+                          <div className="text-[11px] text-muted-foreground leading-relaxed">
+                            <p className="font-medium text-foreground mb-1">Formula:</p>
+                            <code className="block bg-secondary/40 p-1.5 rounded-md font-mono text-[10px] mb-2 text-center text-foreground font-semibold">
+                              Σ (Slope × Month + Intercept)
+                            </code>
+                            <p className="font-medium text-foreground mb-1">Forecast Details:</p>
+                            <ul className="list-disc pl-4 space-y-0.5 font-mono text-[10px]">
+                              <li>Horizon: <span className="text-foreground font-bold">{tableMonthsHeader} months</span></li>
+                              <li>Predicted Papers: <span className="text-foreground font-bold">{item.predictedPapers}</span></li>
+                              <li>Growth: <span className="text-foreground font-bold">+{item.predictedGrowthRate.toFixed(1)}%</span></li>
+                            </ul>
+                          </div>
+                        </div>
+                      </UiTooltipContent>
+                    </UiTooltip>
                   </td>
                   <td className="py-3 px-4 text-center font-mono text-success font-semibold">
                     +{item.predictedGrowthRate.toFixed(1)}%
@@ -110,11 +213,13 @@ export function HotTopicForecastCard({ items, isLoading, months = 6, selectedKey
     );
   };
 
-
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-      <div>{renderTable(leftItems, 0)}</div>
-      <div>{renderTable(rightItems, 5)}</div>
-    </div>
+    <UiTooltipProvider>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div>{renderTable(leftItems, 0)}</div>
+        <div>{renderTable(rightItems, 5)}</div>
+      </div>
+    </UiTooltipProvider>
   );
 }
+
