@@ -141,7 +141,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               <span className="text-xs text-foreground">Next sync · 02:00 AM</span>
             </div>
             <div className="mt-2 flex items-center gap-1 text-[10px] font-mono text-muted-foreground">
-              <Activity className="size-3" /> OpenAlex · Crossref · Semantic Scholar
+              <Activity className="size-3" /> OpenAlex
             </div>
           </div>
           <button

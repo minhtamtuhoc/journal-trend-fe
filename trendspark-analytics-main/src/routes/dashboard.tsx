@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppLayout, PageHeader } from "@/components/AppLayout";
 import { Card, KpiCard } from "@/components/Card";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   CartesianGrid,
   Legend,
@@ -29,7 +29,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { reportsApi } from "@/services/http/reports-api";
-import { useAuth, isAdminUser } from "@/auth";
+import { useAuth, isAdminUser, isStudentUser } from "@/auth";
 import { ApiError } from "@/api/errors";
 
 export const Route = createFileRoute("/dashboard")({ component: DashboardPage });
@@ -67,6 +67,22 @@ function DashboardPage() {
   const { data: summary, isLoading, error } = useDashboardSummary();
   const [selectedKeywordId, setSelectedKeywordId] = useState<number | null>(null);
   const { data: chartData } = useKeywordChartData(selectedKeywordId);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
+  useEffect(() => {
+    const syncMonitor = summary?.syncMonitor;
+    if (syncMonitor?.syncStatus === 'RUNNING' && syncMonitor.lastSyncTime) {
+      const startTime = new Date(syncMonitor.lastSyncTime).getTime();
+      const initialElapsed = Math.floor((Date.now() - startTime) / 1000);
+      setElapsedSeconds(initialElapsed > 0 ? initialElapsed : 0);
+
+      const interval = setInterval(() => {
+        const elapsed = Math.floor((Date.now() - startTime) / 1000);
+        setElapsedSeconds(elapsed > 0 ? elapsed : 0);
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [summary?.syncMonitor?.syncStatus, summary?.syncMonitor?.lastSyncTime]);
 
   const exportDataset = async () => {
     if (!user) {
@@ -161,23 +177,35 @@ function DashboardPage() {
 
       {/* SECTION 1 - KPI CARDS */}
       <div className="grid grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
-        <KpiCard label="Total Papers" value={kpi.totalPapers.toLocaleString()} hint="Active papers in system" />
+        <KpiCard
+          label="Total Papers"
+          value={kpi.totalPapers.toLocaleString()}
+          delta={isAdminUser(user) && kpi.papersSynced && kpi.papersSynced > 0 ? `+${kpi.papersSynced.toLocaleString()}` : undefined}
+          hint={isAdminUser(user) && kpi.papersSynced && kpi.papersSynced > 0 ? `Active papers (Previous: ${(kpi.totalPapers - kpi.papersSynced).toLocaleString()})` : "Active papers in system"}
+        />
         <KpiCard label="Total Journals" value={kpi.totalJournals.toLocaleString()} hint="Indexed academic sources" />
         <KpiCard label="Total Keywords" value={kpi.totalKeywords.toLocaleString()} hint="Extracted research concepts" />
         <KpiCard label="Trending Keywords" value={kpi.trendingKeywordsCount.toLocaleString()} hint="Keywords exceeding threshold" />
         <KpiCard label="Trending Topics" value={kpi.trendingTopicsCount.toLocaleString()} hint="Derived from Keyword.domain" />
         <KpiCard
-          label="Last Sync Status"
+          label="Last Sync"
           value={
-            kpi.lastSyncStatus === "SUCCESS" ? (
-              <span className="text-success">{kpi.lastSyncStatus}</span>
-            ) : kpi.lastSyncStatus === "RUNNING" ? (
-              <span className="text-blue-400 animate-pulse">{kpi.lastSyncStatus}</span>
-            ) : (
-              <span className="text-destructive">{kpi.lastSyncStatus}</span>
-            )
+            kpi.lastSyncTime
+              ? new Date(kpi.lastSyncTime).toLocaleDateString("vi-VN", {
+                  day: "2-digit",
+                  month: "2-digit",
+                  year: "numeric",
+                })
+              : "N/A"
           }
-          hint={kpi.lastSyncTime ? `At ${new Date(kpi.lastSyncTime).toLocaleDateString()}` : "No sync logs"}
+          hint={
+            kpi.lastSyncTime
+              ? `At ${new Date(kpi.lastSyncTime).toLocaleTimeString("vi-VN", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}`
+              : "No sync logs"
+          }
         />
       </div>
 
@@ -418,7 +446,11 @@ function DashboardPage() {
             </div>
             <div className="p-4 rounded-xl border border-border bg-secondary/5">
               <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mb-1">Duration</p>
-              <p className="text-base font-bold font-mono text-foreground">{syncMonitor.durationSeconds} seconds</p>
+              <p className="text-base font-bold font-mono text-foreground">
+                {syncMonitor.syncStatus === 'RUNNING'
+                  ? `${elapsedSeconds} seconds`
+                  : `${syncMonitor.durationSeconds} seconds`}
+              </p>
             </div>
           </div>
           {syncMonitor.errorMessage && (
