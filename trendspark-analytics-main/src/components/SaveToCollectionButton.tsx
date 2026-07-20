@@ -16,7 +16,8 @@ export function SaveToCollectionButton({
   size?: "sm" | "md";
   className?: string;
 }) {
-  const { data: collections = [] } = useCollections();
+  const { data: rawCollections } = useCollections();
+  const collections = useMemo(() => rawCollections ?? [], [rawCollections]);
   const [open, setOpen] = useState(false);
 
   const savedCount = useMemo(() => {

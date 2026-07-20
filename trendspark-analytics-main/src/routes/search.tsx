@@ -483,7 +483,6 @@ function SearchPage() {
                       </div>
                       <div className="text-right shrink-0">
                         <div className="text-[10px] text-muted-foreground uppercase tracking-widest">{p.citations} cites</div>
-                        <div className="text-[10px] text-muted-foreground uppercase tracking-widest mt-0.5">IF {p.impactFactor}</div>
                         <div className="flex gap-1 mt-3 justify-end">
                           <SaveToCollectionButton paperId={p.id} paperTitle={p.title} />
                           <Link to="/papers/$id" params={{ id: p.id }} className="p-1.5 rounded-md border border-border hover:border-brand/40 hover:text-brand transition-colors">

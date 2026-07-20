@@ -1,11 +1,21 @@
 import { useAnalyticsSnapshot } from "@/hooks/data/use-analytics";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function Heatmap() {
-  const { data: analytics } = useAnalyticsSnapshot();
-  const HEATMAP = analytics?.heatmap ?? [];
+  const { data: analytics, isLoading } = useAnalyticsSnapshot();
+
+  if (isLoading || !analytics) {
+    return (
+      <div className="space-y-3 p-2">
+        <Skeleton className="h-32 w-full rounded-xl" />
+      </div>
+    );
+  }
+
+  const HEATMAP = analytics.heatmap ?? [];
   const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   const weeks = Array.from(new Set(HEATMAP.map((h) => h.week)));
-  const max = Math.max(...HEATMAP.map((h) => h.value));
+  const max = HEATMAP.length > 0 ? Math.max(...HEATMAP.map((h) => h.value)) : 1;
   const cell = (week: string, day: string) => HEATMAP.find((h) => h.week === week && h.day === day);
 
   return (
