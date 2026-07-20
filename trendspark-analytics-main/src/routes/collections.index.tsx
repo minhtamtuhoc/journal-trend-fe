@@ -8,9 +8,13 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { FolderPlus, Pencil, Trash2, FolderOpen } from "lucide-react";
+import { FolderPlus, Pencil, Trash2, FolderOpen, Sparkles, History } from "lucide-react";
 import { useCollections, useCreateCollection, useDeleteCollection, useRenameCollection } from "@/hooks/data/use-collections";
 import type { Collection } from "@/types/domain";
+import type { AiCollectionAnalysisResponse } from "@/types/ai-collection-analysis";
+import { GlobalAiCollectionModal } from "@/components/GlobalAiCollectionModal";
+import { AiCollectionAnalysisSheet } from "@/components/AiCollectionAnalysisSheet";
+import { AiHistoryDrawer } from "@/components/AiHistoryDrawer";
 import { formatTimeAgo } from "@/lib/time";
 
 export const Route = createFileRoute("/collections/")({
@@ -18,7 +22,8 @@ export const Route = createFileRoute("/collections/")({
 });
 
 function CollectionsPage() {
-  const { data: collections = [], isLoading } = useCollections();
+  const { data: collectionsData, isLoading } = useCollections();
+  const collections = useMemo(() => collectionsData ?? [], [collectionsData]);
 
   const createMutation = useCreateCollection();
   const renameMutation = useRenameCollection();
@@ -30,6 +35,13 @@ function CollectionsPage() {
 
   const [createName, setCreateName] = useState("");
   const [renameName, setRenameName] = useState("");
+
+  // AI Analysis states
+  const [aiModalOpen, setAiModalOpen] = useState(false);
+  const [analysisSheetOpen, setAnalysisSheetOpen] = useState(false);
+  const [historyDrawerOpen, setHistoryDrawerOpen] = useState(false);
+  const [currentAiAnalysis, setCurrentAiAnalysis] = useState<AiCollectionAnalysisResponse | null>(null);
+  const [analysisTimestamp, setAnalysisTimestamp] = useState<string | undefined>();
 
   const sorted = useMemo(() => {
     return [...collections].sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
@@ -82,12 +94,31 @@ function CollectionsPage() {
         title="Collections"
         subtitle="Organize saved papers into curated sets"
         action={
-          <button
-            onClick={() => setCreateOpen(true)}
-            className="inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-medium border border-border bg-surface/50 hover:bg-surface transition-colors"
-          >
-            <FolderPlus className="size-4" /> New Collection
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setHistoryDrawerOpen(true)}
+              className="p-2 rounded-lg border border-border bg-surface/50 hover:bg-surface text-muted-foreground hover:text-foreground transition-colors"
+              title="View AI Analysis History"
+            >
+              <History className="size-4" />
+            </button>
+
+            <button
+              onClick={() => setAiModalOpen(true)}
+              disabled={collections.length === 0}
+              className="inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-semibold text-brand-foreground glow-brand transition-transform hover:scale-[1.02] disabled:opacity-50 disabled:pointer-events-none"
+              style={{ background: "var(--gradient-brand)" }}
+            >
+              <Sparkles className="size-4" /> Analyze with AI
+            </button>
+
+            <button
+              onClick={() => setCreateOpen(true)}
+              className="inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-medium border border-border bg-surface/50 hover:bg-surface transition-colors"
+            >
+              <FolderPlus className="size-4" /> New Collection
+            </button>
+          </div>
         }
       />
 
@@ -275,6 +306,33 @@ function CollectionsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <GlobalAiCollectionModal
+        open={aiModalOpen}
+        onOpenChange={setAiModalOpen}
+        collections={collections}
+        onAnalysisSuccess={(res, timestamp) => {
+          setCurrentAiAnalysis(res);
+          setAnalysisTimestamp(timestamp);
+          setAnalysisSheetOpen(true);
+        }}
+      />
+
+      <AiCollectionAnalysisSheet
+        open={analysisSheetOpen}
+        onOpenChange={setAnalysisSheetOpen}
+        data={currentAiAnalysis}
+        timestamp={analysisTimestamp}
+      />
+
+      <AiHistoryDrawer
+        open={historyDrawerOpen}
+        onOpenChange={setHistoryDrawerOpen}
+        onSelectHistory={(res, timestamp) => {
+          setCurrentAiAnalysis(res);
+          setAnalysisTimestamp(timestamp);
+          setAnalysisSheetOpen(true);
+        }}
+      />
     </AppLayout>
   );
 }

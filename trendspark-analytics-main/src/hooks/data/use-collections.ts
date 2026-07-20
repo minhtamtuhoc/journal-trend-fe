@@ -1,7 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getServices, queryKeys } from "@/services";
-import { MOCK_COLLECTIONS } from "@/mocks";
-import { mockQueryDefaults, collectionsInitialData } from "@/hooks/data/query-options";
+import { mockQueryDefaults } from "@/hooks/data/query-options";
 import { isBrowser } from "@/hooks/data/client-only";
 import type { Collection } from "@/types/domain";
 
@@ -10,15 +9,13 @@ export function useCollections() {
     queryKey: queryKeys.collections.all,
     queryFn: () => getServices().collections.list(),
     enabled: isBrowser,
-    initialData: collectionsInitialData(),
-    placeholderData: MOCK_COLLECTIONS,
     retry: 1,
     ...mockQueryDefaults,
   });
 
   return {
     ...query,
-    data: query.data ?? [],
+    data: query.data ?? undefined,
   };
 }
 

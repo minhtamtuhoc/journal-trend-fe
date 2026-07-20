@@ -25,7 +25,8 @@ export function SaveToCollectionDialog({
   paperId: string;
   paperTitle?: string;
 }) {
-  const { data: collections = [], isLoading } = useCollections();
+  const { data: rawCollections, isLoading } = useCollections();
+  const collections = useMemo(() => rawCollections ?? [], [rawCollections]);
   const createCollection = useCreateCollection();
   const saveToCollections = useSavePaperToCollections();
 

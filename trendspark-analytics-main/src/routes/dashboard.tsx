@@ -27,6 +27,8 @@ import {
   AlertTriangle,
   ArrowUpRight,
   TrendingUp,
+  HelpCircle,
+  Calculator,
 } from "lucide-react";
 import {
   Tooltip as UiTooltip,
@@ -193,13 +195,46 @@ function DashboardPage() {
         />
         <KpiCard label="Total Journals" value={kpi.totalJournals.toLocaleString()} hint="Indexed academic sources" />
         <KpiCard label="Total Keywords" value={kpi.totalKeywords.toLocaleString()} hint="Extracted research concepts" />
-        <KpiCard label="Trending Keywords" value={kpi.trendingKeywordsCount.toLocaleString()} hint="Keywords exceeding threshold" />
-        <KpiCard label="Trending Topics" value={kpi.trendingTopicsCount.toLocaleString()} hint="Derived from Keyword.domain" />
+
+        <UiTooltip>
+          <UiTooltipTrigger asChild>
+            <div className="cursor-help">
+              <KpiCard label="Trending Keywords" value={kpi.trendingKeywordsCount.toLocaleString()} hint="Keywords exceeding threshold" />
+            </div>
+          </UiTooltipTrigger>
+          <UiTooltipContent side="top" className="max-w-xs p-3 space-y-1 bg-card border border-border text-foreground shadow-xl rounded-xl z-50">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-brand">
+              <TrendingUp className="size-3.5" />
+              <span>Trending Keywords</span>
+            </div>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              Keywords with a trend score &gt; 15% for 3 consecutive months.
+            </p>
+          </UiTooltipContent>
+        </UiTooltip>
+
+        <UiTooltip>
+          <UiTooltipTrigger asChild>
+            <div className="cursor-help">
+              <KpiCard label="Trending Topics" value={kpi.trendingTopicsCount.toLocaleString()} hint="Derived from Keyword.domain" />
+            </div>
+          </UiTooltipTrigger>
+          <UiTooltipContent side="top" className="max-w-xs p-3 space-y-1 bg-card border border-border text-foreground shadow-xl rounded-xl z-50">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-brand">
+              <Layers className="size-3.5" />
+              <span>Trending Topics</span>
+            </div>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              Topics based on the trending keywords belonging to each domain.
+            </p>
+          </UiTooltipContent>
+        </UiTooltip>
+
         <KpiCard
           label="Last Sync"
           value={
             kpi.lastSyncTime
-              ? new Date(kpi.lastSyncTime).toLocaleDateString("vi-VN", {
+              ? new Date(kpi.lastSyncTime).toLocaleDateString("en-US", {
                   day: "2-digit",
                   month: "2-digit",
                   year: "numeric",
@@ -208,7 +243,7 @@ function DashboardPage() {
           }
           hint={
             kpi.lastSyncTime
-              ? `At ${new Date(kpi.lastSyncTime).toLocaleTimeString("vi-VN", {
+              ? `At ${new Date(kpi.lastSyncTime).toLocaleTimeString("en-US", {
                   hour: "2-digit",
                   minute: "2-digit",
                 })}`
@@ -222,7 +257,7 @@ function DashboardPage() {
         <Card className="lg:col-span-2" title="Top 10 Trending Topics">
           {trendingTopics.length === 0 ? (
             <p className="text-sm text-muted-foreground py-4">
-              Chưa có dữ liệu topic trend. Hãy chạy đồng bộ dữ liệu hoặc recalculate trend trong trang Admin.
+              No topic trend data available. Please run data sync or recalculate trends in the Admin panel.
             </p>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -252,7 +287,7 @@ function DashboardPage() {
                           <span>Average Topic Growth</span>
                         </div>
                         <p className="text-[11px] text-muted-foreground leading-relaxed">
-                          Tỷ lệ tăng trưởng trung bình của <strong>{topic.trendingKeywordsCount} từ khóa thịnh hành</strong> thuộc chủ đề <span className="text-foreground font-semibold">{topic.topicName}</span> so với tháng trước.
+                          Average growth rate of <strong>{topic.trendingKeywordsCount} trending keywords</strong> under <span className="text-foreground font-semibold">{topic.topicName}</span> compared to previous month.
                         </p>
                       </UiTooltipContent>
                     </UiTooltip>
@@ -272,7 +307,7 @@ function DashboardPage() {
                           </span>
                         </UiTooltipTrigger>
                         <UiTooltipContent side="top" className="p-2 text-[11px] bg-card border border-border text-foreground shadow-lg rounded-lg z-50">
-                          Từ khóa <span className="font-bold text-brand">{kw.term}</span>: tăng trưởng <span className="font-mono font-bold text-success">{kw.trendScore > 0 ? "+" : ""}{kw.trendScore.toFixed(0)}%</span> số bài báo công bố so với tháng trước.
+                          Keyword <span className="font-bold text-brand">{kw.term}</span>: growth rate <span className="font-mono font-bold text-success">{kw.trendScore > 0 ? "+" : ""}{kw.trendScore.toFixed(0)}%</span> in published papers compared to previous month.
                         </UiTooltipContent>
                       </UiTooltip>
                     ))}
@@ -286,7 +321,7 @@ function DashboardPage() {
         {/* SECTION 3 - TOP 10 TRENDING KEYWORDS */}
         <Card title="Top 10 Trending Keywords">
           {trendingKeywords.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-4">Chưa có dữ liệu từ khóa thịnh hành.</p>
+            <p className="text-sm text-muted-foreground py-4">No trending keywords data available.</p>
           ) : (
             <div className="space-y-3.5">
               {trendingKeywords.slice(0, 10).map((k) => (
@@ -319,7 +354,7 @@ function DashboardPage() {
                           <span>Keyword Growth Rate</span>
                         </div>
                         <p className="text-[11px] text-muted-foreground leading-relaxed">
-                          Tỷ lệ thay đổi số bài báo chứa từ khóa <span className="text-foreground font-semibold">"{k.keyword}"</span> ({k.paperCount} bài) so với tháng trước.
+                          Growth rate in published papers for keyword <span className="text-foreground font-semibold">"{k.keyword}"</span> ({k.paperCount} papers) compared to previous month.
                         </p>
                       </UiTooltipContent>
                     </UiTooltip>
@@ -353,9 +388,9 @@ function DashboardPage() {
         }
       >
         {!activeKeywordId ? (
-          <p className="text-sm text-muted-foreground py-8 text-center">Vui lòng chọn từ khóa để xem biểu đồ.</p>
+          <p className="text-sm text-muted-foreground py-8 text-center">Please select a keyword to view the chart.</p>
         ) : chartPoints.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-8 text-center">Không có dữ liệu xu hướng lịch sử cho từ khóa này.</p>
+          <p className="text-sm text-muted-foreground py-8 text-center">No historical trend data available for this keyword.</p>
         ) : (
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={chartPoints} margin={{ top: 10, right: 30, left: 10, bottom: 5 }}>
@@ -388,7 +423,7 @@ function DashboardPage() {
         {/* SECTION 5 - RECENT PUBLICATIONS */}
         <Card title="Recent Publications">
           {recentPublications.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-4">Chưa có bài báo nào được xuất bản.</p>
+            <p className="text-sm text-muted-foreground py-4">No recent publications available.</p>
           ) : (
             <div className="space-y-4 h-[480px] overflow-y-auto pr-2 custom-scrollbar">
               {recentPublications.map((p) => (
@@ -430,16 +465,36 @@ function DashboardPage() {
         {/* SECTION 6 - TOP JOURNALS */}
         <Card title="Top Journals by Volume">
           {topJournals.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-4">Chưa có dữ liệu tạp chí.</p>
+            <p className="text-sm text-muted-foreground py-4">No journal data available.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm text-left table-fixed">
                 <thead>
                   <tr className="border-b border-border text-[13px] font-bold uppercase tracking-wider text-muted-foreground">
-                    <th className="pb-3 pr-4 font-semibold w-[35%]">Journal Name</th>
-                    <th className="pb-3 px-4 font-semibold text-right w-[20%]">Total Papers</th>
-                    <th className="pb-3 px-4 font-semibold text-right w-[25%]">Citations per Publication</th>
-                    <th className="pb-3 pl-4 font-semibold w-[20%]">Domain</th>
+                    <th className="pb-3 pr-4 font-semibold w-[45%]">Journal Name</th>
+                    <th className="pb-3 px-4 font-semibold text-right w-[25%]">Total Papers</th>
+                    <UiTooltip>
+                      <UiTooltipTrigger asChild>
+                        <th className="pb-3 pl-2 pr-4 font-semibold text-right w-[30%] cursor-help">
+                          <span className="inline-flex items-center justify-end gap-1 hover:text-brand transition-colors text-right leading-tight">
+                            <span>Citations per Publication</span>
+                            <HelpCircle className="size-3.5 text-muted-foreground opacity-70 shrink-0" />
+                          </span>
+                        </th>
+                      </UiTooltipTrigger>
+                      <UiTooltipContent side="top" align="end" sideOffset={6} className="max-w-xs p-3.5 space-y-2 bg-card/95 backdrop-blur-md border border-border text-foreground shadow-2xl rounded-2xl z-50">
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-brand">
+                          <Calculator className="size-3.5" />
+                          <span>Calculation Formula (CPP)</span>
+                        </div>
+                        <div className="text-xs font-mono font-bold text-brand bg-brand/10 p-2 rounded-xl border border-brand/20 text-center">
+                          CPP = Total Citations ÷ Total Papers
+                        </div>
+                        <p className="text-[11px] text-muted-foreground leading-relaxed">
+                          Average citations per published paper for this journal (proxy bibliometric impact metric).
+                        </p>
+                      </UiTooltipContent>
+                    </UiTooltip>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/40">
@@ -462,7 +517,6 @@ function DashboardPage() {
                       <td className="py-3 px-4 text-right font-mono font-semibold">
                         {j.impactFactor != null && j.impactFactor > 0 ? j.impactFactor.toFixed(3) : "0"}
                       </td>
-                      <td className="py-3 pl-4 text-muted-foreground text-xs truncate" title={j.domain}>{j.domain}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -475,16 +529,16 @@ function DashboardPage() {
       {/* SECTION 7 - ADMIN SYNC MONITORING */}
       {isAdmin && syncMonitor && (
         <Card title="Admin Sync Monitoring">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             <div className="p-4 rounded-xl border border-border bg-secondary/5">
               <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mb-1">Last Sync Started</p>
-              <p className="text-base font-bold font-mono text-foreground">
-                {syncMonitor.lastSyncTime ? new Date(syncMonitor.lastSyncTime).toLocaleString() : "N/A"}
+              <p className="text-sm font-bold font-mono text-foreground truncate">
+                {syncMonitor.lastSyncTime ? new Date(syncMonitor.lastSyncTime).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "N/A"}
               </p>
             </div>
             <div className="p-4 rounded-xl border border-border bg-secondary/5">
               <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mb-1">Status</p>
-              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-mono font-bold ${syncMonitor.syncStatus === 'SUCCESS'
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-mono font-bold mt-0.5 ${syncMonitor.syncStatus === 'SUCCESS'
                   ? 'bg-success/10 text-success'
                   : syncMonitor.syncStatus === 'RUNNING'
                     ? 'bg-blue-500/10 text-blue-400 animate-pulse'
@@ -494,15 +548,21 @@ function DashboardPage() {
               </span>
             </div>
             <div className="p-4 rounded-xl border border-border bg-secondary/5">
+              <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mb-1">Papers Before Sync</p>
+              <p className="text-base font-bold font-mono text-foreground">
+                {Math.max(0, kpi.totalPapers - (syncMonitor.papersSynced || 0)).toLocaleString()}
+              </p>
+            </div>
+            <div className="p-4 rounded-xl border border-border bg-secondary/5">
               <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mb-1">Papers Synced</p>
-              <p className="text-base font-bold font-mono text-brand">{syncMonitor.papersSynced}</p>
+              <p className="text-base font-bold font-mono text-brand">+{syncMonitor.papersSynced.toLocaleString()}</p>
             </div>
             <div className="p-4 rounded-xl border border-border bg-secondary/5">
               <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mb-1">Duration</p>
               <p className="text-base font-bold font-mono text-foreground">
                 {syncMonitor.syncStatus === 'RUNNING'
-                  ? `${elapsedSeconds} seconds`
-                  : `${syncMonitor.durationSeconds} seconds`}
+                  ? `${elapsedSeconds}s`
+                  : `${syncMonitor.durationSeconds}s`}
               </p>
             </div>
           </div>

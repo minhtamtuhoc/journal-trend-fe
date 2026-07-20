@@ -420,7 +420,8 @@ function ReportsPage() {
   const { authorId } = Route.useSearch() as { authorId?: string };
   const [activeTab, setActiveTab] = useState<"ALL" | "KEYWORD" | "AUTHOR" | "JOURNAL">("ALL");
   const { data: report, isLoading, error } = usePersonalReport(activeTab);
-  const { data: collections = [] } = useCollections();
+  const { data: collectionsData } = useCollections();
+  const collections = useMemo(() => collectionsData ?? [], [collectionsData]);
 
   const { data: followedTopics = [], isLoading: isLoadingTopics } = useFollowedTopics();
   const { data: followedAuthors = [], isLoading: isLoadingAuthors } = useFollowedAuthors();
