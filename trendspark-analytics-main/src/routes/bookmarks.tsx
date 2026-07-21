@@ -170,8 +170,10 @@ function BookmarksPage() {
         subtitle="Authors · Keywords & Journals (synced with backend when signed in)"
         action={
           <button
+            type="button"
             onClick={exportCsv}
-            className="inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-medium border border-border bg-surface/50 hover:bg-surface transition-colors cursor-pointer"
+            className="inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-medium text-brand-foreground glow-brand transition-transform hover:scale-[1.02] cursor-pointer"
+            style={{ background: "var(--gradient-brand)" }}
           >
             <Download className="size-4" /> Export
           </button>
@@ -183,7 +185,15 @@ function BookmarksPage() {
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${tab === t.id ? "bg-brand/15 text-brand" : "text-muted-foreground hover:text-foreground"}`}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer border ${
+              tab === t.id
+                ? t.id === "authors"
+                  ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/20"
+                  : t.id === "keywords"
+                  ? "bg-blue-500/15 text-blue-400 border-blue-500/20"
+                  : "bg-purple-500/15 text-purple-400 border-purple-500/20"
+                : "text-muted-foreground hover:text-foreground border-transparent"
+            }`}
           >
             {t.label} <span className="ml-1 text-[10px] font-mono opacity-70">{t.count}</span>
           </button>
@@ -209,7 +219,7 @@ function BookmarksPage() {
                 const cardBody = (
                   <>
                     <div className="flex items-center gap-3 mb-3">
-                      <div className="size-10 rounded-full flex items-center justify-center text-xs font-bold text-brand-foreground" style={{ background: "var(--gradient-brand)" }}>
+                      <div className="size-10 rounded-full flex items-center justify-center text-xs font-bold text-white" style={{ background: "linear-gradient(135deg, #10b981 0%, #0d9488 100%)" }}>
                         {a.name.split(" ")[1]?.[0] ?? a.name[0] ?? "A"}
                       </div>
                       <div className="min-w-0 flex-1">
@@ -234,12 +244,12 @@ function BookmarksPage() {
                         params={{ authorId: a.profileId }}
                         className="block"
                       >
-                        <Card className="hover:border-brand/35 transition-colors cursor-pointer">
+                        <Card className="hover:border-emerald-500/40 transition-colors cursor-pointer">
                           {cardBody}
                         </Card>
                       </Link>
                     ) : (
-                      <Card className="hover:border-brand/35 transition-colors relative">
+                      <Card className="hover:border-emerald-500/40 transition-colors relative">
                         {cardBody}
                       </Card>
                     )}
@@ -282,8 +292,8 @@ function BookmarksPage() {
               </p>
               <Link
                 to="/trends"
-                className="mt-6 inline-flex items-center gap-1.5 h-9 px-4 rounded-lg text-xs font-semibold text-brand-foreground glow-brand"
-                style={{ background: "var(--gradient-brand)" }}
+                className="mt-6 inline-flex items-center gap-1.5 h-9 px-4 rounded-lg text-xs font-semibold text-white transition-transform hover:scale-[1.03]"
+                style={{ background: "linear-gradient(135deg, #10b981 0%, #0d9488 100%)" }}
               >
                 <Flame className="size-3.5" /> View Trending Authors{" "}
                 <ArrowRight className="size-3" />
@@ -307,10 +317,10 @@ function BookmarksPage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {followedJournals.map((j) => (
-                <Card key={j.id} className="flex items-center justify-between hover:border-brand/35 transition-colors group">
+                <Card key={j.id} className="flex items-center justify-between hover:border-purple-500/40 transition-colors group">
                   <div className="min-w-0">
                     <div className="font-semibold text-sm flex items-center gap-1.5 text-foreground">
-                      <BookOpen className="size-3.5 text-brand shrink-0" /> {j.name}
+                      <BookOpen className="size-3.5 text-purple-400 shrink-0" /> {j.name}
                     </div>
                     <div className="text-[10px] text-muted-foreground mt-1 truncate">
                       {[j.publisher, j.domain].filter(Boolean).join(" · ") || "Academic journal"}
@@ -357,11 +367,11 @@ function BookmarksPage() {
             {savedKeywords.map((k) => (
               <Card
                 key={k.id}
-                className="flex items-center justify-between hover:border-brand/35 transition-colors group"
+                className="flex items-center justify-between hover:border-blue-500/40 transition-colors group"
               >
                 <div>
                   <div className="font-semibold text-sm flex items-center gap-1.5 text-foreground">
-                    <Hash className="size-3.5 text-brand" /> {k.term}
+                    <Hash className="size-3.5 text-blue-400" /> {k.term}
                   </div>
                   <div className="text-[10px] text-muted-foreground mt-1">
                     {k.count} papers · {k.category}
@@ -402,8 +412,8 @@ function BookmarksPage() {
               </p>
               <Link
                 to="/trends"
-                className="mt-6 inline-flex items-center gap-1.5 h-9 px-4 rounded-lg text-xs font-semibold text-brand-foreground glow-brand"
-                style={{ background: "var(--gradient-brand)" }}
+                className="mt-6 inline-flex items-center gap-1.5 h-9 px-4 rounded-lg text-xs font-semibold text-white transition-transform hover:scale-[1.03]"
+                style={{ background: "linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%)" }}
               >
                 <Flame className="size-3.5" /> View Trending Keywords{" "}
                 <ArrowRight className="size-3" />
