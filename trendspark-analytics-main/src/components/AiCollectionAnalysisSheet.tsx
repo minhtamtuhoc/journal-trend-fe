@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   Sheet,
@@ -7,7 +7,7 @@ import {
   SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet";
-import type { AiCollectionAnalysisResponse } from "@/types/ai-collection-analysis";
+import type { AiCollectionAnalysisResponse, TopicCluster } from "@/types/ai-collection-analysis";
 import {
   Sparkles,
   Layers,
@@ -21,6 +21,8 @@ import {
   FileText,
   Quote,
   Flame,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 
 interface AiCollectionAnalysisSheetProps {
@@ -29,6 +31,95 @@ interface AiCollectionAnalysisSheetProps {
   data: AiCollectionAnalysisResponse | null;
   timestamp?: string;
   onPaperClick?: (paperId: string) => void;
+}
+
+function ClusterCard({
+  cluster,
+  idx,
+  onPaperClick,
+}: {
+  cluster: TopicCluster;
+  idx: number;
+  onPaperClick?: (paperId: string) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const papers = cluster.papers ?? [];
+  const paperCount = papers.length > 0 ? papers.length : (cluster.paperIds?.length ?? 0);
+  const INITIAL_SHOW_COUNT = 3;
+  const hasMore = papers.length > INITIAL_SHOW_COUNT;
+  const visiblePapers = expanded ? papers : papers.slice(0, INITIAL_SHOW_COUNT);
+
+  return (
+    <div className="p-4 rounded-xl border border-border bg-secondary/20 hover:border-brand/40 transition-colors space-y-2.5">
+      <div className="flex items-center justify-between gap-2">
+        <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+          <span className="size-5 rounded-full bg-brand/15 text-brand text-[10px] font-bold flex items-center justify-center shrink-0">
+            {idx + 1}
+          </span>
+          {cluster.name}
+        </h4>
+        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-brand/10 text-brand border border-brand/20 font-semibold">
+          {paperCount} {paperCount === 1 ? "paper" : "papers"}
+        </span>
+      </div>
+      <p className="text-xs text-muted-foreground leading-relaxed">
+        {cluster.description}
+      </p>
+
+      {papers.length > 0 && (
+        <div className="pt-2 border-t border-border/40 space-y-2">
+          <div className="flex items-center justify-between text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+            <span>Papers in this cluster ({papers.length}):</span>
+            {hasMore && (
+              <button
+                type="button"
+                onClick={() => setExpanded((prev) => !prev)}
+                className="text-brand hover:underline font-semibold flex items-center gap-1 cursor-pointer"
+              >
+                <span>{expanded ? "Show less" : `Show all ${papers.length} papers`}</span>
+                {expanded ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
+              </button>
+            )}
+          </div>
+
+          <div
+            className={`space-y-1 pl-0.5 transition-all ${
+              expanded
+                ? "max-h-48 overflow-y-auto pr-1 p-1.5 bg-card/60 rounded-xl border border-border/30"
+                : ""
+            }`}
+          >
+            {visiblePapers.map((p) => {
+              const paperIdStr = String(p.paperId);
+              return (
+                <Link
+                  key={p.paperId}
+                  to="/papers/$id"
+                  params={{ id: paperIdStr }}
+                  onClick={() => onPaperClick?.(paperIdStr)}
+                  className="flex items-start gap-1.5 text-xs text-foreground/90 hover:text-brand transition-colors group p-1 rounded hover:bg-card/80"
+                >
+                  <FileText className="size-3 text-muted-foreground shrink-0 mt-0.5 group-hover:text-brand" />
+                  <span className="line-clamp-2 font-medium">{p.title}</span>
+                </Link>
+              );
+            })}
+          </div>
+
+          {hasMore && !expanded && (
+            <button
+              type="button"
+              onClick={() => setExpanded(true)}
+              className="w-full text-center py-1 text-[11px] font-semibold text-brand hover:text-brand/80 transition-colors flex items-center justify-center gap-1 bg-brand/5 rounded-lg border border-brand/10 hover:border-brand/20 cursor-pointer"
+            >
+              <span>Show {papers.length - INITIAL_SHOW_COUNT} more papers</span>
+              <ChevronDown className="size-3" />
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function AiCollectionAnalysisSheet({
@@ -107,25 +198,12 @@ export function AiCollectionAnalysisSheet({
 
               <div className="grid grid-cols-1 gap-3">
                 {data.topicClusters.map((cluster, idx) => (
-                  <div
+                  <ClusterCard
                     key={idx}
-                    className="p-4 rounded-xl border border-border bg-secondary/20 hover:border-brand/40 transition-colors space-y-2"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                        <span className="size-5 rounded-full bg-brand/15 text-brand text-[10px] font-bold flex items-center justify-center shrink-0">
-                          {idx + 1}
-                        </span>
-                        {cluster.name}
-                      </h4>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-secondary text-muted-foreground">
-                        {cluster.paperIds?.length ?? 0} papers
-                      </span>
-                    </div>
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      {cluster.description}
-                    </p>
-                  </div>
+                    cluster={cluster}
+                    idx={idx}
+                    onPaperClick={onPaperClick}
+                  />
                 ))}
               </div>
             </div>

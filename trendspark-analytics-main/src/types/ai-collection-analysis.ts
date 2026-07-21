@@ -2,10 +2,16 @@ export interface AiCollectionAnalysisRequest {
   paperIds?: (number | string)[];
 }
 
+export interface PaperRef {
+  paperId: number;
+  title: string;
+}
+
 export interface TopicCluster {
   name: string;
   description: string;
-  paperIds: number[];
+  paperIds?: number[];
+  papers?: PaperRef[];
 }
 
 export interface OutlierPaper {

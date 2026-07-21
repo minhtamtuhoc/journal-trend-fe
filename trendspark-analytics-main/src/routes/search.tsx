@@ -455,6 +455,7 @@ function SearchPage() {
                         <div className="flex flex-wrap gap-1.5 mt-3">
                           {p.keywords.map((k) => {
                             const followed = isTopicFollowed(k.id);
+                            const hasTrend = Boolean(k.trendScore && k.trendScore > 0);
                             return (
                               <button
                                 key={k.id}
@@ -473,19 +474,21 @@ function SearchPage() {
                                 }}
                                 className={`text-[10px] px-2 py-0.5 rounded-full border flex items-center gap-1 transition-all cursor-pointer ${followed
                                     ? "border-brand/40 bg-brand/10 text-brand font-medium hover:bg-brand/20"
+                                    : hasTrend
+                                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400 font-medium hover:border-emerald-500/50"
                                     : "border-border bg-secondary/40 text-muted-foreground hover:border-brand/30 hover:text-foreground"
                                   }`}
                               >
                                 <span>{k.name}</span>
+                                {hasTrend && (
+                                  <span className="text-[9px] font-semibold text-emerald-400 ml-0.5">
+                                    🔥 +{k.trendScore!.toFixed(1)}%
+                                  </span>
+                                )}
                                 <span className="text-[8px] opacity-75">{followed ? "✓" : "+"}</span>
                               </button>
                             );
                           })}
-                          {p.trendScore > 0 && (
-                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-success/15 border border-success/30 text-success font-medium">
-                              Related Topic Trend: +{p.trendScore.toFixed(1)}%
-                            </span>
-                          )}
                         </div>
                       </div>
                       <div className="text-right shrink-0">

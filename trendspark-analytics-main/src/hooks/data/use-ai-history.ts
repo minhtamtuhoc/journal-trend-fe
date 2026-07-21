@@ -6,7 +6,7 @@ import { mockQueryDefaults } from "@/hooks/data/query-options";
 
 export interface AiAnalysisHistorySummaryItem {
   id: number;
-  analysisType: "TOP_TRENDS" | "SINGLE_KEYWORD";
+  analysisType: "TOP_TRENDS" | "SINGLE_KEYWORD" | "COLLECTION_ANALYSIS";
   targetKeywords: string[];
   overallVerdict?: string;
   createdAt: string;
@@ -14,7 +14,7 @@ export interface AiAnalysisHistorySummaryItem {
 
 export interface AiAnalysisHistoryDetailPage {
   id: number;
-  analysisType: "TOP_TRENDS" | "SINGLE_KEYWORD";
+  analysisType: "TOP_TRENDS" | "SINGLE_KEYWORD" | "COLLECTION_ANALYSIS";
   targetKeywords: string[];
   overallVerdict?: string;
   createdAt: string;

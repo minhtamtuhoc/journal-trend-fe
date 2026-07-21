@@ -10,6 +10,7 @@ export type AuthorRef = {
 export type TopicRef = {
   id: string;
   name: string;
+  trendScore?: number;
 };
 
 export type Paper = {

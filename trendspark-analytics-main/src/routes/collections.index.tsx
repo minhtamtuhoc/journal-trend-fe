@@ -327,10 +327,15 @@ function CollectionsPage() {
       <AiHistoryDrawer
         open={historyDrawerOpen}
         onOpenChange={setHistoryDrawerOpen}
-        onSelectHistory={(res, timestamp) => {
-          setCurrentAiAnalysis(res);
-          setAnalysisTimestamp(timestamp);
-          setAnalysisSheetOpen(true);
+        defaultTab="COLLECTION_ANALYSIS"
+        onSelectHistory={(res, timestamp, type) => {
+          if (type === "COLLECTION_ANALYSIS" || res?.collectionName) {
+            setCurrentAiAnalysis(res);
+            setAnalysisTimestamp(timestamp);
+            setAnalysisSheetOpen(true);
+          } else {
+            toast.info("This is a Trend Analysis report. Go to Trends page to view trend reports.");
+          }
         }}
       />
     </AppLayout>
