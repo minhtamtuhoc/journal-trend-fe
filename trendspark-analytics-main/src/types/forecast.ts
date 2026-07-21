@@ -34,6 +34,18 @@ export type ForecastDetail = {
   forecastMonths: ForecastMonth[]; // N tháng (nét đứt)
 };
 
+// Lý do nút Run Forecast bị khoá (mã ổn định từ BE)
+export type ForecastDisabledReason = "SYNC_RUNNING" | "NEVER_SYNCED" | "NO_NEW_DATA";
+
+// GET /api/v1/trends/forecast/status
+export type ForecastStatus = {
+  canRunForecast: boolean;
+  lastSyncedAt: string | null;
+  lastForecastRunAt: string | null;
+  reasonCode: ForecastDisabledReason | null;
+  reasonIfDisabled: string | null;
+};
+
 export const FORECAST_MONTHS_MIN = 1;
 export const FORECAST_MONTHS_MAX = 12;
 export const FORECAST_MONTHS_DEFAULT = 6;

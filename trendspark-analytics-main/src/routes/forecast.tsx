@@ -3,9 +3,14 @@ import { AppLayout, PageHeader } from "@/components/AppLayout";
 import { Card } from "@/components/Card";
 import { HotTopicForecastCard } from "@/components/HotTopicForecastCard";
 import { ForecastLineChart } from "@/components/ForecastLineChart";
-import { useForecastList, useForecastDetail, useRunForecast } from "@/hooks/data/use-forecast";
+import {
+  useForecastList,
+  useForecastDetail,
+  useRunForecast,
+  useForecastStatus,
+} from "@/hooks/data/use-forecast";
 import { useState, useEffect } from "react";
-import { RefreshCw, AlertTriangle } from "lucide-react";
+import { RefreshCw, AlertTriangle, Clock, Activity, CheckCircle2, Info } from "lucide-react";
 import { useAuth, isStudentUser } from "@/auth";
 import { toast } from "sonner";
 import { ApiError } from "@/api/errors";
@@ -14,11 +19,37 @@ import {
   FORECAST_MONTHS_MAX,
   FORECAST_MONTHS_DEFAULT,
 } from "@/types/forecast";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
+const REASON_ENGLISH_MESSAGES: Record<string, string> = {
+  SYNC_RUNNING: "Data synchronization is in progress. Please wait for the process to complete.",
+  NEVER_SYNCED: "No new papers have been ingested yet. Please wait for data sync.",
+  NO_NEW_DATA: "Forecast data is already up to date. No new papers ingested since the last forecast run.",
+};
 
 export const Route = createFileRoute("/forecast")({
   component: ForecastPage,
 });
+
+function formatDate(dateStr: string | null | undefined): string {
+  if (!dateStr) return "N/A";
+  try {
+    const date = new Date(dateStr);
+    return date.toLocaleString("en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return dateStr;
+  }
+}
 
 function ForecastPage() {
   const { user } = useAuth();
@@ -50,6 +81,7 @@ function ForecastPage() {
 
   const [selectedKeywordId, setSelectedKeywordId] = useState<number | null>(null);
 
+  const { data: forecastStatus } = useForecastStatus();
   const { data: forecastList = [], isLoading: loadingList } = useForecastList(10, months);
   const { data: forecastDetail, isLoading: loadingDetail } = useForecastDetail(selectedKeywordId, months);
   const runForecast = useRunForecast();
@@ -72,13 +104,19 @@ function ForecastPage() {
           }
         },
         onError: (err) => {
-          toast.error(err instanceof ApiError ? err.message : "Failed to run forecast");
+          if (err instanceof ApiError && err.status === 409) {
+            toast.info(err.message);
+          } else {
+            toast.error(err instanceof ApiError ? err.message : "Failed to run forecast");
+          }
         },
       }
     );
   };
 
   const isPending = runForecast.isPending;
+  const canRun = forecastStatus?.canRunForecast ?? true;
+  const runDisabled = isPending || loadingList || !canRun;
 
   return (
     <AppLayout>
@@ -104,18 +142,79 @@ function ForecastPage() {
               </span>
             </div>
 
-            <button
-              onClick={handleRun}
-              disabled={isPending || loadingList}
-              className="inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-semibold text-brand-foreground glow-brand transition-transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:scale-100 disabled:pointer-events-none"
-              style={{ background: "var(--gradient-brand)" }}
-            >
-              <RefreshCw className={`size-4 ${isPending ? "animate-spin" : ""}`} />
-              {isPending ? "Running…" : "Run Forecast"}
-            </button>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className={runDisabled && !canRun ? "cursor-not-allowed" : undefined}>
+                    <button
+                      onClick={handleRun}
+                      disabled={runDisabled}
+                      className="inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-semibold text-brand-foreground glow-brand transition-transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:scale-100 disabled:pointer-events-none"
+                      style={{ background: "var(--gradient-brand)" }}
+                    >
+                      <RefreshCw
+                        className={`size-4 ${
+                          isPending || forecastStatus?.reasonCode === "SYNC_RUNNING" ? "animate-spin" : ""
+                        }`}
+                      />
+                      {isPending ? "Running…" : "Run Forecast"}
+                    </button>
+                  </span>
+                </TooltipTrigger>
+                {!canRun && (
+                  <TooltipContent side="bottom" className="max-w-xs text-xs">
+                    {(forecastStatus?.reasonCode && REASON_ENGLISH_MESSAGES[forecastStatus.reasonCode]) ||
+                      forecastStatus?.reasonIfDisabled}
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            </TooltipProvider>
           </div>
         }
       />
+
+      {/* Premium Status Bar */}
+      <div className="mb-6 rounded-xl border border-border/70 bg-surface-elevated/40 backdrop-blur-md p-4 flex flex-wrap items-center justify-between gap-4 text-xs">
+        <div className="flex flex-wrap items-center gap-6">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Activity className="size-4 text-brand shrink-0" />
+            <span>
+              Last Synced:{" "}
+              <strong className="text-foreground font-medium">
+                {formatDate(forecastStatus?.lastSyncedAt)}
+              </strong>
+            </span>
+          </div>
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Clock className="size-4 text-brand shrink-0" />
+            <span>
+              Last Forecast:{" "}
+              <strong className="text-foreground font-medium">
+                {formatDate(forecastStatus?.lastForecastRunAt)}
+              </strong>
+            </span>
+          </div>
+        </div>
+
+        {forecastStatus && (
+          <div className="flex items-center gap-2">
+            {forecastStatus.reasonCode === "SYNC_RUNNING" ? (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                <RefreshCw className="size-3 animate-spin" /> Data Sync in progress...
+              </span>
+            ) : canRun ? (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                <CheckCircle2 className="size-3" /> Ready to Run
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                <Info className="size-3" /> Up to date
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+
       <div className="space-y-8">
         <Card title="Hot Topics Ranking">
           <HotTopicForecastCard
