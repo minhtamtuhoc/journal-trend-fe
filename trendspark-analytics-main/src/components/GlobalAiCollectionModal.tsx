@@ -10,7 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Sparkles, Layers, CheckSquare, Square, Loader2, BookOpen, CheckCircle2, ListFilter, FileText } from "lucide-react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/api/client";
 import { useAuth } from "@/auth";
 import { toast } from "sonner";
@@ -84,6 +84,8 @@ export function GlobalAiCollectionModal({
     setSelectedPaperIds(new Set());
   };
 
+  const queryClient = useQueryClient();
+
   const aiMutation = useMutation({
     mutationFn: async ({ collectionId, req }: { collectionId: string; req: AiCollectionAnalysisRequest }) => {
       const res = await apiClient.post<{ data: AiCollectionAnalysisResponse }>(
@@ -94,6 +96,7 @@ export function GlobalAiCollectionModal({
       return res.data;
     },
     onSuccess: (responseData) => {
+      queryClient.invalidateQueries({ queryKey: ["ai-history-list"] });
       const nowFormatted = new Date().toLocaleString("en-US", {
         month: "short",
         day: "numeric",

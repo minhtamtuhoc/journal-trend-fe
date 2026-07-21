@@ -698,13 +698,18 @@ function TrendsPage() {
                 <AiHistoryDrawer
                   open={isHistoryDrawerOpen}
                   onOpenChange={setIsHistoryDrawerOpen}
-                  onSelectHistory={(data, timestamp) => {
-                    const stored = { data, timestamp };
-                    setSavedAiAnalysis(stored);
-                    if (aiStorageKey) {
-                      try {
-                        localStorage.setItem(aiStorageKey, JSON.stringify(stored));
-                      } catch {}
+                  defaultTab="TRENDS"
+                  onSelectHistory={(data, timestamp, type) => {
+                    if (type === "COLLECTION_ANALYSIS" || data?.collectionName) {
+                      toast.info("This is a Collection Analysis report. Go to Collections page to view collection reports.");
+                    } else {
+                      const stored = { data, timestamp };
+                      setSavedAiAnalysis(stored);
+                      if (aiStorageKey) {
+                        try {
+                          localStorage.setItem(aiStorageKey, JSON.stringify(stored));
+                        } catch {}
+                      }
                     }
                   }}
                 />

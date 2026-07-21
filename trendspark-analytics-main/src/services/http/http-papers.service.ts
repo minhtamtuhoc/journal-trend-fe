@@ -31,7 +31,7 @@ interface BackendApiResponse<T> {
 export function toPaperDomainModel(p: BackendPaperDetail): Paper {
   const year = p.publicationDate ? new Date(p.publicationDate).getFullYear() : new Date().getFullYear();
   const keywords = p.keywords
-    ? p.keywords.map((k) => ({ id: String(k.keywordId), name: k.term }))
+    ? p.keywords.map((k) => ({ id: String(k.keywordId), name: k.term, trendScore: k.trendScore }))
     : [];
   const category = keywords.length > 0 ? keywords[0].name : "General";
 
