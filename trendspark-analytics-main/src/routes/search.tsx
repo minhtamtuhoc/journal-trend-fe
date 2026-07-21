@@ -14,6 +14,13 @@ import { toast } from "sonner";
 import { SaveToCollectionButton } from "@/components/SaveToCollectionButton";
 import { useQuery } from "@tanstack/react-query";
 import { apiClient } from "@/api/client";
+import {
+  Select as UiSelect,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const searchSchema = z.object({
   q: z.string().optional(),
@@ -545,11 +552,18 @@ function Select({ label, value, onChange, options }: { label: string; value: str
   return (
     <div>
       <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{label}</label>
-      <select value={value} onChange={(e) => onChange(e.target.value)} className="mt-1 w-full h-9 px-3 bg-secondary/40 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand/40">
-        {options.map(([v, l]) => (
-          <option key={v} value={v}>{l}</option>
-        ))}
-      </select>
+      <UiSelect value={value} onValueChange={onChange}>
+        <SelectTrigger className="mt-1 w-full h-9 px-3 bg-secondary/40 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand/40">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent className="max-h-[240px] overflow-y-auto rounded-lg bg-popover text-popover-foreground border border-border shadow-md">
+          {options.map(([v, l]) => (
+            <SelectItem key={v} value={v}>
+              {l}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </UiSelect>
     </div>
   );
 }
