@@ -632,8 +632,9 @@ function ReportsPage() {
                       <p className="text-[11px] text-muted-foreground mb-4">Track emerging topics and research trends in real-time.</p>
                       <Link
                         to="/trends"
-                        className="inline-flex items-center justify-center h-8 px-3 rounded-lg text-xs font-semibold text-brand-foreground transition-transform hover:scale-[1.03] w-full mt-auto"
-                        style={{ background: "var(--gradient-brand)" }}
+                        hash="trend-score-ranking"
+                        className="inline-flex items-center justify-center h-8 px-3 rounded-lg text-xs font-semibold text-white transition-transform hover:scale-[1.03] w-full mt-auto"
+                        style={{ background: "linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%)" }}
                       >
                         Explore Trends
                       </Link>
@@ -647,8 +648,9 @@ function ReportsPage() {
                       <h4 className="font-bold text-sm text-foreground mb-1">Authors</h4>
                       <p className="text-[11px] text-muted-foreground mb-4">Stay updated with publications from top researchers.</p>
                       <Link
-                        to="/trends"
-                        className="inline-flex items-center justify-center h-8 px-3 rounded-lg text-xs font-semibold border border-border bg-secondary/35 hover:bg-secondary/60 hover:text-foreground transition-colors w-full mt-auto"
+                        to="/authors"
+                        className="inline-flex items-center justify-center h-8 px-3 rounded-lg text-xs font-semibold text-white transition-transform hover:scale-[1.03] w-full mt-auto"
+                        style={{ background: "linear-gradient(135deg, #10b981 0%, #0d9488 100%)" }}
                       >
                         Browse Authors
                       </Link>
@@ -663,7 +665,8 @@ function ReportsPage() {
                       <p className="text-[11px] text-muted-foreground mb-4">Monitor publications in your target journals.</p>
                       <Link
                         to="/search"
-                        className="inline-flex items-center justify-center h-8 px-3 rounded-lg text-xs font-semibold border border-border bg-secondary/35 hover:bg-secondary/60 hover:text-foreground transition-colors w-full mt-auto"
+                        className="inline-flex items-center justify-center h-8 px-3 rounded-lg text-xs font-semibold text-white transition-transform hover:scale-[1.03] w-full mt-auto"
+                        style={{ background: "linear-gradient(135deg, #a855f7 0%, #6366f1 100%)" }}
                       >
                         Search Journals
                       </Link>

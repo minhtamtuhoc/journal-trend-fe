@@ -95,6 +95,21 @@ function TrendsPage() {
   const isTopicFollowed = (topicId: string) => followedTopics.some((t) => t.id === topicId);
   const isAuthorFollowed = (authorId: string) => followedAuthors.some((a) => a.id === authorId);
 
+  useEffect(() => {
+    if (window.location.hash === "#trend-score-ranking") {
+      const element = document.getElementById("trend-score-ranking");
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth" });
+      } else {
+        const timer = setTimeout(() => {
+          const el = document.getElementById("trend-score-ranking");
+          if (el) el.scrollIntoView({ behavior: "smooth" });
+        }, 150);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, []);
+
   const {
     trendingAuthors: TRENDING_AUTHORS = [],
   } = analytics ?? {};
@@ -717,6 +732,7 @@ function TrendsPage() {
       {/* Row 1 (Top Cards) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 items-stretch">
         <Card
+          id="trend-score-ranking"
           className="h-full flex flex-col"
           title={`TREND SCORE RANKING - ${getPreviousMonthName()}`}
           action={
@@ -790,7 +806,7 @@ function TrendsPage() {
                       >
                         <UiTooltip>
                           <UiTooltipTrigger asChild>
-                            <span className="underline decoration-dotted underline-offset-4 hover:opacity-85 transition-opacity">
+                            <span className="hover:opacity-85 transition-opacity">
                               {k.trendScore > 0 ? `+${k.trendScore.toFixed(1)}%` : k.trendScore < 0 ? `▼ ${Math.abs(k.trendScore).toFixed(1)}%` : "0.0%"}
                             </span>
                           </UiTooltipTrigger>
@@ -832,7 +848,7 @@ function TrendsPage() {
                               });
                             }
                           }}
-                          className={`text-[10px] px-2.5 py-0.5 rounded-md border transition-all cursor-pointer ${followed
+                          className={`text-[10px] w-[68px] text-center py-0.5 rounded-md border transition-all cursor-pointer ${followed
                             ? "border-brand/40 bg-brand/10 text-brand font-medium hover:bg-brand/20"
                             : "border-border hover:border-brand/40 hover:text-brand"
                             }`}
@@ -849,7 +865,7 @@ function TrendsPage() {
         </Card>
 
         <Card className="h-full flex flex-col" title="Top Cited Authors">
-          <div className={`space-y-3 pb-4 overflow-y-auto pr-1 ${compareMonth ? "max-h-[345px]" : "max-h-[430px]"}`}>
+          <div className="space-y-3 pb-4 overflow-y-auto pr-1 max-h-[430px]">
             {TRENDING_AUTHORS.map((a, i) => {
               const followed = isAuthorFollowed(a.id);
               return (
@@ -868,17 +884,29 @@ function TrendsPage() {
                       to="/authors/$authorId"
                       params={{ authorId: a.id }}
                       className="text-sm font-medium text-foreground hover:text-brand transition-colors block truncate"
+                      title={a.name}
                     >
                       {a.name}
                     </Link>
-                    <div className="text-[10px] text-muted-foreground truncate">
-                      {a.affiliation} · h-index {a.hIndex}
+                    <div 
+                      className="text-[10px] text-muted-foreground flex items-center justify-between gap-2"
+                      title={`${a.affiliation} · h-index ${a.hIndex}`}
+                    >
+                      <span className="truncate flex-1">
+                        {a.affiliation}
+                      </span>
+                      <span className="shrink-0 pr-8">
+                        h-index {a.hIndex}
+                      </span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 shrink-0">
-                    <div className="text-right">
-                      <div className="text-xs font-mono text-muted-foreground font-semibold">
-                        {(a.citations ?? 0).toLocaleString()} citations
+                  <div className="flex items-center gap-4 shrink-0">
+                    <div className="text-center flex flex-col justify-center min-w-[80px]">
+                      <div className="text-xs font-bold text-foreground font-sans leading-tight">
+                        {(a.citations ?? 0).toLocaleString()}
+                      </div>
+                      <div className="text-[9px] uppercase tracking-wider text-muted-foreground leading-tight">
+                        citations
                       </div>
                     </div>
                     <button
@@ -906,7 +934,7 @@ function TrendsPage() {
                           });
                         }
                       }}
-                      className={`text-[10px] px-2 py-0.5 rounded-md border transition-all cursor-pointer ${followed
+                      className={`text-[10px] w-[68px] text-center py-0.5 rounded-md border transition-all cursor-pointer ${followed
                         ? "border-brand/40 bg-brand/10 text-brand"
                         : "border-border hover:border-brand/40 hover:text-brand"
                         }`}
@@ -1003,7 +1031,7 @@ function TrendsPage() {
                               </Link>
                               {rowData.isNew && (
                                 <span className="text-[10px] text-brand/80 font-normal mt-0.5" title="New keyword not ranked in the comparison month">
-                                  ✨ New Topic
+                                  ✨ New Keyword
                                 </span>
                               )}
                             </div>
@@ -1140,7 +1168,7 @@ function TrendsPage() {
                                   });
                                 }
                               }}
-                              className={`text-[10px] px-2.5 py-0.5 rounded-md border transition-all cursor-pointer ${followed
+                              className={`text-[10px] w-[68px] text-center py-0.5 rounded-md border transition-all cursor-pointer ${followed
                                 ? "border-brand/40 bg-brand/10 text-brand font-medium hover:bg-brand/20"
                                 : "border-border hover:border-brand/40 hover:text-brand"
                                 }`}
@@ -1187,7 +1215,7 @@ function TrendsPage() {
                 <div className="flex items-center gap-3 p-3.5 rounded-xl bg-brand/5 border border-brand/10">
                   <span className="text-brand font-bold font-mono text-sm shrink-0">✨</span>
                   <div>
-                    <div className="font-semibold text-foreground">New Topic</div>
+                    <div className="font-semibold text-foreground">New Keyword</div>
                     <div className="text-[10px] text-muted-foreground">Not ranked historically</div>
                   </div>
                 </div>
