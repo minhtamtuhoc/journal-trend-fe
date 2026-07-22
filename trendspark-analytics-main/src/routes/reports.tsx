@@ -42,6 +42,12 @@ import {
   Building2,
 } from "lucide-react";
 import type { KeywordTrendPoint } from "@/types/report";
+import {
+  Tooltip as UiTooltip,
+  TooltipContent as UiTooltipContent,
+  TooltipProvider as UiTooltipProvider,
+  TooltipTrigger as UiTooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export const Route = createFileRoute("/reports")({
   component: ReportsPage,
@@ -1110,24 +1116,129 @@ function ReportsPage() {
                       </div>
 
                       {/* Chú thích màu sắc thể hiện tốc độ phát triển */}
-                      <div className="flex flex-wrap justify-center gap-6 pt-3 text-[11px] text-muted-foreground">
-                        <div className="flex items-center gap-1.5">
-                          <span className="inline-block size-3.5 rounded bg-rose-500/5 border border-rose-500/30" />
-                          <span>Hot Growth (&gt; 5.0%)</span>
+                      <UiTooltipProvider>
+                        <div className="flex flex-wrap justify-center gap-6 pt-3 text-[11px] text-muted-foreground">
+                          <UiTooltip delayDuration={100}>
+                            <UiTooltipTrigger asChild>
+                              <div className="flex items-center gap-1.5 cursor-pointer hover:text-rose-400 transition-colors">
+                                <span className="inline-block size-3.5 rounded bg-rose-500/5 border border-rose-500/30" />
+                                <span>Hot Growth (&gt; 5.0%)</span>
+                              </div>
+                            </UiTooltipTrigger>
+                            <UiTooltipContent side="top" align="center" className="p-3.5 max-w-[320px] bg-popover/95 text-popover-foreground border border-rose-500/30 shadow-xl rounded-xl backdrop-blur-md">
+                              <div className="space-y-2 text-xs">
+                                <div className="flex items-center gap-1.5 font-semibold text-rose-400">
+                                  <span className="inline-block size-2 rounded-full bg-rose-500" />
+                                  <span>Hot Growth (&gt; 5.0%)</span>
+                                </div>
+                                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                                  Co-occurring keywords exhibiting rapid growth in publication volume (&gt; 5.0%/month).
+                                </p>
+                                <div className="p-2 rounded-lg bg-surface-elevated/50 border border-border/40 font-mono text-[10px] space-y-1">
+                                  <div className="text-muted-foreground text-[9.5px]">Growth Rate Formula:</div>
+                                  <div className="text-center font-bold text-foreground py-0.5">
+                                    ((N<sub>current</sub> - N<sub>previous</sub>) / N<sub>previous</sub>) × 100%
+                                  </div>
+                                  <div className="text-[9px] text-muted-foreground border-t border-border/30 pt-1 font-sans italic">
+                                    * N = Number of published papers for the keyword in that month
+                                  </div>
+                                  <div className="text-[9.5px] text-rose-400 font-semibold text-right pt-0.5">Threshold: &gt; 5.0%</div>
+                                </div>
+                              </div>
+                            </UiTooltipContent>
+                          </UiTooltip>
+
+                          <UiTooltip delayDuration={100}>
+                            <UiTooltipTrigger asChild>
+                              <div className="flex items-center gap-1.5 cursor-pointer hover:text-amber-400 transition-colors">
+                                <span className="inline-block size-3.5 rounded bg-amber-500/5 border border-amber-500/30" />
+                                <span>High Growth (1.5% - 5.0%)</span>
+                              </div>
+                            </UiTooltipTrigger>
+                            <UiTooltipContent side="top" align="center" className="p-3.5 max-w-[320px] bg-popover/95 text-popover-foreground border border-amber-500/30 shadow-xl rounded-xl backdrop-blur-md">
+                              <div className="space-y-2 text-xs">
+                                <div className="flex items-center gap-1.5 font-semibold text-amber-400">
+                                  <span className="inline-block size-2 rounded-full bg-amber-500" />
+                                  <span>High Growth (1.5% - 5.0%)</span>
+                                </div>
+                                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                                  Co-occurring keywords showing strong positive publication growth (1.5% to 5.0%/month).
+                                </p>
+                                <div className="p-2 rounded-lg bg-surface-elevated/50 border border-border/40 font-mono text-[10px] space-y-1">
+                                  <div className="text-muted-foreground text-[9.5px]">Growth Rate Formula:</div>
+                                  <div className="text-center font-bold text-foreground py-0.5">
+                                    ((N<sub>current</sub> - N<sub>previous</sub>) / N<sub>previous</sub>) × 100%
+                                  </div>
+                                  <div className="text-[9px] text-muted-foreground border-t border-border/30 pt-1 font-sans italic">
+                                    * N = Number of published papers for the keyword in that month
+                                  </div>
+                                  <div className="text-[9.5px] text-amber-400 font-semibold text-right pt-0.5">Threshold: 1.5% - 5.0%</div>
+                                </div>
+                              </div>
+                            </UiTooltipContent>
+                          </UiTooltip>
+
+                          <UiTooltip delayDuration={100}>
+                            <UiTooltipTrigger asChild>
+                              <div className="flex items-center gap-1.5 cursor-pointer hover:text-sky-400 transition-colors">
+                                <span className="inline-block size-3.5 rounded bg-sky-500/5 border border-sky-500/30" />
+                                <span>Stable Growth (0.0% - 1.5%)</span>
+                              </div>
+                            </UiTooltipTrigger>
+                            <UiTooltipContent side="top" align="center" className="p-3.5 max-w-[320px] bg-popover/95 text-popover-foreground border border-sky-500/30 shadow-xl rounded-xl backdrop-blur-md">
+                              <div className="space-y-2 text-xs">
+                                <div className="flex items-center gap-1.5 font-semibold text-sky-400">
+                                  <span className="inline-block size-2 rounded-full bg-sky-500" />
+                                  <span>Stable Growth (0.0% - 1.5%)</span>
+                                </div>
+                                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                                  Co-occurring keywords maintaining steady interest or minor publication increases (0.0% to 1.5%/month).
+                                </p>
+                                <div className="p-2 rounded-lg bg-surface-elevated/50 border border-border/40 font-mono text-[10px] space-y-1">
+                                  <div className="text-muted-foreground text-[9.5px]">Growth Rate Formula:</div>
+                                  <div className="text-center font-bold text-foreground py-0.5">
+                                    ((N<sub>current</sub> - N<sub>previous</sub>) / N<sub>previous</sub>) × 100%
+                                  </div>
+                                  <div className="text-[9px] text-muted-foreground border-t border-border/30 pt-1 font-sans italic">
+                                    * N = Number of published papers for the keyword in that month
+                                  </div>
+                                  <div className="text-[9.5px] text-sky-400 font-semibold text-right pt-0.5">Threshold: 0.0% - 1.5%</div>
+                                </div>
+                              </div>
+                            </UiTooltipContent>
+                          </UiTooltip>
+
+                          <UiTooltip delayDuration={100}>
+                            <UiTooltipTrigger asChild>
+                              <div className="flex items-center gap-1.5 cursor-pointer hover:text-foreground transition-colors">
+                                <span className="inline-block size-3.5 rounded bg-secondary/5 border border-border/40" />
+                                <span>Static / No Change (&le; 0.0%)</span>
+                              </div>
+                            </UiTooltipTrigger>
+                            <UiTooltipContent side="top" align="center" className="p-3.5 max-w-[320px] bg-popover/95 text-popover-foreground border border-border/60 shadow-xl rounded-xl backdrop-blur-md">
+                              <div className="space-y-2 text-xs">
+                                <div className="flex items-center gap-1.5 font-semibold text-muted-foreground">
+                                  <span className="inline-block size-2 rounded-full bg-secondary border border-border" />
+                                  <span>Static / No Change (&le; 0.0%)</span>
+                                </div>
+                                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                                  Co-occurring keywords with flat or declining publication volume compared to the previous month (&le; 0.0%/month).
+                                </p>
+                                <div className="p-2 rounded-lg bg-surface-elevated/50 border border-border/40 font-mono text-[10px] space-y-1">
+                                  <div className="text-muted-foreground text-[9.5px]">Growth Rate Formula:</div>
+                                  <div className="text-center font-bold text-foreground py-0.5">
+                                    ((N<sub>current</sub> - N<sub>previous</sub>) / N<sub>previous</sub>) × 100%
+                                  </div>
+                                  <div className="text-[9px] text-muted-foreground border-t border-border/30 pt-1 font-sans italic">
+                                    * N = Number of published papers for the keyword in that month
+                                  </div>
+                                  <div className="text-[9.5px] text-muted-foreground font-semibold text-right pt-0.5">Threshold: &le; 0.0%</div>
+                                </div>
+                              </div>
+                            </UiTooltipContent>
+                          </UiTooltip>
                         </div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="inline-block size-3.5 rounded bg-amber-500/5 border border-amber-500/30" />
-                          <span>High Growth (1.5% - 5.0%)</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="inline-block size-3.5 rounded bg-sky-500/5 border border-sky-500/30" />
-                          <span>Stable Growth (0.0% - 1.5%)</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="inline-block size-3.5 rounded bg-secondary/5 border border-border/40" />
-                          <span>Static / No Change (&le; 0.0%)</span>
-                        </div>
-                      </div>
+                      </UiTooltipProvider>
                     </div>
                   )}
                 </Card>
