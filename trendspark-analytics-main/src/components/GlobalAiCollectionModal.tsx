@@ -9,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Sparkles, Layers, CheckSquare, Square, Loader2, BookOpen, CheckCircle2, ListFilter, FileText } from "lucide-react";
+import { Sparkles, Layers, CheckSquare, Square, Loader2, BookOpen, CheckCircle2, ListFilter, FileText, Info } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/api/client";
 import { useAuth } from "@/auth";
@@ -250,12 +250,14 @@ export function GlobalAiCollectionModal({
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
                           <FileText className="size-3.5 text-brand" />
-                          Analyze All Papers
+                          {activeCollection.paperIds.length > 30 ? "Analyze Top 30 Recent Papers" : "Analyze All Papers"}
                         </span>
                         {!isSelectMode && <CheckCircle2 className="size-4 text-brand" />}
                       </div>
                       <p className="text-[11px] text-muted-foreground leading-snug">
-                        Full collection analysis ({activeCollection.paperIds.length} paper{activeCollection.paperIds.length === 1 ? "" : "s"})
+                        {activeCollection.paperIds.length > 30
+                          ? `Analyzes 30 most recent papers out of ${activeCollection.paperIds.length}`
+                          : `Full collection analysis (${activeCollection.paperIds.length} paper${activeCollection.paperIds.length === 1 ? "" : "s"})`}
                       </p>
                     </button>
 
@@ -280,6 +282,16 @@ export function GlobalAiCollectionModal({
                       </p>
                     </button>
                   </div>
+
+                  {activeCollection.paperIds.length > 30 && !isSelectMode && (
+                    <div className="p-3 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-400 text-xs flex items-start gap-2">
+                      <Info className="size-4 shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-semibold">Notice: </span>
+                        This collection contains <strong>{activeCollection.paperIds.length} papers</strong>. The 30 most recent papers will be analyzed. To choose specific papers, switch to <strong>Custom Paper Selection</strong>.
+                      </div>
+                    </div>
+                  )}
 
                   {/* Paper Checklist (Shown in Custom Selection Mode) */}
                   {isSelectMode && (

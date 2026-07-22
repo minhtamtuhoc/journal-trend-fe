@@ -455,7 +455,7 @@ function SearchPage() {
                         <div className="flex flex-wrap gap-1.5 mt-3">
                           {p.keywords.map((k) => {
                             const followed = isTopicFollowed(k.id);
-                            const hasTrend = Boolean(k.trendScore && k.trendScore > 0);
+                            const hasTrend = Boolean(k.trendScore && k.trendScore >= 15);
                             return (
                               <button
                                 key={k.id}
