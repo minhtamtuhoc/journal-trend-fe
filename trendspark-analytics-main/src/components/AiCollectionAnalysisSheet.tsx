@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   Sheet,
@@ -8,6 +8,8 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import type { AiCollectionAnalysisResponse, TopicCluster } from "@/types/ai-collection-analysis";
+import { useCollection } from "@/hooks/data/use-collections";
+import { usePapersByIds } from "@/hooks/data/use-papers";
 import {
   Sparkles,
   Layers,
@@ -23,6 +25,7 @@ import {
   Flame,
   ChevronDown,
   ChevronUp,
+  AlertTriangle,
 } from "lucide-react";
 
 interface AiCollectionAnalysisSheetProps {
@@ -131,6 +134,20 @@ export function AiCollectionAnalysisSheet({
 }: AiCollectionAnalysisSheetProps) {
   if (!data) return null;
 
+  const collectionIdStr = data.collectionId ? String(data.collectionId) : "";
+  const { data: collection } = useCollection(collectionIdStr);
+  const { data: allPapers = [] } = usePapersByIds(collection?.paperIds ?? []);
+
+  const excludedPapers = useMemo(() => {
+    if (!data || data.paperCount <= data.analyzedPaperCount || allPapers.length === 0) {
+      return [];
+    }
+    if (allPapers.length > data.analyzedPaperCount) {
+      return allPapers.slice(data.analyzedPaperCount);
+    }
+    return [];
+  }, [data, allPapers]);
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
@@ -174,6 +191,52 @@ export function AiCollectionAnalysisSheet({
 
         {/* Scrollable Content Body */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
+
+          {/* Partial Analysis Warning Banner */}
+          {data.paperCount > data.analyzedPaperCount && (
+            <div className="p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-400 text-xs space-y-3">
+              <div className="flex items-start gap-2.5">
+                <AlertTriangle className="size-4 shrink-0 mt-0.5 text-amber-400" />
+                <div className="space-y-0.5 flex-1">
+                  <p className="font-semibold text-foreground">
+                    Partial Collection Analysis ({data.analyzedPaperCount} of {data.paperCount} papers analyzed)
+                  </p>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    This collection contains <strong>{data.paperCount} papers</strong>. Due to the 30-paper AI limit per analysis, the <strong>{data.paperCount - data.analyzedPaperCount} oldest paper(s)</strong> below were excluded from this run.
+                  </p>
+                </div>
+              </div>
+
+              {excludedPapers.length > 0 && (
+                <div className="pt-2 border-t border-amber-500/20 space-y-2">
+                  <div className="flex items-center justify-between text-[11px] font-bold text-amber-400 uppercase tracking-wider">
+                    <span>Excluded Papers ({excludedPapers.length}):</span>
+                  </div>
+                  <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                    {excludedPapers.map((p) => (
+                      <Link
+                        key={p.id}
+                        to="/papers/$id"
+                        params={{ id: p.id }}
+                        onClick={() => onPaperClick?.(p.id)}
+                        className="flex items-center justify-between gap-2 p-2 rounded-lg bg-background/60 hover:bg-background border border-amber-500/20 text-foreground transition-all group"
+                      >
+                        <div className="min-w-0 flex-1 flex items-center gap-2">
+                          <FileText className="size-3.5 text-amber-400/70 shrink-0 group-hover:text-amber-400" />
+                          <span className="font-medium text-xs truncate group-hover:text-brand transition-colors">
+                            {p.title}
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-muted-foreground font-mono shrink-0">
+                          {p.year}
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* 1. Overall Summary */}
           {data.overallSummary && (
