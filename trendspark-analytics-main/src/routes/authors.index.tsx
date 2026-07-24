@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { AppLayout, PageHeader } from "@/components/AppLayout";
 import { Card } from "@/components/Card";
 import { useAuthors, useAuthorSpotlight } from "@/hooks/data/use-authors";
@@ -10,7 +10,14 @@ import { toast } from "sonner";
 import { useAuth } from "@/auth";
 import { ApiError } from "@/api/errors";
 
-export const Route = createFileRoute("/authors/")({ component: AuthorsIndexPage });
+export const Route = createFileRoute("/authors/")({
+  component: AuthorsIndexPage,
+  validateSearch: (search: Record<string, unknown>) => ({
+    page: typeof search.page === "number" ? search.page : 0,
+    q: typeof search.q === "string" ? search.q : undefined,
+    sort: typeof search.sort === "string" ? search.sort : undefined,
+  }),
+});
 
 function getVisiblePages(current: number, total: number) {
   if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
@@ -21,14 +28,18 @@ function getVisiblePages(current: number, total: number) {
 
 function AuthorsIndexPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const search = Route.useSearch() as { page?: number; q?: string; sort?: string };
   const { data: followedAuthors = [] } = useFollowedAuthors();
   const { data: spotlight, isLoading: isLoadingSpotlight } = useAuthorSpotlight();
   const followAuthorMut = useFollowAuthor();
   const unfollowAuthorMut = useUnfollowAuthor();
   const isAuthorFollowed = (authorId: string) => followedAuthors.some((a) => a.id === authorId);
 
-  const [page, setPage] = useState(1);
-  const [sortBy, setSortBy] = useState<"default" | "papers" | "citations" | "hIndex">("default");
+  const page = typeof search.page === "number" ? search.page : 0; // 0-indexed
+  const currentPageDisplay = page + 1; // 1-indexed for UI display
+  const sortBy = (search.sort as "default" | "papers" | "citations" | "hIndex") ?? "default";
+
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const sortDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -43,26 +54,61 @@ function AuthorsIndexPage() {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
-  const [query, setQuery] = useState("");
-  const [debouncedQuery, setDebouncedQuery] = useState("");
+
+  const [query, setQuery] = useState(search.q ?? "");
   const pageSize = 24;
 
+  // Sync search input value if search.q changes externally (e.g. Back/Forward navigation)
+  useEffect(() => {
+    setQuery(search.q ?? "");
+  }, [search.q]);
+
+  // Debounced navigation when search input changes
   useEffect(() => {
     const timer = setTimeout(() => {
-      setDebouncedQuery(query);
-      setPage(1); // Reset to page 1 on search change
+      const trimmed = query.trim();
+      if (trimmed !== (search.q ?? "")) {
+        navigate({
+          to: "/authors",
+          search: (prev: Record<string, any>) => ({
+            page: 0,
+            q: trimmed || undefined,
+            sort: prev.sort as string | undefined,
+          }),
+          replace: true,
+        });
+      }
     }, 300);
     return () => clearTimeout(timer);
-  }, [query]);
+  }, [query, search.q, navigate, search.sort]);
 
-  useEffect(() => {
-    setPage(1);
-  }, [sortBy]);
+  const handlePageChange = (newPage0Indexed: number) => {
+    navigate({
+      to: "/authors",
+      search: (prev: Record<string, any>) => ({
+        page: newPage0Indexed,
+        q: prev.q as string | undefined,
+        sort: prev.sort as string | undefined,
+      }),
+    });
+  };
+
+  const handleSortChange = (type: "default" | "papers" | "citations" | "hIndex") => {
+    setShowSortDropdown(false);
+    navigate({
+      to: "/authors",
+      search: (prev: Record<string, any>) => ({
+        page: 0,
+        q: prev.q as string | undefined,
+        sort: type !== "default" ? type : undefined,
+      }),
+    });
+  };
 
   const { data: pageData, isLoading, isError } = useAuthors({
-    page: page - 1,
+    page: page,
     size: pageSize,
-    q: debouncedQuery.trim() || undefined,
+    q: search.q,
     sort: sortBy !== "default" ? sortBy : undefined,
   });
 
@@ -126,10 +172,7 @@ function AuthorsIndexPage() {
                   <button
                     key={type}
                     type="button"
-                    onClick={() => {
-                      setSortBy(type);
-                      setShowSortDropdown(false);
-                    }}
+                    onClick={() => handleSortChange(type)}
                     className={`w-full flex items-center justify-between px-4 py-2.5 text-xs font-medium rounded-xl transition-colors cursor-pointer text-left ${
                       sortBy === type
                         ? "bg-brand/10 text-brand font-semibold"
@@ -157,7 +200,10 @@ function AuthorsIndexPage() {
           <button
             onClick={() => {
               setQuery("");
-              setPage(1);
+              navigate({
+                to: "/authors",
+                search: (prev: Record<string, any>) => ({ page: 0, q: undefined, sort: prev.sort as string | undefined }),
+              });
             }}
             className="glass rounded-2xl p-4 flex flex-col justify-between min-w-32 border border-border hover:border-brand/40 hover:bg-brand/5 transition-all text-left group cursor-pointer"
             title="Click to reset search"
@@ -191,8 +237,8 @@ function AuthorsIndexPage() {
       ) : authorsList.length === 0 ? (
         <Card>
           <p className="text-sm text-muted-foreground py-6 text-center">
-            {debouncedQuery.trim()
-              ? `No authors found matching "${debouncedQuery.trim()}".`
+            {search.q?.trim()
+              ? `No authors found matching "${search.q.trim()}".`
               : "No authors in system. Log in as Admin → Run Manual Sync."}
           </p>
         </Card>
@@ -285,21 +331,21 @@ function AuthorsIndexPage() {
             <div className="flex flex-wrap items-center justify-center gap-1.5 mt-6 py-4 border-t border-border">
               <button
                 type="button"
-                disabled={page === 1}
-                onClick={() => setPage((p) => Math.max(p - 1, 1))}
+                disabled={page === 0}
+                onClick={() => handlePageChange(page - 1)}
                 className="inline-flex items-center justify-center h-8 px-3 rounded-lg text-xs font-medium border border-border hover:border-brand/40 disabled:opacity-50 disabled:pointer-events-none transition-colors cursor-pointer"
               >
                 Previous
               </button>
 
-              {getVisiblePages(page, totalPages).map((p, i) => (
+              {getVisiblePages(currentPageDisplay, totalPages).map((p, i) => (
                 p === "..." ? (
                   <span key={`dots-${i}`} className="px-1 text-muted-foreground">...</span>
                 ) : (
                   <button
                     key={p}
-                    onClick={() => setPage(p as number)}
-                    className={`inline-flex items-center justify-center size-8 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${page === p
+                    onClick={() => handlePageChange((p as number) - 1)}
+                    className={`inline-flex items-center justify-center size-8 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${currentPageDisplay === p
                         ? "bg-brand/10 border-brand/45 text-brand"
                         : "border-border hover:border-brand/40"
                       }`}
@@ -311,8 +357,8 @@ function AuthorsIndexPage() {
 
               <button
                 type="button"
-                disabled={page === totalPages}
-                onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
+                disabled={currentPageDisplay >= totalPages}
+                onClick={() => handlePageChange(page + 1)}
                 className="inline-flex items-center justify-center h-8 px-3 rounded-lg text-xs font-medium border border-border hover:border-brand/40 disabled:opacity-50 disabled:pointer-events-none transition-colors cursor-pointer"
               >
                 Next

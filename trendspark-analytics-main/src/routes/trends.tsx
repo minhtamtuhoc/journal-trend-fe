@@ -164,15 +164,16 @@ function TrendsPage() {
 
 
 
-  // State for the selected month to compare
+  // === CHỨC NĂNG SO SÁNH (HISTORICAL COMPARISON) ===
+  // 1. State lưu trữ tháng được người dùng chọn để so sánh (null nghĩa là "No comparison")
   const [compareMonth, setCompareMonth] = useState<{ month: number; year: number; name: string } | null>(null);
 
-  // Generate the rolling 5 previous months starting from the currentMainMonth
+  // 2. Tạo danh sách 5 tháng quá khứ liền kề tính từ currentMainMonth
   const previousMonthsList = useMemo(() => {
     const list = [];
     const date = new Date();
-    date.setDate(1); // prevent rollover
-    date.setMonth(date.getMonth() - 1); // start from previous calendar month (main month of the table)
+    date.setDate(1); // Tránh lỗi nhảy tháng khi ngày hiện tại là 31
+    date.setMonth(date.getMonth() - 1); // Bắt đầu từ tháng chính hiển thị trên bảng
 
     for (let i = 0; i < 5; i++) {
       date.setMonth(date.getMonth() - 1);
@@ -185,6 +186,7 @@ function TrendsPage() {
     return list;
   }, []);
 
+  // 3. Kiểm tra ngầm dữ liệu 5 tháng quá khứ từ Backend để xác định những tháng có bài báo
   const checkMonthsQueries = useQueries({
     queries: previousMonthsList.map((m) => ({
       queryKey: ["trending-keywords-month-check", m.year, m.month],
@@ -209,6 +211,7 @@ function TrendsPage() {
     })),
   });
 
+  // 4. Danh sách các tháng quá khứ thực sự có dữ liệu để nạp vào Dropdown Select
   const availableCompareMonths = useMemo(() => {
     return checkMonthsQueries
       .map((q) => q.data)
@@ -301,7 +304,7 @@ function TrendsPage() {
     })),
   });
 
-  // Fetch keywords for the selected comparison month
+  // 5. Query lấy danh sách từ khóa xu hướng của tháng quá khứ được người dùng chọn
   const { data: compareKeywords = [], isLoading: loadingCompareKeywords } = useQuery({
     queryKey: ["trending-keywords-month", compareMonth?.year, compareMonth?.month],
     queryFn: async () => {
@@ -322,28 +325,30 @@ function TrendsPage() {
         },
       });
 
-      // Normalize raw TrendingKeywordResponse to Keyword
+      // Chuẩn hóa dữ liệu thô nhận từ Backend API
       return (res.data ?? []).map((raw) => ({
         id: String(raw.keywordId),
         term: raw.term,
         count: raw.paperCount,
         trendScore: raw.trendScore,
-        monthsTrending: 3, // placeholder like BE does for snapshot
+        monthsTrending: 3,
         category: raw.domain ?? "Research",
       }));
     },
-    enabled: Boolean(compareMonth),
+    enabled: Boolean(compareMonth), // Chỉ kích hoạt gọi API khi đã chọn 1 tháng so sánh
     ...mockQueryDefaults,
   });
 
-  // Helper to get comparison info for the bottom table row-by-row
+  // 6. Hàm hỗ trợ tính toán đối sánh từng hàng (Row-by-Row) giữa tháng hiện tại và tháng quá khứ
   const getCompareRowData = (tk: any, index: number) => {
+    // Tìm thông tin từ khóa tương ứng ở tháng quá khứ
     const bk = compareKeywords.find(k => k.term === tk.term && k.count !== null && k.count > 0);
-    const currentRank = index + 1;
+    const currentRank = index + 1; // Thứ hạng hiện tại (1 đến 8)
 
     if (bk) {
+      // Nếu từ khóa CÓ tồn tại trong tháng quá khứ
       const activeCompareKeywords = compareKeywords.filter(k => k.count !== null && k.count > 0);
-      const rankInCompare = activeCompareKeywords.findIndex(k => k.term === tk.term) + 1;
+      const rankInCompare = activeCompareKeywords.findIndex(k => k.term === tk.term) + 1; // Thứ hạng quá khứ
       return {
         key: tk.id,
         id: tk.id,
@@ -353,12 +358,13 @@ function TrendsPage() {
         monthsTrending: bk.monthsTrending,
         isNew: false,
         rankInCompare,
-        diffPapers: tk.count - bk.count,
-        diffScore: tk.trendScore - bk.trendScore,
-        diffRank: rankInCompare - currentRank, // positive means rank improved (e.g. was 10, now 2 => 10 - 2 = +8)
+        diffPapers: tk.count - bk.count, // Chênh lệch bài báo: Hiện tại - Quá khứ
+        diffScore: tk.trendScore - bk.trendScore, // Chênh lệch điểm Trend Score %: Hiện tại - Quá khứ
+        diffRank: rankInCompare - currentRank, // Chênh lệch thứ hạng: Số dương = Tăng hạng (VD: quá khứ hạng 10, hiện tại hạng 2 => 10 - 2 = +8)
       };
     }
 
+    // Nếu từ khóa MỚI (chưa có xếp hạng ở tháng quá khứ)
     return {
       key: tk.id,
       id: tk.id,
@@ -366,7 +372,7 @@ function TrendsPage() {
       count: 0,
       trendScore: 0,
       monthsTrending: 0,
-      isNew: true,
+      isNew: true, // Đánh dấu từ khóa mới xuất hiện
       rankInCompare: null,
       diffPapers: tk.count,
       diffScore: tk.trendScore,
@@ -745,12 +751,13 @@ function TrendsPage() {
               <Select
                 value={compareMonth ? `${compareMonth.year}-${compareMonth.month}` : "none"}
                 onValueChange={(val) => {
+                  // Xử lý sự kiện khi chọn tháng trong Menu thả xuống (Select Dropdown)
                   if (val === "none") {
-                    setCompareMonth(null);
+                    setCompareMonth(null); // Trở về chế độ "No comparison" -> Ẩn bảng so sánh
                   } else {
                     const [year, month] = val.split("-").map(Number);
                     const selected = availableCompareMonths.find(m => m.year === year && m.month === month);
-                    if (selected) setCompareMonth(selected);
+                    if (selected) setCompareMonth(selected); // Lưu tháng được chọn để kích hoạt so sánh
                   }
                 }}
               >
@@ -759,6 +766,7 @@ function TrendsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="none">No comparison</SelectItem>
+                  {/* Nạp danh sách các tháng quá khứ có dữ liệu khả dụng vào Menu */}
                   {availableCompareMonths.map((m) => (
                     <SelectItem key={`${m.year}-${m.month}`} value={`${m.year}-${m.month}`}>
                       {m.name} {m.year}
@@ -954,13 +962,14 @@ function TrendsPage() {
         </Card>
       </div>
 
-      {/* Row 2 (Bottom Cards) */}
+      {/* Row 2 (Bottom Cards - Bảng so sánh xuất hiện khi compareMonth được chọn) */}
       {compareMonth && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 items-stretch">
           <Card
             className="h-full flex flex-col"
             title={`TREND SCORE RANKING - ${compareMonth.name.toUpperCase()} ${compareMonth.year}`}
             action={
+              // Nút X ở góc Card để tắt chế độ so sánh
               <button
                 onClick={() => setCompareMonth(null)}
                 className="p-1 hover:bg-secondary rounded transition-colors text-muted-foreground hover:text-foreground cursor-pointer"
@@ -991,11 +1000,13 @@ function TrendsPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
+                    {/* Lặp qua Top 8 từ khóa hiện tại để hiển thị số liệu đối sánh tương ứng */}
                     {TRENDING_KEYWORDS.map((tk, index) => {
                       const rowData = getCompareRowData(tk, index);
                       const followed = isTopicFollowed(rowData.id);
                       return (
                         <tr key={rowData.key} className="hover:bg-secondary/40 transition-colors">
+                          {/* Cột 1: Hạng quá khứ và độ lệch thứ hạng (▲ Tăng hạng, ▼ Tụt hạng, NEW Từ khóa mới) */}
                           <td className="py-3 text-left font-mono text-muted-foreground w-12">
                             <div className="flex flex-col items-start justify-center">
                               <span className="font-medium text-muted-foreground">
@@ -1024,6 +1035,7 @@ function TrendsPage() {
                               )}
                             </div>
                           </td>
+                          {/* Cột 2: Tên từ khóa */}
                           <td className="py-3 text-left font-medium pr-4 max-w-[220px]">
                             <div className="flex flex-col">
                               <Link
@@ -1041,6 +1053,7 @@ function TrendsPage() {
                               )}
                             </div>
                           </td>
+                          {/* Cột 3: Số lượng bài báo ở tháng quá khứ và chênh lệch bài báo */}
                           <td className="py-3 text-right font-mono px-4 w-24">
                             <div className="flex flex-col items-end justify-center">
                               <span className="text-foreground font-medium">
@@ -1065,12 +1078,14 @@ function TrendsPage() {
                               )}
                             </div>
                           </td>
+                          {/* Cột 4: Điểm Trend Score ở tháng quá khứ (kèm Tooltip giải thích công thức & độ lệch diffScore) */}
                           <td
                             className={`py-3 text-right font-mono px-4 w-28 ${
                               rowData.trendScore !== null ? "cursor-help" : ""
                             }`}
                           >
                             <div className="flex flex-col items-end justify-center">
+                              {/* Tooltip hiển thị công thức tính Trend Score ở tháng quá khứ */}
                               <UiTooltip>
                                 <UiTooltipTrigger asChild>
                                   <span
@@ -1129,6 +1144,7 @@ function TrendsPage() {
                                   </div>
                                 </UiTooltipContent>
                               </UiTooltip>
+                              {/* Hiển thị chênh lệch điểm Trend Score % giữa tháng hiện tại và tháng quá khứ */}
                               {rowData.diffScore !== null && (
                                 <UiTooltip>
                                   <UiTooltipTrigger asChild>

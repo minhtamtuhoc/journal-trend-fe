@@ -237,12 +237,16 @@ export function PageHeader({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
+    <div className="flex flex-col gap-3 mb-8">
       <div>
         <h1 className="text-2xl font-bold text-foreground tracking-tight">{title}</h1>
         {subtitle && <p className="text-muted-foreground text-sm mt-1">{subtitle}</p>}
       </div>
-      {action}
+      {action && (
+        <div className="flex items-center justify-end flex-wrap gap-2 w-full">
+          {action}
+        </div>
+      )}
     </div>
   );
 }

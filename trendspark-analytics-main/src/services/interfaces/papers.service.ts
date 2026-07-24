@@ -34,6 +34,7 @@ export interface PapersService {
     sort?: string;
     fromYear?: number;
     toYear?: number;
+    month?: number;
     category?: string;
     minCitations?: number;
   }): Promise<PageResponse<Paper>>;
