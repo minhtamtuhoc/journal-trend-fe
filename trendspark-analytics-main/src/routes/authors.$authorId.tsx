@@ -64,6 +64,7 @@ function AuthorProfilePage() {
             )}
             <Link
               to="/authors"
+              search={{ page: 1, q: undefined, sort: undefined }}
               className="inline-flex items-center gap-2 h-9 px-3 rounded-lg text-sm font-medium border border-border hover:bg-secondary/50"
             >
               <ArrowLeft className="size-4" /> Back to Authors

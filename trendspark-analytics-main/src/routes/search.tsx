@@ -30,9 +30,8 @@ const searchSchema = z.object({
 
 export const Route = createFileRoute("/search")({
   component: SearchPage,
-  validateSearch: (s) => searchSchema.parse(s),
+  validateSearch: (s: Record<string, unknown>): z.infer<typeof searchSchema> => searchSchema.parse(s),
 });
-
 
 
 
@@ -45,9 +44,18 @@ function getVisiblePages(current: number, total: number) {
 }
 
 function SearchPage() {
-  const { q: initial, topicId: initialTopicId, searchType: initialSearchType } = Route.useSearch();
+  const {
+    q: initial,
+    topicId: initialTopicId,
+    searchType: initialSearchType,
+    fromYear: initialFromYear,
+    toYear: initialToYear,
+    month: initialMonth,
+  } = Route.useSearch() as any;
   const navigate = useNavigate();
 
+  // === 1. LẤY DANH SÁCH LINH VỰC (CATEGORIES / DOMAINS) ===
+  // Query gọi API /v1/keywords để lấy tất cả các domain thuộc tính của keyword
   const { data: keywordsData = [] } = useQuery({
     queryKey: ["all-keywords-domains"],
     queryFn: async () => {
@@ -58,39 +66,47 @@ function SearchPage() {
     gcTime: 60 * 60 * 1000,
   });
 
+  // Lọc ra danh sách domain độc nhất và sắp xếp theo thứ tự bảng chữ cái
   const categories = useMemo(() => {
     const domains = keywordsData
       .map((k) => k.domain)
       .filter((d): d is string => typeof d === "string" && d.trim() !== "");
     return Array.from(new Set(domains)).sort();
   }, [keywordsData]);
-  const [q, setQ] = useState(initial ?? "");
-  const [searchType, setSearchType] = useState<"papers" | "authors" | "keywords">(initialSearchType ?? "papers");
-  const [showDropdown, setShowDropdown] = useState(false);
-  const [sort, setSort] = useState<"citations" | "year">("citations");
-  const [fromYear, setFromYear] = useState<string>("all");
-  const [toYear, setToYear] = useState<string>("all");
-  const [category, setCategory] = useState("all");
-  const [minCitations, setMinCitations] = useState(0);
 
-  const { user } = useAuth();
-  const { data: recentSearches = [] } = useRecentSearches();
-  const recordSearch = useRecordSearch();
+  // === 2. KHỞI TẠO CÁC STATE BỘ LỌC VÀ TRUY VẤN ===
+  const [q, setQ] = useState(initial ?? ""); // Từ khóa tìm kiếm
+  const [searchType, setSearchType] = useState<"papers" | "authors" | "keywords">(initialSearchType ?? "papers"); // Loại đối tượng tìm kiếm
+  const [showDropdown, setShowDropdown] = useState(false); // Trạng thái hiển thị Menu dropdown chọn loại tìm kiếm
+  const [sort, setSort] = useState<"citations" | "year">("citations"); // Tiêu chí sắp xếp: theo trích dẫn hoặc năm
+  const [fromYear, setFromYear] = useState<string>(initialFromYear ? String(initialFromYear) : "all"); // Lọc từ năm
+  const [toYear, setToYear] = useState<string>(initialToYear ? String(initialToYear) : "all"); // Lọc đến năm
+  const [category, setCategory] = useState("all"); // Lọc theo danh mục/lĩnh vực
+  const [minCitations, setMinCitations] = useState(0); // Lọc số trích dẫn tối thiểu (Slider)
 
+  // === 3. QUẢN LÝ TÀI KHOẢN VÀ LỊCH SỬ TÌM KIẾM ===
+  const { user } = useAuth(); // Thông tin tài khoản đăng nhập
+  const { data: recentSearches = [] } = useRecentSearches(); // Hook lấy danh sách lịch sử tìm kiếm gần đây
+  const recordSearch = useRecordSearch(); // Hook lưu vết lịch sử tìm kiếm mới
+
+  // === 4. TRẠNG THÁI Ô NHẬP & GỢI Ý TỰ ĐỘNG (AUTO SUGGESTIONS) ===
   const [isInputFocused, setIsInputFocused] = useState(false);
-  const showSuggestions = isInputFocused && q.trim().length >= 2;
+  const showSuggestions = isInputFocused && q.trim().length >= 2; // Hiển thị gợi ý khi focus ô tìm kiếm & gõ >= 2 ký tự
   const { data: suggestions = [] } = useSearchSuggestions(q, showSuggestions);
 
+  // Thao tác Follow/Unfollow các từ khóa chủ đề
   const { data: followedTopics = [] } = useFollowedTopics();
-  const { data: availableYears = [] } = useAvailableYears();
+  const { data: availableYears = [] } = useAvailableYears(); // Lấy danh sách các năm xuất bản có trong DB
   const followTopic = useFollowTopic();
   const unfollowTopic = useUnfollowTopic();
 
   const isTopicFollowed = (topicId: string) => followedTopics.some((t) => t.id === topicId);
 
+  // === 5. PHÂN TRANG (PAGINATION) ===
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 20;
 
+  // Tự động đưa về trang 1 khi thay đổi bất kỳ bộ lọc nào
   useEffect(() => {
     setPage(1);
   }, [initial, initialSearchType, sort, fromYear, toYear, category, minCitations]);
@@ -107,6 +123,7 @@ function SearchPage() {
 
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // Đóng dropdown và popup gợi ý khi người dùng nhấp chuột ra ngoài
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -120,21 +137,24 @@ function SearchPage() {
     };
   }, []);
 
+  // Chuyển đổi tham số sort thành định dạng API tương ứng
   const sortParam =
     sort === "year"
       ? "publicationDate,desc"
       : "citationCount,desc";
 
+  // === 6. HOOK GỌI API TÌM KIẾM BÀI BÁO (SEARCH PAPERS HOOK) ===
   const { data, isLoading } = useSearchPapers({
     ...(initialTopicId != null
       ? { topicId: initialTopicId }
-      : { q: initial || undefined }),
-    searchType: initialSearchType || undefined,
-    page: page - 1,
+      : { q: q || initial || undefined }),
+    searchType: searchType || initialSearchType || undefined,
+    page: page - 1, // Spring Boot API 0-indexed page
     size: PAGE_SIZE,
     sort: sortParam,
-    fromYear: fromYear !== "all" ? Number(fromYear) : undefined,
-    toYear: toYear !== "all" ? Number(toYear) : undefined,
+    fromYear: fromYear !== "all" ? Number(fromYear) : initialFromYear,
+    toYear: toYear !== "all" ? Number(toYear) : initialToYear,
+    month: initialMonth,
     category: category !== "all" ? category : undefined,
     minCitations: minCitations > 0 ? minCitations : undefined,
   });
@@ -146,6 +166,7 @@ function SearchPage() {
   const endIndex = Math.min(startIndex + PAGE_SIZE, totalResults);
   const paginatedResults = results;
 
+  // === 7. CHỨC NĂNG XUẤT DỮ LIỆU FILE CSV (EXPORT CSV) ===
   const exportCsv = () => {
     const header = "title,authors,journal,year,citations,trendScore,doi";
     const rows = results.map((p) => [p.title, p.authors.join(";"), p.journal, p.year, p.citations, p.trendScore, p.doi].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","));
@@ -166,6 +187,7 @@ function SearchPage() {
 
   return (
     <AppLayout>
+      {/* Header trang & Nút xuất dữ liệu Export CSV */}
       <PageHeader
         title="Search Explorer"
         subtitle="Search papers synced from OpenAlex, Crossref, and Semantic Scholar"
@@ -177,15 +199,21 @@ function SearchPage() {
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
+        {/* === SIDEBAR TRÁI: KHỐI BỘ LỌC VÀ LỊCH SỬ TÌM KIẾM === */}
         <aside className="space-y-4">
+          {/* Card BỘ LỌC (FILTERS) */}
           <Card title="Filters" action={<SlidersHorizontal className="size-4 text-muted-foreground" />}>
             <div className="space-y-4">
+              {/* Lọc khoảng năm xuất bản (From Year / To Year) */}
               <div className="grid grid-cols-2 gap-2">
                 <Select label="From Year" value={fromYear} onChange={setFromYear} options={yearOptions} />
                 <Select label="To Year" value={toYear} onChange={setToYear} options={yearOptions} />
               </div>
+              {/* Lọc theo lĩnh vực nghiên cứu (Category) */}
               <Select label="Category" value={category} onChange={setCategory} options={[["all", "All categories"], ...categories.map((c) => [c, c] as [string, string])]} />
+              {/* Sắp xếp kết quả (Sort by: Trích dẫn / Năm) */}
               <Select label="Sort by" value={sort} onChange={(v) => setSort(v as never)} options={[["citations", "Citations"], ["year", "Year"]]} />
+              {/* Lọc theo ngưỡng lượt trích dẫn tối thiểu (Min Citations Slider) */}
               <div>
                 <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Min Citations</label>
                 <input type="range" min="0" max="500" step="50" value={minCitations} onChange={(e) => setMinCitations(Number(e.target.value))} className="w-full mt-2 accent-[var(--brand)]" />
@@ -193,6 +221,8 @@ function SearchPage() {
               </div>
             </div>
           </Card>
+
+          {/* Card LỊCH SỬ TÌM KIẾM GẦN ĐÂY (RECENT SEARCHES - Chỉ hiển thị cho User đã đăng nhập) */}
           {user && (
             <Card title="Recent Searches">
               <div className="flex flex-wrap gap-2">
@@ -203,6 +233,7 @@ function SearchPage() {
                     <button
                       key={`${entry.query}-${entry.searchType}`}
                       onClick={() => {
+                        // Nạp lại từ khóa & loại tìm kiếm để tìm ngay lập tức
                         setQ(entry.query);
                         setSearchType(entry.searchType);
                         if (user) {
@@ -230,10 +261,13 @@ function SearchPage() {
           )}
         </aside>
 
+        {/* === KHU VỰC CHÍNH: Ô TÌM KIẾM VÀ KẾT QUẢ BÀI BÁO === */}
         <div className="space-y-4">
+          {/* Thanh tìm kiếm & Menu chuyển loại (Search Bar) */}
           <div className="relative w-full" ref={dropdownRef}>
             <div className="relative flex items-center bg-surface/60 border border-border rounded-xl focus-within:ring-2 focus-within:ring-brand/40 h-12 w-full pl-4 pr-3">
               <SearchIcon className="size-4 text-muted-foreground shrink-0" />
+              {/* Ô nhập từ khóa tìm kiếm */}
               <input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
@@ -248,6 +282,7 @@ function SearchPage() {
                     setIsInputFocused(false);
                     const trimmedQ = q.trim();
                     if (trimmedQ && user) {
+                      // Lưu từ khóa vào lịch sử tìm kiếm khi ấn Enter
                       recordSearch.mutate({ query: trimmedQ, searchType });
                     }
                     navigate({
@@ -270,6 +305,7 @@ function SearchPage() {
                 }
                 className="flex-1 h-full pl-3 pr-2 bg-transparent border-none focus:outline-none text-sm placeholder:text-muted-foreground"
               />
+              {/* Nút bấm chuyển đổi Loại Tìm Kiếm (Papers / Authors / Keywords) */}
               <button
                 type="button"
                 onClick={() => setShowDropdown((prev) => !prev)}
@@ -280,6 +316,7 @@ function SearchPage() {
               </button>
             </div>
 
+            {/* Menu sổ xuống lựa chọn loại tìm kiếm (Search Option Dropdown Popup) */}
             {showDropdown && (
               <div className="absolute right-0 top-[calc(100%+6px)] w-48 bg-popover border border-border rounded-xl shadow-lg p-1.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
                 <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-3 py-1.5 mb-1 border-b border-border/40">
@@ -315,12 +352,14 @@ function SearchPage() {
               </div>
             )}
 
+            {/* Popup Gợi ý tự động thông minh (Search Suggestions Popup) */}
             {showSuggestions && suggestions.length > 0 && (
               <div className="absolute left-0 top-[calc(100%+6px)] w-full bg-popover border border-border rounded-xl shadow-lg p-1.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150 max-h-72 overflow-y-auto">
                 <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-3 py-1.5 mb-1 border-b border-border/40">
                   Suggestions
                 </div>
                 {suggestions.map((suggestion) => {
+                  // Quy định màu sắc Badge phân loại từng gợi ý
                   let badgeStyle = "bg-secondary text-secondary-foreground";
                   let badgeLabel = "Keyword";
                   if (suggestion.type === "papers") {
@@ -342,7 +381,7 @@ function SearchPage() {
                         setIsInputFocused(false);
                         const queryValue = suggestion.label;
                         
-                        // Record search to history
+                        // Lưu lịch sử khi chọn một gợi ý
                         if (user) {
                           recordSearch.mutate({
                             query: queryValue,
@@ -350,7 +389,7 @@ function SearchPage() {
                           });
                         }
 
-                        // Navigate based on type
+                        // Điều hướng tương ứng với loại gợi ý (bài báo / tác giả / từ khóa)
                         if (suggestion.type === "papers") {
                           navigate({
                             to: "/papers/$id",
@@ -362,7 +401,6 @@ function SearchPage() {
                             params: { authorId: suggestion.id },
                           });
                         } else {
-                          // Keywords
                           setQ(queryValue);
                           navigate({
                             to: "/search",
@@ -397,6 +435,7 @@ function SearchPage() {
             )}
           </div>
 
+          {/* Thông số kết quả tìm thấy & Tiêu chí sắp xếp hiện tại */}
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>
               {totalResults === 0
@@ -406,13 +445,16 @@ function SearchPage() {
             <span className="font-mono">sorted by {sort}</span>
           </div>
 
+          {/* HIỂN THỊ DANH SÁCH BÀI BÁO (RESULTS LIST) */}
           {isLoading ? (
+            /* Skeleton Loading khi đang chờ API trả về dữ liệu */
             <div className="space-y-3 animate-pulse">
               {Array.from({ length: 5 }).map((_, i) => (
                 <div key={i} className="h-32 rounded-xl bg-secondary/10 border border-border" />
               ))}
             </div>
           ) : paginatedResults.length === 0 ? (
+            /* Trạng thái không tìm thấy kết quả phù hợp */
             <div className="py-12 text-center text-sm text-muted-foreground">
               {searchType === "papers"
                 ? "No papers found matching your search criteria."
@@ -421,20 +463,24 @@ function SearchPage() {
                 : "No keywords found matching your search criteria."}
             </div>
           ) : (
+            /* Danh sách các bài báo tìm thấy */
             <div className="space-y-3">
               {paginatedResults.map((p) => {
                 return (
                   <Card key={p.id} className="hover:border-brand/40 transition-colors">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 min-w-0">
+                        {/* Nguồn dữ liệu (OpenAlex, arXiv...), Tạp chí & Năm xuất bản */}
                         <div className="flex items-center gap-2 text-[10px] font-mono text-muted-foreground uppercase tracking-widest mb-2">
                           <span className="shrink-0 px-2 py-0.5 rounded bg-brand/10 text-brand">{p.source}</span>
                           <span className="truncate">{p.journal}</span>
                           <span className="shrink-0">· {p.year}</span>
                         </div>
+                        {/* Tên bài báo (Click để xem thông tin chi tiết bài báo) */}
                         <Link to="/papers/$id" params={{ id: p.id }} className="text-base font-semibold text-foreground hover:text-brand transition-colors line-clamp-3 break-words">
                           {p.title}
                         </Link>
+                        {/* Danh sách tác giả (Click tên tác giả để vào trang tác giả) */}
                         <div className="text-xs text-muted-foreground mt-1 line-clamp-2 break-words">
                           {p.authorRefs?.length
                             ? p.authorRefs.map((ref, i) => (
@@ -452,6 +498,7 @@ function SearchPage() {
                             ))
                             : p.authors.join(", ")}
                         </div>
+                        {/* Thẻ các từ khóa chủ đề (Pill Tags kèm nút Follow & 🔥 Trend Score Badge) */}
                         <div className="flex flex-wrap gap-1.5 mt-3">
                           {p.keywords.map((k) => {
                             const followed = isTopicFollowed(k.id);
@@ -462,6 +509,7 @@ function SearchPage() {
                                 onClick={(e) => {
                                   e.preventDefault();
                                   e.stopPropagation();
+                                  // Đăng ký hoặc bỏ theo dõi từ khóa trực tiếp
                                   if (followed) {
                                     unfollowTopic.mutate(k.id, {
                                       onSuccess: () => toast.info(`Unfollowed keyword: ${k.name}`),
@@ -491,6 +539,7 @@ function SearchPage() {
                           })}
                         </div>
                       </div>
+                      {/* Số lượt trích dẫn & Các nút thao tác (Lưu vào bộ sưu tập / Mở chi tiết) */}
                       <div className="text-right shrink-0">
                         <div className="text-[10px] text-muted-foreground uppercase tracking-widest">{p.citations} cites</div>
                         <div className="flex gap-1 mt-3 justify-end">
@@ -507,8 +556,10 @@ function SearchPage() {
             </div>
           )}
 
+          {/* CỤM NÚT PHÂN TRANG (PAGINATION CONTROLS) */}
           {totalPages > 1 && (
             <div className="flex flex-wrap items-center justify-center gap-1.5 mt-6 py-4 border-t border-border">
+              {/* Nút trang trước (Previous) */}
               <button
                 type="button"
                 disabled={page === 1}
@@ -518,6 +569,7 @@ function SearchPage() {
                 Previous
               </button>
 
+              {/* Các nút bấm chọn số trang (1, 2, 3...) */}
               {getVisiblePages(page, totalPages).map((p, i) => (
                 p === "..." ? (
                   <span key={`dots-${i}`} className="px-1 text-muted-foreground">...</span>
@@ -535,8 +587,8 @@ function SearchPage() {
                 )
               ))}
 
+              {/* Nút trang kế tiếp (Next) */}
               <button
-                type="button"
                 disabled={page === totalPages}
                 onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
                 className="inline-flex items-center justify-center h-8 px-3 rounded-lg text-xs font-medium border border-border hover:border-brand/40 disabled:opacity-50 disabled:pointer-events-none transition-colors cursor-pointer"

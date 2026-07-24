@@ -89,6 +89,7 @@ export class HttpPapersService implements PapersService {
     sort?: string;
     fromYear?: number;
     toYear?: number;
+    month?: number;
     category?: string;
     minCitations?: number;
   }): Promise<PageResponse<Paper>> {
@@ -102,6 +103,7 @@ export class HttpPapersService implements PapersService {
         sort: params.sort,
         fromYear: params.fromYear,
         toYear: params.toYear,
+        month: params.month,
         category: params.category && params.category !== "all" ? params.category : undefined,
         minCitations: params.minCitations,
       },

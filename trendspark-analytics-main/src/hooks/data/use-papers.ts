@@ -61,6 +61,7 @@ export function useSearchPapers(params: {
   sort?: string;
   fromYear?: number;
   toYear?: number;
+  month?: number;
   category?: string;
   minCitations?: number;
 }) {

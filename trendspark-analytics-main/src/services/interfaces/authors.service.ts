@@ -5,7 +5,7 @@ export interface AuthorsService {
   list(params: { page: number; size: number; q?: string; topicId?: string; sort?: "papers" | "citations" | "hIndex" }): Promise<PageResponse<Author>>;
   listFeatured(limit?: number): Promise<Author[]>;
   getById(id: string): Promise<AuthorProfile | null>;
-  listPapers(authorId: string, limit?: number): Promise<Paper[]>;
+  listPapers(authorId: string): Promise<Paper[]>;
   getSpotlight(): Promise<AuthorSpotlight>;
 }
 

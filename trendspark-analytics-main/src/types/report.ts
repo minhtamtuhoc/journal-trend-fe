@@ -55,10 +55,18 @@ export interface ResearchGapPoint {
   paperId?: number;
 }
 
+export interface FollowedDomain {
+  domain: string;
+  followedKeywords: string[];
+  hotTopics: ResearchGapPoint[];
+  researchGaps: ResearchGapPoint[];
+}
+
 export interface LandscapeSection {
   bubbleChart: AuthorInfluencePoint[];
   tagCloud: KeywordCoOccurrencePoint[];
   researchGaps: ResearchGapPoint[];
+  followedDomains?: FollowedDomain[];
 }
 
 export interface FollowStats {

@@ -40,6 +40,8 @@ import {
   ArrowUpRight,
   Bookmark,
   Building2,
+  Tag,
+  Layers,
 } from "lucide-react";
 import type { KeywordTrendPoint } from "@/types/report";
 import {
@@ -54,19 +56,26 @@ export const Route = createFileRoute("/reports")({
   validateSearch: (search: Record<string, unknown>) => search,
 });
 
-// Transformer helper for Recharts LineChart
+// Helper lấy từ khóa tìm kiếm sạch (nếu từ khóa ghép dạng "Psychiatry, Mental Health, Neuroscience" -> lấy "Psychiatry" để backend SQL LIKE tìm ra bài báo)
+function getCleanSearchTerm(term: string): string {
+  if (!term) return "";
+  return term.includes(",") ? term.split(",")[0].trim() : term.trim();
+}
+
+// === HÀM CHUYỂN ĐỔI DỮ LIỆU BẢNG BIỂU ĐƯỜNG (RECHARTS LINE CHART TRANSFORMER) ===
+// Chuẩn hóa mốc thời gian 3 tháng gần nhất và gom từ khóa xu hướng để vẽ biểu đồ LineChart
 function transformLineChartData(points: KeywordTrendPoint[]) {
   const periodMap: Record<string, { label: string; sortKey: number; values: Record<string, number> }> = {};
   const terms = new Set<string>();
 
-  // 1. Gather all unique terms
+  // 1. Gom tất cả danh sách các từ khóa độc nhất
   points.forEach((p) => terms.add(p.term));
 
-  // 2. Generate expected last 3 months dynamically
+  // 2. Tự động khởi tạo mốc thời gian 3 tháng gần đây nhất (bỏ tháng hiện tại, ví dụ tháng 7)
   const generateLast3Months = () => {
     const list: { label: string; sortKey: number }[] = [];
     const now = new Date();
-    for (let i = 3; i >= 0; i--) {
+    for (let i = 3; i >= 1; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const year = d.getFullYear();
       const month = d.getMonth() + 1;
@@ -86,13 +95,13 @@ function transformLineChartData(points: KeywordTrendPoint[]) {
       sortKey: p.sortKey,
       values: {}
     };
-    // Initialize count to 0 for all terms
+    // Khởi tạo giá trị mặc định bằng 0 cho toàn bộ các từ khóa
     terms.forEach((term) => {
       periodMap[p.label].values[term] = 0;
     });
   });
 
-  // 3. Populate with actual values from points
+  // 3. Đổ số liệu bài báo thực tế từ Backend API vào từng mốc thời gian
   points.forEach((p) => {
     if (p.month !== undefined && p.month !== null) {
       const paddedMonth = String(p.month).padStart(2, "0");
@@ -113,6 +122,8 @@ function transformLineChartData(points: KeywordTrendPoint[]) {
   return { chartData, terms: Array.from(terms) };
 }
 
+// === HÀM DỊCH LÝ DO ĐỀ XUẤT BÀI BÁO (RECOMMENDATION REASON TRANSLATOR) ===
+// Chuyển đổi các lý do gợi ý dạng văn bản tiếng Việt từ BE sang tiếng Anh chuẩn giao diện
 const translateReason = (reason: string) => {
   if (!reason) return "";
   const mapping: Record<string, string> = {
@@ -145,6 +156,7 @@ const translateReason = (reason: string) => {
   return reason;
 };
 
+// === COMPONENT THỐNG KÊ CHỈ SỐ BÁO CÁO (CUSTOM REPORT STAT CARD) ===
 function CustomReportStat({
   label,
   value,
@@ -172,10 +184,13 @@ function CustomReportStat({
   );
 }
 
+// === VIEW BÁO CÁO PHÂN TÍCH CHUYÊN SÂU TÁC GIẢ (CUSTOM AUTHOR REPORT VIEW) ===
+// Hiển thị khi người dùng click xem phân tích của 1 tác giả cụ thể từ trang Reports
 function CustomAuthorReportView({ authorId }: { authorId: string }) {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 14;
 
+  // Lấy dữ liệu tác giả và danh sách bài báo của tác giả từ API
   const { data: author, isLoading: loadingAuthor, isError } = useAuthor(authorId);
   const { data: papers = [], isLoading: loadingPapers } = useAuthorPapers(authorId);
   const { data: followedTopics = [] } = useFollowedTopics();
@@ -186,31 +201,50 @@ function CustomAuthorReportView({ authorId }: { authorId: string }) {
   const unfollowAuthorMut = useUnfollowAuthor();
   const followed = followedAuthors.some((a) => a.id === authorId);
 
-  const followedTerms = useMemo(() => new Set(followedTopics.map(t => t.name.toLowerCase())), [followedTopics]);
+  const [viewMode, setViewMode] = useState<"matched" | "all">("matched");
 
+  // Danh sách các từ khóa tiếng Anh viết thường mà người dùng đang follow
+  const followedTerms = useMemo(() => new Set(followedTopics.map(t => t.name.toLowerCase().trim())), [followedTopics]);
+  const followedTermList = useMemo(() => Array.from(followedTerms), [followedTerms]);
+
+  // Hàm kiểm tra từ khóa của bài báo có khớp với từ khóa follow (so sánh chính xác hoặc chứa chuỗi)
+  const isKeywordMatch = (kwName: string) => {
+    if (!kwName) return false;
+    const lower = kwName.toLowerCase().trim();
+    if (followedTerms.has(lower)) return true;
+    return followedTermList.some(t => lower.length > 2 && (lower.includes(t) || t.includes(lower)));
+  };
+
+  // Lọc các bài báo của tác giả có chứa từ khóa mà người dùng đang theo dõi
   const matchedPapers = useMemo(() => {
-    return papers.filter(p => p.keywords?.some(k => followedTerms.has(k.name.toLowerCase())));
-  }, [papers, followedTerms]);
+    if (followedTerms.size === 0) return papers;
+    return papers.filter(p => p.keywords?.some(k => isKeywordMatch(k.name)));
+  }, [papers, followedTerms, followedTermList]);
 
+  // Danh sách từ khóa trùng khớp giữa bài báo của tác giả và danh sách follow của người dùng
   const matchedFollowedKeywords = useMemo(() => {
     const matches = new Set<string>();
     papers.forEach(p => {
       p.keywords?.forEach(k => {
-        const kwLower = k.name.toLowerCase();
-        if (followedTerms.has(kwLower)) {
-          const original = followedTopics.find(t => t.name.toLowerCase() === kwLower);
+        if (isKeywordMatch(k.name)) {
+          const kwLower = k.name.toLowerCase().trim();
+          const original = followedTopics.find(t => t.name.toLowerCase().trim() === kwLower || kwLower.includes(t.name.toLowerCase().trim()));
           matches.add(original ? original.name : k.name);
         }
       });
     });
     return Array.from(matches);
-  }, [papers, followedTerms, followedTopics]);
+  }, [papers, followedTerms, followedTopics, followedTermList]);
 
-  const hasPagination = matchedPapers.length > 14;
-  const totalPages = Math.ceil(matchedPapers.length / itemsPerPage);
+  // Quyết định danh sách bài báo hiển thị (ưu tiên matched, nếu rỗng hoặc chọn 'all' thì hiện tất cả)
+  const displayPapers = (viewMode === "matched" && matchedPapers.length > 0) ? matchedPapers : papers;
+
+  // Phân trang danh sách bài báo hiển thị
+  const hasPagination = displayPapers.length > 14;
+  const totalPages = Math.ceil(displayPapers.length / itemsPerPage);
   const paginatedPapers = hasPagination
-    ? matchedPapers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
-    : matchedPapers;
+    ? displayPapers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+    : displayPapers;
 
   if (loadingAuthor || loadingPapers) {
     return (
@@ -231,6 +265,7 @@ function CustomAuthorReportView({ authorId }: { authorId: string }) {
 
   return (
     <div className="space-y-6 mt-6">
+      {/* Header trang báo cáo tác giả & Nút Follow/Unfollow */}
       <PageHeader
         title={author.name}
         subtitle={`${author.affiliation} · source: ${author.source ?? "OpenAlex / DB"}`}
@@ -289,6 +324,7 @@ function CustomAuthorReportView({ authorId }: { authorId: string }) {
         }
       />
 
+      {/* Cụm 3 Thống kê quan trọng của Tác giả */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <CustomReportStat
           label="Papers with Followed Keywords"
@@ -326,10 +362,58 @@ function CustomAuthorReportView({ authorId }: { authorId: string }) {
         </div>
       ) : null}
 
-      <Card title={`Papers with Followed Keywords (${matchedPapers.length})`}>
-        {matchedPapers.length === 0 ? (
+      {/* Danh sách các bài báo của tác giả */}
+      <Card
+        title={
+          <div className="flex items-center justify-between flex-wrap gap-2 w-full">
+            <span>
+              {viewMode === "matched" && matchedPapers.length > 0
+                ? `Papers with Followed Keywords (${matchedPapers.length})`
+                : `All Papers (${papers.length})`}
+            </span>
+            <div className="flex gap-1.5 text-xs font-normal">
+              <button
+                type="button"
+                onClick={() => setViewMode("matched")}
+                className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
+                  viewMode === "matched"
+                    ? "bg-brand/15 text-brand font-semibold border border-brand/30"
+                    : "bg-secondary/40 text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Matched ({matchedPapers.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("all")}
+                className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
+                  viewMode === "all"
+                    ? "bg-brand/15 text-brand font-semibold border border-brand/30"
+                    : "bg-secondary/40 text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                All Papers ({papers.length})
+              </button>
+            </div>
+          </div>
+        }
+      >
+        {matchedPapers.length === 0 && viewMode === "matched" && papers.length > 0 && (
+          <div className="mb-4 p-3 rounded-lg border border-amber-500/20 bg-amber-500/5 text-amber-400 text-xs flex items-center justify-between gap-2">
+            <span>No papers directly matched your followed keywords. Showing all <strong>{papers.length}</strong> papers by this author below:</span>
+            <button
+              type="button"
+              onClick={() => setViewMode("all")}
+              className="underline font-semibold hover:text-amber-300"
+            >
+              Switch to All Papers
+            </button>
+          </div>
+        )}
+
+        {paginatedPapers.length === 0 ? (
           <p className="text-sm text-muted-foreground p-4">
-            No papers containing followed keywords found.
+            No papers available for this author.
           </p>
         ) : (
           <>
@@ -337,7 +421,7 @@ function CustomAuthorReportView({ authorId }: { authorId: string }) {
               {paginatedPapers.map((p) => {
                 const paperMatchedKws = p.keywords
                   ? p.keywords
-                    .filter(k => followedTerms.has(k.name.toLowerCase()))
+                    .filter(k => isKeywordMatch(k.name))
                     .map(k => k.name)
                   : [];
                 return (
@@ -420,42 +504,65 @@ function CustomAuthorReportView({ authorId }: { authorId: string }) {
   );
 }
 
+// === TRANG CHÍNH BÁO CÁO & PHÂN TÍCH THÔNG MINH (REPORTS & INSIGHTS PAGE) ===
 function ReportsPage() {
-  const { authorId } = Route.useSearch() as { authorId?: string };
-  const [activeTab, setActiveTab] = useState<"ALL" | "KEYWORD" | "AUTHOR" | "JOURNAL">("ALL");
-  const { data: report, isLoading, error } = usePersonalReport(activeTab);
+  const { authorId } = Route.useSearch() as { authorId?: string }; // ID tác giả nếu chuyển từ báo cáo chi tiết tác giả
+  const [activeTab, setActiveTab] = useState<"ALL" | "KEYWORD" | "AUTHOR" | "JOURNAL">("ALL"); // Tab bộ lọc đề xuất bài báo
+  const { data: report, isLoading, error } = usePersonalReport(activeTab); // Hook gọi API lấy báo cáo cá nhân hóa
   const { data: collectionsData } = useCollections();
   const collections = useMemo(() => collectionsData ?? [], [collectionsData]);
 
+  // Lấy dữ liệu các đối tượng người dùng đang theo dõi
   const { data: followedTopics = [], isLoading: isLoadingTopics } = useFollowedTopics();
   const { data: followedAuthors = [], isLoading: isLoadingAuthors } = useFollowedAuthors();
   const { data: followedJournals = [], isLoading: isLoadingJournals } = useFollowedJournals();
 
   const isPageLoading = isLoading || isLoadingTopics || isLoadingAuthors || isLoadingJournals;
+  // Kiểm tra xem người dùng đã follow ít nhất 1 thực thể (keyword/author/journal) nào chưa
   const hasFollowedEntities = followedTopics.length > 0 || followedAuthors.length > 0 || followedJournals.length > 0;
+
+  // Quản lý domain được chọn cho mục Hot Topics & Research Gaps
+  const [selectedDomain, setSelectedDomain] = useState<string | null>(null);
+
+  useEffect(() => {
+    const domains = report?.landscape?.followedDomains;
+    if (domains && domains.length > 0 && selectedDomain === null) {
+      setSelectedDomain(domains[0].domain);
+    }
+  }, [report, selectedDomain]);
+
+  const followedDomains = report?.landscape?.followedDomains ?? [];
+  const activeDomain = followedDomains.find((d) => d.domain === selectedDomain) ?? followedDomains[0];
 
   const followedKeywordNames = useMemo(() => {
     return new Set(followedTopics.map((t) => t.name.toLowerCase()));
   }, [followedTopics]);
 
-  // Render CustomAuthorReportView conditionally at the end to satisfy rules of hooks
-
+  // Chuẩn hóa dữ liệu vẽ biểu đồ LineChart xu hướng từ khóa
   const { chartData, terms: allTerms } = useMemo(() => {
     return transformLineChartData(report?.trends?.lineChart ?? []);
   }, [report?.trends?.lineChart]);
 
+  // Danh sách từ khóa người dùng đang theo dõi (hiển thị đầy đủ kể cả chưa có bài báo trong 3 tháng)
   const displayedTerms = useMemo(() => {
-    return allTerms.filter((term) => followedKeywordNames.has(term.toLowerCase()));
-  }, [allTerms, followedKeywordNames]);
+    return (followedTopics ?? []).map((t) => t?.name).filter((name): name is string => Boolean(name));
+  }, [followedTopics]);
 
+  // Giới hạn tối đa số lượng từ khóa được hiển thị đồng thời trên biểu đồ
+  const MAX_KEYWORDS_LIMIT = 10;
   const [selectedKeywords, setSelectedKeywords] = useState<string[]>([]);
   const hasInitialized = useRef(false);
   const displayedTermsSerialized = displayedTerms.join(",");
 
   useEffect(() => {
     if (displayedTerms.length > 0) {
+      // Thông báo cho người dùng nếu tổng số từ khóa follow vượt quá 10
+      if (displayedTerms.length > MAX_KEYWORDS_LIMIT && !hasInitialized.current) {
+        toast.info(`Only up to 10 keywords can be displayed on the chart at once. Showing the first 10 keywords.`);
+      }
       if (!hasInitialized.current) {
-        setSelectedKeywords(displayedTerms);
+        // Mặc định ban đầu chọn tối đa 10 từ khóa đầu tiên để vẽ biểu đồ
+        setSelectedKeywords(displayedTerms.slice(0, MAX_KEYWORDS_LIMIT));
         hasInitialized.current = true;
       } else {
         setSelectedKeywords((prev) => prev.filter((k) => displayedTerms.includes(k)));
@@ -463,19 +570,115 @@ function ReportsPage() {
     } else {
       setSelectedKeywords([]);
     }
-  }, [displayedTermsSerialized]);
+  }, [displayedTermsSerialized, displayedTerms.length]);
 
+  // Tổng hợp dữ liệu hiển thị cho bảng Summary Card 3 tháng gần đây
+  const keywordSummary = useMemo(() => {
+    return selectedKeywords.map((term) => {
+      const monthlyData = chartData.map((row) => ({
+        period: row.period as string,
+        count: ((row as Record<string, unknown>)[term] as number) ?? 0,
+      }));
+      const first = monthlyData[0]?.count ?? 0;
+      const last = monthlyData[monthlyData.length - 1]?.count ?? 0;
+      const firstPeriod = monthlyData[0]?.period ?? "";
+      const lastPeriod = monthlyData[monthlyData.length - 1]?.period ?? "";
+
+      const m1 = monthlyData[0] ?? { period: "", count: 0 };
+      const m2 = monthlyData[1] ?? { period: "", count: 0 };
+      const m3 = monthlyData[monthlyData.length - 1] ?? { period: "", count: 0 };
+
+      // Chặng 1: m1 -> m2
+      let stage1Label = "0%";
+      if (m1.count === 0 && m2.count > 0) {
+        stage1Label = `+${m2.count} new`;
+      } else if (m1.count > 0) {
+        const pct1 = Math.round(((m2.count - m1.count) / m1.count) * 100);
+        stage1Label = `${pct1 >= 0 ? "+" : ""}${pct1}%`;
+      }
+
+      // Chặng 2: m2 -> m3
+      let stage2Label = "0%";
+      if (m2.count === 0 && m3.count > 0) {
+        stage2Label = `+${m3.count} new`;
+      } else if (m2.count > 0) {
+        const pct2 = Math.round(((m3.count - m2.count) / m2.count) * 100);
+        stage2Label = `${pct2 >= 0 ? "+" : ""}${pct2}%`;
+      }
+
+      let trend = "0%";
+      let trendColor = "text-muted-foreground";
+      let trendFormula = "";
+
+      if (first === 0 && last > 0) {
+        trend = `↑ +${last}`;
+        trendColor = "text-emerald-500";
+        trendFormula = `New Growth: From 0 papers (${firstPeriod}) to ${last} papers (${lastPeriod}) (+${last} new)`;
+      } else if (first > 0) {
+        const pct = Math.round(((last - first) / first) * 100);
+        if (pct > 0) {
+          trend = `↑ +${pct}%`;
+          trendColor = "text-emerald-500";
+          trendFormula = `Formula: [(${lastPeriod}: ${last} papers - ${firstPeriod}: ${first} papers) / ${first}] × 100% = +${pct}%`;
+        } else if (pct < 0) {
+          trend = `↓ ${pct}%`;
+          trendColor = "text-rose-500";
+          trendFormula = `Formula: [(${lastPeriod}: ${last} papers - ${firstPeriod}: ${first} papers) / ${first}] × 100% = ${pct}%`;
+        } else {
+          trend = "→ 0%";
+          trendColor = "text-muted-foreground";
+          trendFormula = `No Change: ${firstPeriod}: ${first} papers → ${lastPeriod}: ${last} papers (0%)`;
+        }
+      } else {
+        trend = "—";
+        trendColor = "text-muted-foreground";
+        trendFormula = "No paper data available in the last 3 months";
+      }
+
+      return {
+        term,
+        monthlyData,
+        m1,
+        m2,
+        m3,
+        stage1Label,
+        stage2Label,
+        trend,
+        trendColor,
+        trendFormula,
+      };
+    });
+  }, [selectedKeywords, chartData]);
+
+  // Handler khi người dùng nhấp chọn/bỏ chọn 1 từ khóa trong cửa sổ Dropdown
   const handleToggleKeyword = (term: string) => {
-    setSelectedKeywords((prev) =>
-      prev.includes(term) ? prev.filter((t) => t !== term) : [...prev, term]
-    );
+    setSelectedKeywords((prev) => {
+      // Nếu từ khóa đã được chọn -> Bỏ chọn
+      if (prev.includes(term)) {
+        return prev.filter((t) => t !== term);
+      }
+      // Nếu số từ khóa đang chọn đã đạt ngưỡng tối đa 10 -> Hiển thị thông báo cảnh báo và không cho chọn thêm
+      if (prev.length >= MAX_KEYWORDS_LIMIT) {
+        toast.warning("Only 10 keywords can be displayed on the chart at a time.");
+        return prev;
+      }
+      // Thêm từ khóa vào danh sách hiển thị
+      return [...prev, term];
+    });
   };
 
+  // Handler chọn tất cả từ khóa (nếu danh sách > 10 thì chỉ chọn 10 từ đầu tiên và hiển thị thông báo)
   const handleToggleAll = () => {
-    if (selectedKeywords.length === displayedTerms.length) {
+    const isAllSelected = selectedKeywords.length >= Math.min(displayedTerms.length, MAX_KEYWORDS_LIMIT) && selectedKeywords.length > 0;
+    if (isAllSelected) {
       setSelectedKeywords([]);
     } else {
-      setSelectedKeywords(displayedTerms);
+      if (displayedTerms.length > MAX_KEYWORDS_LIMIT) {
+        toast.warning("Only 10 keywords can be displayed on the chart at once. Selected the first 10 keywords.");
+        setSelectedKeywords(displayedTerms.slice(0, MAX_KEYWORDS_LIMIT));
+      } else {
+        setSelectedKeywords(displayedTerms);
+      }
     }
   };
 
@@ -484,6 +687,7 @@ function ReportsPage() {
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const filterDropdownRef = useRef<HTMLDivElement>(null);
 
+  // Đóng dropdown bộ lọc khi nhấp chuột ra ngoài
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (trendDropdownRef.current && !trendDropdownRef.current.contains(event.target as Node)) {
@@ -499,7 +703,7 @@ function ReportsPage() {
     };
   }, []);
 
-  // Filter out recommended papers that the user has already bookmarked (optimistic reactive update)
+  // Lọc bỏ những bài báo đề xuất mà người dùng đã lưu vào bộ sưu tập cá nhân
   const visibleRecommendations = report?.recommendations?.filter(
     (paper) => !collections.some((c) => c.paperIds.includes(String(paper.id)))
   ) ?? [];
@@ -509,6 +713,7 @@ function ReportsPage() {
   const showAuthorTab = (followStats?.authorCount ?? followedAuthors.length) >= 1;
   const showJournalTab = (followStats?.journalCount ?? followedJournals.length) >= 1;
 
+  // Quy định kiểu dáng màu sắc cho các Badge phân loại đề xuất
   const getBadgeStyle = (matchType: string) => {
     switch (matchType) {
       case "FOLLOWED_AUTHOR":
@@ -532,6 +737,7 @@ function ReportsPage() {
     }
   };
 
+  // Quy định nhãn tên gọi chuẩn hiển thị trên Badge đề xuất
   const getBadgeLabel = (matchType: string) => {
     switch (matchType) {
       case "FOLLOWED_AUTHOR":
@@ -555,7 +761,7 @@ function ReportsPage() {
     }
   };
 
-  // Recharts line colors generator
+  // Hàm sinh màu sắc đường đồ thị LineChart
   const getLineColor = (index: number) => {
     const colors = [
       "var(--chart-1, #3b82f6)",
@@ -567,6 +773,7 @@ function ReportsPage() {
     return colors[index % colors.length];
   };
 
+  // Nếu có param authorId trên URL, chuyển sang render View phân tích riêng của tác giả
   if (authorId) {
     return (
       <AppLayout>
@@ -584,6 +791,7 @@ function ReportsPage() {
 
       <div className="space-y-8 mt-6">
         {isPageLoading ? (
+          /* Trạng thái Skeleton Loading khi đang chờ nạp dữ liệu */
           <div className="space-y-8">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <Skeleton className="h-[360px] lg:col-span-2 rounded-2xl" />
@@ -599,6 +807,7 @@ function ReportsPage() {
             </div>
           </div>
         ) : error || !report ? (
+          /* Trạng thái báo lỗi khi không thể nạp báo cáo */
           <Card className="p-12 text-center">
             <AlertTriangle className="size-12 text-destructive mx-auto mb-4" />
             <h3 className="text-lg font-bold">Failed to load report</h3>
@@ -607,9 +816,9 @@ function ReportsPage() {
             </p>
           </Card>
         ) : !hasFollowedEntities ? (
+          /* TRẠNG THÁI MÀN HÌNH KHÓA (LOCKED VIEW) KHI NGƯỜI DÙNG CHƯA FOLLOW BẤT KỲ ĐỐI TƯỢNG NÀO */
           <div className="max-w-3xl mx-auto py-12 px-4">
             <div className="glass border border-border/60 rounded-3xl p-8 md:p-12 text-center relative overflow-hidden shadow-2xl">
-              {/* Glowing decorative background pattern */}
               <div className="absolute -top-40 -right-40 size-80 bg-brand/10 rounded-full blur-[100px] pointer-events-none" />
               <div className="absolute -bottom-40 -left-40 size-80 bg-emerald-500/5 rounded-full blur-[100px] pointer-events-none" />
 
@@ -626,8 +835,9 @@ function ReportsPage() {
                   To unlock the full features of your reports, please follow at least one author, keyword, or journal. Followed entities help us tailor research recommendations, key trends, and word clouds specifically to your fields of interest.
                 </p>
 
+                {/* 3 lựa chọn hướng dẫn người dùng tới các trang để bấm Follow */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full max-w-2xl mt-4">
-                  {/* Keywords Option */}
+                  {/* Option Từ khóa */}
                   <div className="glass border border-border/40 hover:border-brand/40 rounded-2xl p-5 flex flex-col items-center justify-between text-center transition-all hover:scale-[1.02] group">
                     <div className="size-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 mb-3 group-hover:bg-blue-500/20 group-hover:scale-110 transition-all">
                       <Sparkles className="size-5" />
@@ -644,7 +854,7 @@ function ReportsPage() {
                     </Link>
                   </div>
 
-                  {/* Authors Option */}
+                  {/* Option Tác giả */}
                   <div className="glass border border-border/40 hover:border-brand/40 rounded-2xl p-5 flex flex-col items-center justify-between text-center transition-all hover:scale-[1.02] group">
                     <div className="size-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 mb-3 group-hover:bg-emerald-500/20 group-hover:scale-110 transition-all">
                       <User className="size-5" />
@@ -653,6 +863,7 @@ function ReportsPage() {
                     <p className="text-[11px] text-muted-foreground mb-4">Stay updated with publications from top researchers.</p>
                     <Link
                       to="/authors"
+                      search={{ page: 1, q: undefined, sort: undefined }}
                       className="inline-flex items-center justify-center h-8 px-3 rounded-lg text-xs font-semibold text-white transition-transform hover:scale-[1.03] w-full mt-auto"
                       style={{ background: "linear-gradient(135deg, #10b981 0%, #0d9488 100%)" }}
                     >
@@ -660,7 +871,7 @@ function ReportsPage() {
                     </Link>
                   </div>
 
-                  {/* Journals Option */}
+                  {/* Option Tạp chí */}
                   <div className="glass border border-border/40 hover:border-brand/40 rounded-2xl p-5 flex flex-col items-center justify-between text-center transition-all hover:scale-[1.02] group">
                     <div className="size-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 mb-3 group-hover:bg-purple-500/20 group-hover:scale-110 transition-all">
                       <BookOpen className="size-5" />
@@ -681,13 +892,14 @@ function ReportsPage() {
           </div>
         ) : (
           <>
-            {/* PHẦN 1: XU HƯỚNG LĨNH VỰC (TRENDS) */}
+            {/* === PHẦN 1: BẢNG BIỂU ĐỒ XU HƯỚNG LĨNH VỰC (TRENDS SECTION) === */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* 1.1 Line Chart */}
+              {/* 1.1 Biểu đồ đường (Line Chart) biến động từ khóa qua các tháng */}
               <Card
                 className="lg:col-span-2"
                 title="Keyword Trends by Month"
                 action={
+                  /* Dropdown chọn xem tất cả hoặc chọn lọc từng từ khóa hiển thị trên Line Chart */
                   displayedTerms.length > 0 && (
                     <div className="relative" ref={trendDropdownRef}>
                       <button
@@ -784,7 +996,7 @@ function ReportsPage() {
                             key={term}
                             type="monotone"
                             dataKey={term}
-                            stroke={getLineColor(allTerms.indexOf(term))}
+                            stroke={getLineColor(displayedTerms.indexOf(term))}
                             strokeWidth={2}
                             activeDot={{ r: 6 }}
                           />
@@ -794,7 +1006,7 @@ function ReportsPage() {
                 )}
               </Card>
 
-              {/* 1.2 Bar Chart */}
+              {/* 1.2 Biểu đồ cột ngang (Bar Chart) Top Tạp chí trong lĩnh vực theo dõi */}
               <Card title="Top Journals in Your Field">
                 {report.trends?.barChart?.length === 0 ? (
                   <div className="h-[300px] flex items-center justify-center text-muted-foreground text-sm">
@@ -830,14 +1042,131 @@ function ReportsPage() {
               </Card>
             </div>
 
-            {/* PHẦN 2: GỢI Ý ĐỌC TIẾP (RECOMMENDATIONS) */}
+            {/* 1.3 Bảng tổng hợp Summary Card — NGOÀI grid, full width */}
+            {keywordSummary.length > 0 && (
+              <Card title="Keyword Trend Summary (3 Months)" className="mt-6">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs border-collapse">
+                    <thead className="block w-full">
+                      <tr className="border-b border-border flex w-full items-center">
+                        <th className="text-left py-2 px-3 font-semibold text-muted-foreground flex-[2.5] min-w-[220px]">Keyword</th>
+                        {chartData.map((row) => (
+                          <th key={row.period as string} className="text-center py-2 px-3 font-semibold text-muted-foreground flex-1 min-w-[80px]">
+                            {row.period as string}
+                          </th>
+                        ))}
+                        <th className="text-center py-2 px-3 font-semibold text-muted-foreground flex-1 min-w-[90px]">Trend</th>
+                      </tr>
+                    </thead>
+                    <tbody className="block max-h-[220px] overflow-y-auto w-full">
+                      {keywordSummary.map((kw) => (
+                        <tr key={kw.term} className="border-b border-border/50 hover:bg-secondary/30 transition-colors flex w-full items-center">
+                          <td className="py-2 px-3 flex-[2.5] min-w-[220px] min-w-0 flex items-center gap-2">
+                            <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: getLineColor(displayedTerms.indexOf(kw.term)) }} />
+                            <Link
+                              to="/search"
+                              search={{ q: kw.term, searchType: "keywords" }}
+                              className="truncate font-medium text-foreground hover:text-brand hover:underline transition-colors"
+                              title={kw.term}
+                            >
+                              {kw.term}
+                            </Link>
+                          </td>
+                          {kw.monthlyData.map((m) => {
+                            const [monthStr, yearStr] = (m.period as string).split("/");
+                            const monthNum = parseInt(monthStr, 10);
+                            const yearNum = parseInt(yearStr, 10);
+
+                            return (
+                              <td key={m.period} className="text-center py-2 px-3 text-muted-foreground flex-1 min-w-[80px]">
+                                <Link
+                                  to="/search"
+                                  search={{
+                                    q: kw.term,
+                                    searchType: "keywords",
+                                    fromYear: yearNum,
+                                    toYear: yearNum,
+                                    month: monthNum,
+                                  } as any}
+                                  className="inline-flex flex-col items-center justify-center hover:text-brand transition-colors group cursor-pointer"
+                                  title={`View ${m.count} papers for "${kw.term}" in ${m.period}`}
+                                >
+                                  <span className="font-mono font-bold text-sm text-foreground group-hover:text-brand leading-none">{m.count}</span>
+                                  <span className="text-[9px] text-muted-foreground group-hover:text-brand/80 leading-tight mt-0.5">
+                                    {m.count === 1 ? "paper" : "papers"}
+                                  </span>
+                                </Link>
+                              </td>
+                            );
+                          })}
+                          <td className="text-center py-2 px-3 font-semibold whitespace-nowrap flex-1 min-w-[90px]">
+                            <UiTooltipProvider delayDuration={100}>
+                              <UiTooltip>
+                                <UiTooltipTrigger asChild>
+                                  <span className={`cursor-help font-semibold hover:underline decoration-dotted underline-offset-4 ${kw.trendColor}`}>
+                                    {kw.trend}
+                                  </span>
+                                </UiTooltipTrigger>
+                                <UiTooltipContent side="left" className="bg-popover/95 backdrop-blur-md border border-border/80 p-3 rounded-xl shadow-2xl text-xs space-y-2.5 max-w-xs z-50">
+                                  <div className="font-bold text-foreground border-b border-border/50 pb-1.5 flex items-center justify-between gap-3">
+                                    <span>3-Month Trend Breakdown</span>
+                                    <span className="text-[10px] text-muted-foreground font-mono">({kw.m1.period} → {kw.m3.period})</span>
+                                  </div>
+                                  <div className="space-y-1 text-[11px]">
+                                    <div className="flex items-center justify-between gap-4 text-muted-foreground">
+                                      <span>• {kw.m1.period} → {kw.m2.period}:</span>
+                                      <span className="font-mono text-foreground font-medium">{kw.m1.count} → {kw.m2.count} ({kw.stage1Label})</span>
+                                    </div>
+                                    <div className="flex items-center justify-between gap-4 text-muted-foreground">
+                                      <span>• {kw.m2.period} → {kw.m3.period}:</span>
+                                      <span className="font-mono text-foreground font-medium">{kw.m2.count} → {kw.m3.count} ({kw.stage2Label})</span>
+                                    </div>
+                                  </div>
+
+                                  {/* Công thức toán học dùng số liệu thật từ Backend */}
+                                  <div className="bg-secondary/40 rounded-lg p-2 border border-border/40 space-y-1 font-mono text-[10px]">
+                                    <div className="font-semibold text-muted-foreground uppercase text-[9px] tracking-wider">Calculation Formula:</div>
+                                    {kw.m1.count > 0 ? (
+                                      <div className="text-foreground leading-relaxed">
+                                        [({kw.m3.period}: {kw.m3.count} - {kw.m1.period}: {kw.m1.count}) / {kw.m1.count}] × 100%
+                                        <div className={`font-bold mt-0.5 ${kw.trendColor}`}>
+                                          = [({kw.m3.count - kw.m1.count}) / {kw.m1.count}] × 100% = {kw.trend}
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <div className="text-foreground leading-relaxed">
+                                        From 0 papers ({kw.m1.period}) to {kw.m3.count} papers ({kw.m3.period})
+                                        <div className={`font-bold mt-0.5 ${kw.trendColor}`}>
+                                          = {kw.trend} new growth
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  <div className="border-t border-border/50 pt-1.5 flex items-center justify-between font-semibold text-xs">
+                                    <span className="text-foreground">Overall 3-Month Trend:</span>
+                                    <span className={kw.trendColor}>{kw.trend}</span>
+                                  </div>
+                                </UiTooltipContent>
+                              </UiTooltip>
+                            </UiTooltipProvider>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+            )}
+
+            {/* === PHẦN 2: DANH SÁCH ĐỀ XUẤT BÀI BÁO ĐỌC TIẾP CÁ NHÂN HÓA (RECOMMENDED READS) === */}
             <div>
               <div className="flex items-center gap-2 mb-4 flex-wrap">
                 <BookOpen className="size-5 text-brand" />
                 <h2 className="text-lg font-bold uppercase tracking-wider text-foreground">Recommended Reads for You</h2>
                 <span className="text-xs text-muted-foreground font-mono">({visibleRecommendations.length} papers)</span>
 
-                {/* Filter dropdown — chỉ hiện khi có ít nhất 1 tab filter khả dụng */}
+                {/* Filter dropdown chọn lọc tab đề xuất (All / Keywords / Authors / Journals) */}
                 {(showKeywordTab || showAuthorTab || showJournalTab) && (
                   <div className="relative ml-auto" ref={filterDropdownRef}>
                     <button
@@ -902,6 +1231,7 @@ function ReportsPage() {
                   )}
                 </Card>
               ) : (
+                /* Grid 2 cột hiển thị các Card bài báo được đề xuất */
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {visibleRecommendations.map((paper) => (
                     <div
@@ -909,6 +1239,7 @@ function ReportsPage() {
                       className="glass border border-border/60 hover:border-brand/40 transition-all rounded-xl p-5 flex flex-col justify-between group"
                     >
                       <div>
+                        {/* Tạp chí, Năm & Badge loại trùng khớp (Followed Author, Highly Cited...) */}
                         <div className="flex items-start justify-between gap-3 mb-2">
                           <span className="text-xs font-semibold text-muted-foreground font-mono">
                             {paper.journal} · {paper.year}
@@ -918,22 +1249,26 @@ function ReportsPage() {
                           </Badge>
                         </div>
 
+                        {/* Tiêu đề bài báo */}
                         <Link to="/papers/$id" params={{ id: String(paper.id) }} className="hover:no-underline block">
                           <h3 className="font-bold text-foreground text-sm line-clamp-2 group-hover:text-brand transition-colors mb-2 cursor-pointer">
                             {paper.title}
                           </h3>
                         </Link>
 
+                        {/* Tác giả */}
                         <p className="text-xs text-muted-foreground line-clamp-1 mb-3">
                           {paper.authors.join(", ")}
                         </p>
 
+                        {/* Khối dịch & hiển thị Lý do đề xuất (Recommendation Reason) */}
                         <div className="bg-secondary/40 border border-border/30 rounded-lg p-2.5 mb-4 text-[11px] text-foreground/80 flex items-start gap-2">
                           <Lightbulb className="size-3.5 text-brand shrink-0 mt-0.5" />
                           <span className="italic">{translateReason(paper.recommendationReason)}</span>
                         </div>
                       </div>
 
+                      {/* Lượt trích dẫn & Nút Lưu bộ sưu tập (Save to Collection) */}
                       <div className="flex items-center justify-between border-t border-border/40 pt-3 mt-auto">
                         <span className="text-[10px] font-mono text-muted-foreground">
                           🔥 {paper.citations.toLocaleString()} citations
@@ -964,10 +1299,10 @@ function ReportsPage() {
               )}
             </div>
 
-            {/* PHẦN 3: TOÀN CẢNH LĨNH VỰC (LANDSCAPE) */}
+            {/* === PHẦN 3: TOÀN CẢNH LĨNH VỰC NGHIÊN CỨU (LANDSCAPE SECTION) === */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <div className="lg:col-span-2 space-y-6">
-                {/* 3.1 Leader Authors Cards Grid */}
+                {/* 3.1 Các Tác giả Hàng đầu theo từ khóa bạn follow (Leading Authors) */}
                 <Card title="Leading Authors by Followed Keywords">
                   {report.landscape?.bubbleChart?.length === 0 ? (
                     <div className="text-muted-foreground text-sm p-4">
@@ -1021,58 +1356,235 @@ function ReportsPage() {
                   )}
                 </Card>
 
-                {/* 3.3 Research Gaps */}
-                <Card title="Research Gaps">
-                  <p className="text-xs text-muted-foreground mb-4">
-                    Keywords with the lowest number of research papers in your followed fields. These represent potential niche opportunities for research.
-                  </p>
-                  {report.landscape?.researchGaps?.length === 0 ? (
-                    <div className="text-muted-foreground text-sm">No research gaps detected yet.</div>
-                  ) : (
-                    <div className="divide-y divide-border/30">
-                      {report.landscape.researchGaps.map((gap) => {
-                        const gapContent = (
-                          <div className="flex items-center justify-between py-2.5 text-sm hover:bg-secondary/10 px-2 rounded-lg transition-colors cursor-pointer group">
-                            <span className="font-semibold text-foreground group-hover:text-brand transition-colors">{gap.term}</span>
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs font-mono text-muted-foreground">{gap.paperCount} papers</span>
-                              <Badge variant="outline" className="text-[10px] border-amber-500/20 bg-amber-500/10 text-amber-500 font-bold">
-                                Niche / Low Competition
-                              </Badge>
-                            </div>
-                          </div>
-                        );
+                {/* 3.2 Research Gaps & Hot Topics Section (Redesigned Domain Intelligence Dashboard) */}
+                {followedDomains.length > 0 ? (
+                  <div className="space-y-4 pt-2">
+                    {/* Section header */}
+                    <div className="flex items-center justify-between flex-wrap gap-2 pb-1 border-b border-border/40">
+                      <div className="flex items-center gap-2">
+                        <div className="size-8 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center text-brand">
+                          <Layers className="size-4" />
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-extrabold uppercase tracking-wider text-foreground">
+                            Research Landscape by Domain
+                          </h3>
+                          <p className="text-[11px] text-muted-foreground">
+                            Explore hot topics and discover niche research gaps across your followed domains.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
 
-                        if (gap.paperId) {
+                    {/* Domain Selector (Segmented Tab Bar) */}
+                    <div className="flex items-center gap-1.5 p-1.5 bg-secondary/30 backdrop-blur-md rounded-2xl border border-border/60 overflow-x-auto scrollbar-none">
+                      {followedDomains.map((d) => {
+                        const isSelected = (selectedDomain ?? activeDomain?.domain) === d.domain;
+                        return (
+                          <button
+                            key={d.domain}
+                            type="button"
+                            onClick={() => setSelectedDomain(d.domain)}
+                            className={`h-9 px-4 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 shrink-0 select-none ${
+                              isSelected
+                                ? "bg-brand/15 border border-brand/40 text-brand shadow-sm"
+                                : "border border-transparent text-muted-foreground hover:text-foreground hover:bg-secondary/60"
+                            }`}
+                          >
+                            <span className={`size-2 rounded-full ${isSelected ? "bg-brand animate-pulse" : "bg-muted-foreground/40"}`} />
+                            {d.domain}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Followed Keywords Interactive Banner */}
+                    {activeDomain && activeDomain.followedKeywords.length > 0 && (
+                      <div className="glass bg-secondary/20 rounded-xl p-3.5 border border-border/40 space-y-2">
+                        <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                          <Tag className="size-3.5 text-brand" />
+                          <span>Your followed keywords in <strong className="text-brand">{activeDomain.domain}</strong>:</span>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {activeDomain.followedKeywords.map((kw) => (
+                            <Link
+                              key={kw}
+                              to="/search"
+                              search={{ q: kw, searchType: "keywords" }}
+                              className="inline-flex items-center gap-1.5 h-6 px-2.5 rounded-lg text-xs font-medium border border-border/60 bg-background/60 hover:bg-brand/10 hover:border-brand/40 hover:text-brand transition-all shadow-xs group"
+                              title={`Search papers for "${kw}"`}
+                            >
+                              <span>{kw}</span>
+                              <ArrowUpRight className="size-3 text-muted-foreground opacity-60 group-hover:opacity-100 group-hover:text-brand transition-all" />
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Hot Topics & Research Gaps Dashboard Cards */}
+                    {activeDomain && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        {/* Hot Topics Card */}
+                        <Card className="p-5 space-y-4 border-border/60 hover:border-orange-500/30 transition-all">
+                          <div className="flex items-center justify-between gap-2 border-b border-border/40 pb-3">
+                            <div className="flex items-center gap-2">
+                              <div className="size-7 rounded-lg bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-orange-500">
+                                <TrendingUp className="size-4" />
+                              </div>
+                              <div>
+                                <h3 className="text-xs font-extrabold uppercase tracking-wider text-foreground">
+                                  Hot Topics in Field
+                                </h3>
+                                <p className="text-[11px] text-muted-foreground">Most published research topics in {activeDomain.domain}</p>
+                              </div>
+                            </div>
+                            <Badge variant="outline" className="text-[10px] border-orange-500/30 bg-orange-500/10 text-orange-400 font-mono">
+                              Top Trending
+                            </Badge>
+                          </div>
+
+                          {activeDomain.hotTopics.length === 0 ? (
+                            <p className="text-xs text-muted-foreground py-6 text-center">No hot topics found in this field.</p>
+                          ) : (
+                            <ul className="space-y-2">
+                              {activeDomain.hotTopics.map((item, idx) => (
+                                <li key={item.term}>
+                                  <Link
+                                    to="/search"
+                                    search={{ q: item.term, searchType: "keywords" }}
+                                    className="flex items-center justify-between gap-3 p-2.5 rounded-xl border border-border/30 bg-secondary/15 hover:bg-secondary/40 hover:border-orange-500/30 transition-all group"
+                                  >
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                      <span className={`size-5 rounded-md font-mono font-extrabold text-[10px] flex items-center justify-center shrink-0 ${
+                                        idx === 0
+                                          ? "bg-orange-500/20 border border-orange-500/40 text-orange-400"
+                                          : "bg-secondary text-muted-foreground"
+                                      }`}>
+                                        {idx + 1}
+                                      </span>
+                                      <span className="text-xs font-semibold truncate text-foreground group-hover:text-brand transition-colors">
+                                        {item.term}
+                                      </span>
+                                    </div>
+                                    <span className="text-xs font-mono font-bold text-muted-foreground group-hover:text-foreground shrink-0">
+                                      {item.paperCount.toLocaleString()} papers
+                                    </span>
+                                  </Link>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </Card>
+
+                        {/* Research Gaps Card */}
+                        <Card className="p-5 space-y-4 border-border/60 hover:border-amber-500/30 transition-all">
+                          <div className="flex items-center justify-between gap-2 border-b border-border/40 pb-3">
+                            <div className="flex items-center gap-2">
+                              <div className="size-7 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500">
+                                <Lightbulb className="size-4" />
+                              </div>
+                              <div>
+                                <h3 className="text-xs font-extrabold uppercase tracking-wider text-foreground">
+                                  Research Gaps
+                                </h3>
+                                <p className="text-[11px] text-muted-foreground">Fewest published papers — niche opportunities</p>
+                              </div>
+                            </div>
+                            <Badge variant="outline" className="text-[10px] border-amber-500/30 bg-amber-500/10 text-amber-400 font-mono">
+                              Niche Gaps
+                            </Badge>
+                          </div>
+
+                          {activeDomain.researchGaps.length === 0 ? (
+                            <p className="text-xs text-muted-foreground py-6 text-center">No research gaps found in this field.</p>
+                          ) : (
+                            <ul className="space-y-2">
+                              {activeDomain.researchGaps.map((item, idx) => (
+                                <li key={item.term}>
+                                  <Link
+                                    to="/search"
+                                    search={{ q: item.term, searchType: "keywords" }}
+                                    className="flex items-center justify-between gap-3 p-2.5 rounded-xl border border-border/30 bg-secondary/15 hover:bg-secondary/40 hover:border-amber-500/30 transition-all group"
+                                  >
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                      <span className={`size-5 rounded-md font-mono font-extrabold text-[10px] flex items-center justify-center shrink-0 ${
+                                        idx === 0
+                                          ? "bg-amber-500/20 border border-amber-500/40 text-amber-400"
+                                          : "bg-secondary text-muted-foreground"
+                                      }`}>
+                                        {idx + 1}
+                                      </span>
+                                      <span className="text-xs font-semibold truncate text-foreground group-hover:text-brand transition-colors">
+                                        {item.term}
+                                      </span>
+                                    </div>
+                                    <span className="text-xs font-mono font-bold text-muted-foreground group-hover:text-foreground shrink-0">
+                                      {item.paperCount.toLocaleString()} papers
+                                    </span>
+                                  </Link>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </Card>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  /* Fallback UI: Old Research Gaps UI if followedDomains is not yet returned by BE */
+                  <Card title="Research Gaps">
+                    <p className="text-xs text-muted-foreground mb-4">
+                      Keywords with the lowest number of research papers in your followed fields. These represent potential niche opportunities for research.
+                    </p>
+                    {report?.landscape?.researchGaps?.length === 0 ? (
+                      <div className="text-muted-foreground text-sm">No research gaps detected yet.</div>
+                    ) : (
+                      <div className="divide-y divide-border/30">
+                        {report?.landscape?.researchGaps?.map((gap) => {
+                          const gapContent = (
+                            <div className="flex items-center justify-between py-2.5 text-sm hover:bg-secondary/10 px-2 rounded-lg transition-colors cursor-pointer group">
+                              <span className="font-semibold text-foreground group-hover:text-brand transition-colors">{gap.term}</span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-mono text-muted-foreground">{gap.paperCount} papers</span>
+                                <Badge variant="outline" className="text-[10px] border-amber-500/20 bg-amber-500/10 text-amber-500 font-bold">
+                                  Niche / Low Competition
+                                </Badge>
+                              </div>
+                            </div>
+                          );
+
+                          if (gap.paperId) {
+                            return (
+                              <Link
+                                key={gap.term}
+                                to="/papers/$id"
+                                params={{ id: String(gap.paperId) }}
+                                className="block no-underline"
+                              >
+                                {gapContent}
+                              </Link>
+                            );
+                          }
+
                           return (
                             <Link
                               key={gap.term}
-                              to="/papers/$id"
-                              params={{ id: String(gap.paperId) }}
+                              to="/search"
+                              search={{ q: gap.term, searchType: "keywords" }}
                               className="block no-underline"
                             >
                               {gapContent}
                             </Link>
                           );
-                        }
-
-                        return (
-                          <Link
-                            key={gap.term}
-                            to="/search"
-                            search={{ q: gap.term }}
-                            className="block no-underline"
-                          >
-                            {gapContent}
-                          </Link>
-                        );
-                      })}
-                    </div>
-                  )}
-                </Card>
+                        })}
+                      </div>
+                    )}
+                  </Card>
+                )}
               </div>
 
-              {/* 3.2 Tag Cloud (Word Cloud) */}
+              {/* 3.3 Đám mây Từ khóa Đồng xuất hiện (Keyword Co-occurrence / Word Cloud) */}
               <Card title="Keyword Co-occurrence (Word Cloud)">
                 <p className="text-xs text-muted-foreground mb-4">
                   Keywords commonly co-occurring with your followed keywords. Chip color and trend indicator show keyword growth rate.
@@ -1081,6 +1593,7 @@ function ReportsPage() {
                   <div className="text-muted-foreground text-sm">No word cloud data available.</div>
                 ) : (
                   <div className="space-y-4">
+                    {/* Render các thẻ Pill Tag với màu sắc dựa vào tốc độ tăng trưởng growthRate */}
                     <div className="flex flex-wrap items-center justify-center gap-2 p-6 border border-border/40 bg-surface-elevated/20 rounded-2xl min-h-[320px]">
                       {report.landscape.tagCloud.map((tag) => {
                         let colorClass = "text-muted-foreground border-border/40 bg-secondary/5 hover:bg-secondary/10 hover:border-border/80";
@@ -1100,7 +1613,7 @@ function ReportsPage() {
                           <Link
                             key={tag.term}
                             to="/search"
-                            search={{ q: tag.term }}
+                            search={{ q: tag.term, searchType: "keywords" }}
                             className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all hover:scale-105 cursor-pointer no-underline ${colorClass}`}
                             title={`Frequency: ${tag.coOccurrenceCount} times | Growth: ${tag.growthRate > 0 ? `+${tag.growthRate}` : tag.growthRate}%`}
                           >
@@ -1111,7 +1624,7 @@ function ReportsPage() {
                       })}
                     </div>
 
-                    {/* Chú thích màu sắc thể hiện tốc độ phát triển */}
+                    {/* Chú thích giải thích ngưỡng màu sắc & Công thức tăng trưởng Word Cloud */}
                     <UiTooltipProvider>
                       <div className="flex flex-wrap justify-center gap-6 pt-3 text-[11px] text-muted-foreground">
                         <UiTooltip delayDuration={100}>

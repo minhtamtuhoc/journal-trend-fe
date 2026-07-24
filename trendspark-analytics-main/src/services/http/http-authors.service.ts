@@ -50,8 +50,8 @@ export class HttpAuthorsService implements AuthorsService {
     return apiClient.get<AuthorProfile>(`/authors/${id}`);
   }
 
-  listPapers(authorId: string, limit = 50) {
-    return apiClient.get<Paper[]>(`/authors/${authorId}/papers`, { params: { limit } });
+  listPapers(authorId: string) {
+    return apiClient.get<Paper[]>(`/authors/${authorId}/papers`);
   }
 
   async getSpotlight(): Promise<AuthorSpotlight> {
