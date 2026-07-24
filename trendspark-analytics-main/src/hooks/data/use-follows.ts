@@ -44,7 +44,10 @@ export function useFollowTopic() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (topicId: string) => getServices().follow.followTopic(topicId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.follows.topics }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.follows.topics });
+      qc.invalidateQueries({ queryKey: ["reports"] });
+    },
   });
 }
 
@@ -52,7 +55,10 @@ export function useUnfollowTopic() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (topicId: string) => getServices().follow.unfollowTopic(topicId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.follows.topics }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.follows.topics });
+      qc.invalidateQueries({ queryKey: ["reports"] });
+    },
   });
 }
 
@@ -60,7 +66,10 @@ export function useFollowJournal() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (journalId: string) => getServices().follow.followJournal(journalId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.follows.journals }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.follows.journals });
+      qc.invalidateQueries({ queryKey: ["reports"] });
+    },
   });
 }
 
@@ -68,7 +77,10 @@ export function useUnfollowJournal() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (journalId: string) => getServices().follow.unfollowJournal(journalId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.follows.journals }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.follows.journals });
+      qc.invalidateQueries({ queryKey: ["reports"] });
+    },
   });
 }
 
@@ -76,7 +88,10 @@ export function useFollowAuthor() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (authorId: string) => getServices().follow.followAuthor(authorId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.follows.authors }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.follows.authors });
+      qc.invalidateQueries({ queryKey: ["reports"] });
+    },
   });
 }
 
@@ -84,7 +99,10 @@ export function useUnfollowAuthor() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (authorId: string) => getServices().follow.unfollowAuthor(authorId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.follows.authors }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.follows.authors });
+      qc.invalidateQueries({ queryKey: ["reports"] });
+    },
   });
 }
 
