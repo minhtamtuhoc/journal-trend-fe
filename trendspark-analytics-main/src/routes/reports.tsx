@@ -33,6 +33,8 @@ import {
   Lightbulb,
   ExternalLink,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Check,
   ArrowLeft,
   FileText,
@@ -228,8 +230,14 @@ function CustomAuthorReportView({ authorId }: { authorId: string }) {
       p.keywords?.forEach(k => {
         if (isKeywordMatch(k.name)) {
           const kwLower = k.name.toLowerCase().trim();
-          const original = followedTopics.find(t => t.name.toLowerCase().trim() === kwLower || kwLower.includes(t.name.toLowerCase().trim()));
-          matches.add(original ? original.name : k.name);
+          // Ưu tiên khớp tên từ khóa follow chính xác trước
+          const exactOriginal = followedTopics.find(t => t.name.toLowerCase().trim() === kwLower);
+          if (exactOriginal) {
+            matches.add(exactOriginal.name);
+          } else {
+            // Nếu khớp qua tìm kiếm chứa chuỗi, giữ nguyên tên từ khóa k.name để không bị trùng lặp/ép tên khiến giảm số lượng từ khóa
+            matches.add(k.name.trim());
+          }
         }
       });
     });
@@ -504,6 +512,131 @@ function CustomAuthorReportView({ authorId }: { authorId: string }) {
   );
 }
 
+// === COMPONENT THANH CHỌN DOMAIN NGANG TƯƠNG TÁC CAO (DOMAIN TAB BAR) ===
+// Hỗ trợ nút cuộn Trái/Phải, lăn chuột ngang (mouse wheel), và kéo rê bằng chuột (drag-to-scroll)
+function DomainTabBar({
+  domains,
+  selectedDomain,
+  onSelectDomain,
+}: {
+  domains: { domain: string }[];
+  selectedDomain: string;
+  onSelectDomain: (domain: string) => void;
+}) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [scrollLeftPos, setScrollLeftPos] = useState(0);
+
+  const checkScroll = () => {
+    if (!scrollRef.current) return;
+    const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
+    setCanScrollLeft(scrollLeft > 2);
+    setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 2);
+  };
+
+  useEffect(() => {
+    checkScroll();
+    const handleResize = () => checkScroll();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, [domains]);
+
+  const handleWheel = (e: React.WheelEvent) => {
+    if (!scrollRef.current) return;
+    if (e.deltaY !== 0) {
+      scrollRef.current.scrollLeft += e.deltaY;
+      checkScroll();
+    }
+  };
+
+  const scrollBy = (amount: number) => {
+    if (!scrollRef.current) return;
+    scrollRef.current.scrollBy({ left: amount, behavior: "smooth" });
+    setTimeout(checkScroll, 320);
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!scrollRef.current) return;
+    setIsDragging(true);
+    setStartX(e.pageX - scrollRef.current.offsetLeft);
+    setScrollLeftPos(scrollRef.current.scrollLeft);
+  };
+
+  const handleMouseLeaveOrUp = () => {
+    setIsDragging(false);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging || !scrollRef.current) return;
+    e.preventDefault();
+    const x = e.pageX - scrollRef.current.offsetLeft;
+    const walk = (x - startX) * 1.5;
+    scrollRef.current.scrollLeft = scrollLeftPos - walk;
+    checkScroll();
+  };
+
+  return (
+    <div className="relative flex items-center group/domain-bar">
+      {canScrollLeft && (
+        <button
+          type="button"
+          onClick={() => scrollBy(-240)}
+          className="absolute -left-3 z-20 size-8 rounded-full bg-background/90 backdrop-blur-md border border-border shadow-lg flex items-center justify-center text-foreground hover:bg-brand/15 hover:border-brand/40 hover:text-brand transition-all cursor-pointer"
+          title="Scroll Left"
+        >
+          <ChevronLeft className="size-4" />
+        </button>
+      )}
+
+      <div
+        ref={scrollRef}
+        onScroll={checkScroll}
+        onWheel={handleWheel}
+        onMouseDown={handleMouseDown}
+        onMouseLeave={handleMouseLeaveOrUp}
+        onMouseUp={handleMouseLeaveOrUp}
+        onMouseMove={handleMouseMove}
+        className={`flex items-center gap-1.5 p-1.5 bg-secondary/30 backdrop-blur-md rounded-2xl border border-border/60 overflow-x-auto scrollbar-none w-full select-none ${
+          isDragging ? "cursor-grabbing" : "cursor-grab"
+        }`}
+      >
+        {domains.map((d) => {
+          const isSelected = selectedDomain === d.domain;
+          return (
+            <button
+              key={d.domain}
+              type="button"
+              onClick={() => onSelectDomain(d.domain)}
+              className={`h-9 px-4 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 shrink-0 ${
+                isSelected
+                  ? "bg-brand/15 border border-brand/40 text-brand shadow-sm"
+                  : "border border-transparent text-muted-foreground hover:text-foreground hover:bg-secondary/60"
+              }`}
+            >
+              <span className={`size-2 rounded-full ${isSelected ? "bg-brand animate-pulse" : "bg-muted-foreground/40"}`} />
+              {d.domain}
+            </button>
+          );
+        })}
+      </div>
+
+      {canScrollRight && (
+        <button
+          type="button"
+          onClick={() => scrollBy(240)}
+          className="absolute -right-3 z-20 size-8 rounded-full bg-background/90 backdrop-blur-md border border-border shadow-lg flex items-center justify-center text-foreground hover:bg-brand/15 hover:border-brand/40 hover:text-brand transition-all cursor-pointer"
+          title="Scroll Right"
+        >
+          <ChevronRight className="size-4" />
+        </button>
+      )}
+    </div>
+  );
+}
+
 // === TRANG CHÍNH BÁO CÁO & PHÂN TÍCH THÔNG MINH (REPORTS & INSIGHTS PAGE) ===
 function ReportsPage() {
   const { authorId } = Route.useSearch() as { authorId?: string }; // ID tác giả nếu chuyển từ báo cáo chi tiết tác giả
@@ -526,8 +659,12 @@ function ReportsPage() {
 
   useEffect(() => {
     const domains = report?.landscape?.followedDomains;
-    if (domains && domains.length > 0 && selectedDomain === null) {
-      setSelectedDomain(domains[0].domain);
+    if (domains && domains.length > 0) {
+      if (!selectedDomain || !domains.some((d) => d.domain === selectedDomain)) {
+        setSelectedDomain(domains[0].domain);
+      }
+    } else {
+      setSelectedDomain(null);
     }
   }, [report, selectedDomain]);
 
@@ -1376,27 +1513,12 @@ function ReportsPage() {
                       </div>
                     </div>
 
-                    {/* Domain Selector (Segmented Tab Bar) */}
-                    <div className="flex items-center gap-1.5 p-1.5 bg-secondary/30 backdrop-blur-md rounded-2xl border border-border/60 overflow-x-auto scrollbar-none">
-                      {followedDomains.map((d) => {
-                        const isSelected = (selectedDomain ?? activeDomain?.domain) === d.domain;
-                        return (
-                          <button
-                            key={d.domain}
-                            type="button"
-                            onClick={() => setSelectedDomain(d.domain)}
-                            className={`h-9 px-4 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 shrink-0 select-none ${
-                              isSelected
-                                ? "bg-brand/15 border border-brand/40 text-brand shadow-sm"
-                                : "border border-transparent text-muted-foreground hover:text-foreground hover:bg-secondary/60"
-                            }`}
-                          >
-                            <span className={`size-2 rounded-full ${isSelected ? "bg-brand animate-pulse" : "bg-muted-foreground/40"}`} />
-                            {d.domain}
-                          </button>
-                        );
-                      })}
-                    </div>
+                    {/* Domain Selector (Segmented Tab Bar with mouse wheel & drag-to-scroll) */}
+                    <DomainTabBar
+                      domains={followedDomains}
+                      selectedDomain={selectedDomain ?? activeDomain?.domain ?? ""}
+                      onSelectDomain={(domain) => setSelectedDomain(domain)}
+                    />
 
                     {/* Followed Keywords Interactive Banner */}
                     {activeDomain && activeDomain.followedKeywords.length > 0 && (
@@ -1445,7 +1567,10 @@ function ReportsPage() {
                           </div>
 
                           {activeDomain.hotTopics.length === 0 ? (
-                            <p className="text-xs text-muted-foreground py-6 text-center">No hot topics found in this field.</p>
+                            <div className="py-6 text-center space-y-1">
+                              <p className="text-xs text-muted-foreground">No additional hot topics found in <strong>{activeDomain.domain}</strong>.</p>
+                              <p className="text-[10px] text-muted-foreground/75">(All existing topics in this domain are already followed or pending sync)</p>
+                            </div>
                           ) : (
                             <ul className="space-y-2">
                               {activeDomain.hotTopics.map((item, idx) => (
@@ -1497,7 +1622,10 @@ function ReportsPage() {
                           </div>
 
                           {activeDomain.researchGaps.length === 0 ? (
-                            <p className="text-xs text-muted-foreground py-6 text-center">No research gaps found in this field.</p>
+                            <div className="py-6 text-center space-y-1">
+                              <p className="text-xs text-muted-foreground">No niche research gaps found in <strong>{activeDomain.domain}</strong>.</p>
+                              <p className="text-[10px] text-muted-foreground/75">(All existing topics in this domain are already followed or pending sync)</p>
+                            </div>
                           ) : (
                             <ul className="space-y-2">
                               {activeDomain.researchGaps.map((item, idx) => (
