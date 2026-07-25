@@ -2,16 +2,14 @@ import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-r
 import { AppLayout, PageHeader } from "@/components/AppLayout";
 import { Card } from "@/components/Card";
 import { useAdminOverview, useAdminSources, useUpdateAdminSource, useApprovePaper, useDeletePaper, usePendingReview } from "@/hooks/data/use-admin";
-import { useState } from "react";
-import { RefreshCw, CheckCircle2, XCircle, AlertTriangle, Activity, UserCheck, UserX, ExternalLink, ArrowRight, History } from "lucide-react";
+import { useState, useEffect } from "react";
+import { RefreshCw, CheckCircle2, XCircle, AlertTriangle, Activity, Sparkles, Cpu, Zap, Sliders, Check } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth, isAdminUser } from "@/auth";
 import { useQueryClient } from "@tanstack/react-query";
 import { getServices, queryKeys } from "@/services";
 import { ApiError } from "@/api/errors";
-import { useAdminRoleRequests, useApproveRoleRequest, useRoleLogs } from "@/hooks/data/use-role-request";
-import { RoleRequestRejectModal } from "@/components/RoleRequestRejectModal";
-import type { RoleRequestStatus, RoleUpgradeRequestResponse, RoleChangeLogResponse } from "@/types/role-request";
+import { useAiCollectionAnalysisLimit, useUpdateAiCollectionAnalysisLimit } from "@/hooks/data/use-ai-limit";
 
 export const Route = createFileRoute("/admin")({ component: AdminPage });
 
@@ -302,7 +300,7 @@ function AdminPage() {
         </Card>
       </div>
 
-      <RoleRequestsAdminSection />
+      <AiCollectionAnalysisSettingsSection />
 
       <Card
         title="Audit Logs"
@@ -343,208 +341,225 @@ function AdminPage() {
   );
 }
 
-function RoleRequestsAdminSection() {
-  const [statusFilter, setStatusFilter] = useState<RoleRequestStatus>("PENDING");
-  const [page, setPage] = useState(0);
-  const [rejectingRequest, setRejectingRequest] = useState<RoleUpgradeRequestResponse | null>(null);
-  const [showRejectModal, setShowRejectModal] = useState(false);
-  const [subTab, setSubTab] = useState<"requests" | "logs">("requests");
 
-  const { data: requestsPage, isLoading: isLoadingRequests, refetch: refetchRequests } = useAdminRoleRequests(statusFilter, page, 20);
-  const approveMutation = useApproveRoleRequest();
-  const { data: roleLogsPage } = useRoleLogs(undefined, 0, 20);
 
-  const requests: RoleUpgradeRequestResponse[] = requestsPage?.content ?? [];
-  const logs: RoleChangeLogResponse[] = roleLogsPage?.content ?? [];
+function AiCollectionAnalysisSettingsSection() {
+  const { data: limitData } = useAiCollectionAnalysisLimit();
+  const updateMutation = useUpdateAiCollectionAnalysisLimit();
 
-  const handleApprove = async (req: RoleUpgradeRequestResponse) => {
+  const currentLimit = limitData?.maxPapers ?? 30;
+  const [maxPapers, setMaxPapers] = useState<number>(30);
+  const [isModified, setIsModified] = useState(false);
+
+  useEffect(() => {
+    if (limitData?.maxPapers) {
+      setMaxPapers(limitData.maxPapers);
+      setIsModified(false);
+    }
+  }, [limitData?.maxPapers]);
+
+  const handlePreset = (val: number) => {
+    setMaxPapers(val);
+    setIsModified(val !== currentLimit);
+  };
+
+  const handleSliderChange = (val: number) => {
+    setMaxPapers(val);
+    setIsModified(val !== currentLimit);
+  };
+
+  const handleSave = async () => {
+    if (maxPapers < 1 || maxPapers > 100) {
+      toast.error("Limit must be between 1 and 100 papers");
+      return;
+    }
     try {
-      await approveMutation.mutateAsync({ requestId: req.id });
-      toast.success(`Role request approved successfully for ${req.userName} (${req.requestedRole})`);
-      void refetchRequests();
+      await updateMutation.mutateAsync(maxPapers);
+      toast.success(`AI Collection Analysis limit updated to ${maxPapers} papers`);
+      setIsModified(false);
     } catch (err) {
-      const msg = err instanceof ApiError ? err.message : "Approval failed";
+      const msg = err instanceof ApiError ? err.message : "Failed to update AI limit";
       toast.error(msg);
     }
   };
 
+  // Performance metrics estimation matching Groq Llama 3.3 70B & BE metadata prompt
+  const estTokens = maxPapers * 200 + 600;
+  const speedRating =
+    maxPapers <= 20
+      ? { label: "Fast (~2.0s)", color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/30" }
+      : maxPapers <= 50
+      ? { label: "Balanced (~3.8s)", color: "text-brand bg-brand/10 border-brand/30" }
+      : { label: "Deep Analysis (~7.5s)", color: "text-amber-400 bg-amber-500/10 border-amber-500/30" };
+
+  const sliderPercent = Math.min(100, Math.max(0, ((maxPapers - 1) / 99) * 100));
+
   return (
-    <Card className="mb-6" title="Role Change Requests & History">
-      {/* Sub tabs & status filter */}
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border/60 pb-4 mb-4">
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => setSubTab("requests")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-              subTab === "requests" ? "bg-brand text-brand-foreground" : "bg-secondary/40 text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            Role Requests ({statusFilter})
-          </button>
-          <button
-            type="button"
-            onClick={() => setSubTab("logs")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 ${
-              subTab === "logs" ? "bg-brand text-brand-foreground" : "bg-secondary/40 text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <History className="size-3.5" />
-            Role Change Logs
-          </button>
+    <Card
+      className="mb-6 overflow-hidden border-border/80 shadow-lg"
+      title="AI Collection Analysis Configuration"
+      action={
+        <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-brand/10 border border-brand/25 text-xs">
+          <span className="relative flex size-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand opacity-75"></span>
+            <span className="relative inline-flex rounded-full size-2 bg-brand"></span>
+          </span>
+          <span className="font-mono text-muted-foreground">
+            Active Limit: <strong className="text-brand font-bold">{currentLimit} / 100 papers</strong>
+          </span>
+        </div>
+      }
+    >
+      <div className="space-y-6">
+        {/* Top Control Hero Box */}
+        <div className="relative overflow-hidden p-5 rounded-2xl border border-brand/20 bg-gradient-to-r from-brand/10 via-secondary/30 to-brand/5 backdrop-blur-sm transition-all shadow-inner">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
+            <div className="space-y-1.5 max-w-xl">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-brand/20 text-brand border border-brand/30 glow-brand">
+                  <Cpu className="size-5" />
+                </div>
+                <h4 className="text-base font-bold text-foreground tracking-tight flex items-center gap-2">
+                  Maximum Papers Analyzed Per Run
+                </h4>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed pl-0.5">
+                Controls the maximum number of papers processed by Groq AI LLM per analysis request.
+                Updates sync instantly across all user modals and notification thresholds.
+              </p>
+            </div>
+
+            {/* Stepper + Input */}
+            <div className="flex items-center gap-3 shrink-0 bg-background/80 p-2 rounded-xl border border-border/80 shadow-sm">
+              <button
+                type="button"
+                onClick={() => handleSliderChange(Math.max(1, maxPapers - 1))}
+                className="size-8 rounded-lg bg-secondary/80 hover:bg-secondary text-foreground font-bold flex items-center justify-center transition-all hover:scale-105 active:scale-95 disabled:opacity-40"
+                disabled={maxPapers <= 1}
+              >
+                -
+              </button>
+
+              <div className="flex items-center gap-1.5 px-1">
+                <input
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={maxPapers}
+                  onChange={(e) => handleSliderChange(Math.max(1, Math.min(100, Number(e.target.value))))}
+                  className="w-16 h-9 px-2 rounded-lg border border-brand/40 bg-secondary/40 text-foreground text-base font-extrabold font-mono text-center focus:ring-2 focus:ring-brand focus:outline-none transition-all"
+                />
+                <span className="text-xs font-semibold text-muted-foreground">papers</span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleSliderChange(Math.min(100, maxPapers + 1))}
+                className="size-8 rounded-lg bg-secondary/80 hover:bg-secondary text-foreground font-bold flex items-center justify-center transition-all hover:scale-105 active:scale-95 disabled:opacity-40"
+                disabled={maxPapers >= 100}
+              >
+                +
+              </button>
+            </div>
+          </div>
+
+          {/* AI Estimated Metrics Indicator Bar */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-4 pt-4 border-t border-border/40 text-xs">
+            <div className="flex items-center gap-2">
+              <Zap className="size-3.5 text-brand shrink-0" />
+              <span className="text-muted-foreground">Estimated Speed:</span>
+              <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold border ${speedRating.color}`}>
+                {speedRating.label}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Cpu className="size-3.5 text-brand shrink-0" />
+              <span className="text-muted-foreground">Token Context:</span>
+              <span className="font-mono font-bold text-foreground">~{estTokens.toLocaleString()} tokens</span>
+            </div>
+
+            <div className="flex items-center gap-2 col-span-2 sm:col-span-1">
+              <Sliders className="size-3.5 text-brand shrink-0" />
+              <span className="text-muted-foreground">Status:</span>
+              <span className={`font-mono text-[11px] font-semibold ${isModified ? "text-amber-400" : "text-emerald-400"}`}>
+                {isModified ? "Unsaved Changes" : "Saved & Active"}
+              </span>
+            </div>
+          </div>
         </div>
 
-        {subTab === "requests" && (
-          <div className="flex gap-1 bg-secondary/30 p-1 rounded-lg border border-border/50">
-            {(["PENDING", "APPROVED", "REJECTED"] as RoleRequestStatus[]).map((st) => (
+        {/* Custom Glowing Slider Section */}
+        <div className="space-y-3 px-1">
+          <div className="flex items-center justify-between text-xs text-muted-foreground font-mono">
+            <span className="font-semibold">1 paper (Min)</span>
+            <div className="px-3 py-1 rounded-full bg-brand/15 text-brand font-bold font-mono border border-brand/30 shadow-sm flex items-center gap-1.5">
+              <Sparkles className="size-3" />
+              <span>Current Target: {maxPapers} papers</span>
+            </div>
+            <span className="font-semibold">100 papers (Max)</span>
+          </div>
+
+          <div className="relative py-1">
+            <input
+              type="range"
+              min={1}
+              max={100}
+              step={1}
+              value={maxPapers}
+              onChange={(e) => handleSliderChange(Number(e.target.value))}
+              className="w-full h-2.5 bg-secondary/80 rounded-lg appearance-none cursor-pointer accent-brand transition-all hover:bg-secondary focus:outline-none"
+              style={{
+                background: `linear-gradient(to right, var(--brand) 0%, var(--brand) ${sliderPercent}%, var(--secondary) ${sliderPercent}%, var(--secondary) 100%)`,
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Quick Presets & Save Action Footer */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-4 border-t border-border/60">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-semibold text-muted-foreground mr-1">Quick Presets:</span>
+            {[
+              { val: 15, tag: "Fast" },
+              { val: 30, tag: "Recommended" },
+              { val: 50, tag: "Extended" },
+              { val: 100, tag: "Maximum" },
+            ].map(({ val, tag }) => (
               <button
-                key={st}
+                key={val}
                 type="button"
-                onClick={() => {
-                  setStatusFilter(st);
-                  setPage(0);
-                }}
-                className={`px-2.5 py-1 rounded text-xs font-medium transition-all ${
-                  statusFilter === st ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"
+                onClick={() => handlePreset(val)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-mono font-medium border transition-all cursor-pointer flex items-center gap-1.5 ${
+                  maxPapers === val
+                    ? "bg-brand text-brand-foreground border-brand font-bold shadow-md shadow-brand/20 scale-105"
+                    : "bg-secondary/40 text-muted-foreground border-border hover:border-brand/40 hover:text-foreground hover:bg-secondary/80"
                 }`}
               >
-                {st}
+                <span>{val}</span>
+                <span className="text-[10px] opacity-75">({tag})</span>
               </button>
             ))}
           </div>
-        )}
+
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={updateMutation.isPending || !isModified}
+            className="inline-flex items-center justify-center gap-2 h-10 px-6 rounded-xl text-xs font-bold uppercase tracking-wider text-brand-foreground glow-brand transition-all hover:brightness-110 active:scale-95 disabled:opacity-40 disabled:pointer-events-none cursor-pointer shadow-md"
+            style={{ background: "var(--gradient-brand)" }}
+          >
+            {updateMutation.isPending ? (
+              <span>Saving...</span>
+            ) : (
+              <>
+                <Check className="size-4" />
+                <span>Save Configuration</span>
+              </>
+            )}
+          </button>
+        </div>
       </div>
-
-      {subTab === "requests" ? (
-        isLoadingRequests ? (
-          <p className="text-sm text-muted-foreground py-4">Loading requests list...</p>
-        ) : requests.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-6 text-center">No role change requests found with status <strong>{statusFilter}</strong>.</p>
-        ) : (
-          <div className="space-y-3">
-            {requests.map((req) => (
-              <div key={req.id} className="p-4 rounded-xl border border-border bg-secondary/20 space-y-3">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <div className="font-semibold text-sm text-foreground flex items-center gap-2">
-                      <span>{req.userName}</span>
-                      <span className="text-xs font-normal text-muted-foreground">({req.userEmail})</span>
-                    </div>
-                    <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1.5 font-mono">
-                      <span>{req.currentRole}</span>
-                      <ArrowRight className="size-3 text-brand" />
-                      <span className="text-brand font-bold">{req.requestedRole}</span>
-                      <span className="text-muted-foreground/60">• {new Date(req.createdAt).toLocaleString("en-US")}</span>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider ${
-                        req.status === "PENDING"
-                          ? "bg-warning/20 text-warning"
-                          : req.status === "APPROVED"
-                          ? "bg-success/20 text-success"
-                          : "bg-destructive/20 text-destructive"
-                      }`}
-                    >
-                      {req.status}
-                    </span>
-
-                    {req.status === "PENDING" && (
-                      <div className="flex gap-1.5 ml-2">
-                        <button
-                          type="button"
-                          disabled={approveMutation.isPending}
-                          onClick={() => handleApprove(req)}
-                          className="px-3 py-1 rounded-lg text-xs font-semibold bg-success/10 text-success border border-success/30 hover:bg-success/20 transition-colors flex items-center gap-1"
-                        >
-                          <UserCheck className="size-3.5" />
-                          Approve
-                        </button>
-                        <button
-                          type="button"
-                          disabled={approveMutation.isPending}
-                          onClick={() => {
-                            setRejectingRequest(req);
-                            setShowRejectModal(true);
-                          }}
-                          className="px-3 py-1 rounded-lg text-xs font-semibold bg-destructive/10 text-destructive border border-destructive/30 hover:bg-destructive/20 transition-colors flex items-center gap-1"
-                        >
-                          <UserX className="size-3.5" />
-                          Reject
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Reason HTML */}
-                {req.reason && (
-                  <div className="p-3 bg-background/60 rounded-lg border border-border/50 text-xs leading-relaxed space-y-1">
-                    <div className="text-[10px] font-semibold uppercase text-muted-foreground">Submitted Reason:</div>
-                    <div
-                      className="prose prose-xs dark:prose-invert max-w-none text-foreground"
-                      dangerouslySetInnerHTML={{ __html: req.reason }}
-                    />
-                  </div>
-                )}
-
-                {/* Proof Link & Rejection Reason note */}
-                <div className="flex flex-wrap items-center justify-between text-xs pt-1 border-t border-border/40 gap-2">
-                  {req.proofUrl ? (
-                    <a
-                      href={req.proofUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-brand hover:underline font-medium"
-                    >
-                      <ExternalLink className="size-3" /> Submitted Proof Link
-                    </a>
-                  ) : (
-                    <span className="text-muted-foreground italic">No proof link attached</span>
-                  )}
-
-                  {req.status === "REJECTED" && req.rejectionReasonText && (
-                    <span className="text-destructive font-medium">Rejection Reason: {req.rejectionReasonText}</span>
-                  )}
-                  {req.status === "APPROVED" && req.reviewedByEmail && (
-                    <span className="text-muted-foreground">Approved by: {req.reviewedByEmail}</span>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )
-      ) : (
-        logs.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-6 text-center">No role change logs available.</p>
-        ) : (
-          <div className="divide-y divide-border/60 border border-border/80 rounded-xl overflow-hidden">
-            {logs.map((log) => (
-              <div key={log.id} className="p-3 bg-secondary/10 flex items-center justify-between text-xs gap-4">
-                <div className="space-y-0.5">
-                  <div className="font-semibold text-foreground">
-                    {log.targetUserEmail} <span className="font-mono text-muted-foreground font-normal">({log.oldRole} → {log.newRole})</span>
-                  </div>
-                  <div className="text-muted-foreground">{log.reason || "Role changed successfully"}</div>
-                </div>
-                <div className="text-right shrink-0">
-                  <div className="font-mono text-[11px] text-brand">{log.operatorEmail}</div>
-                  <div className="text-[10px] text-muted-foreground">{new Date(log.createdAt).toLocaleString("en-US")}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )
-      )}
-
-      <RoleRequestRejectModal
-        request={rejectingRequest}
-        open={showRejectModal}
-        onOpenChange={setShowRejectModal}
-        onSuccess={() => void refetchRequests()}
-      />
     </Card>
   );
 }

@@ -18,6 +18,7 @@ import { ApiError } from "@/api/errors";
 import { usePapersByIds } from "@/hooks/data/use-papers";
 import type { Collection } from "@/types/domain";
 import type { AiCollectionAnalysisResponse, AiCollectionAnalysisRequest } from "@/types/ai-collection-analysis";
+import { useAiCollectionAnalysisLimit } from "@/hooks/data/use-ai-limit";
 
 interface GlobalAiCollectionModalProps {
   open: boolean;
@@ -33,6 +34,9 @@ export function GlobalAiCollectionModal({
   onAnalysisSuccess,
 }: GlobalAiCollectionModalProps) {
   const { user } = useAuth();
+  const { data: limitData } = useAiCollectionAnalysisLimit();
+  const maxPapers = limitData?.maxPapers ?? 30;
+
   const [selectedCollectionId, setSelectedCollectionId] = useState<string>("");
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [selectedPaperIds, setSelectedPaperIds] = useState<Set<string>>(new Set());
@@ -61,8 +65,8 @@ export function GlobalAiCollectionModal({
       if (next.has(paperId)) {
         next.delete(paperId);
       } else {
-        if (next.size >= 30) {
-          toast.warning("Maximum 30 papers allowed per AI analysis.");
+        if (next.size >= maxPapers) {
+          toast.warning(`Maximum ${maxPapers} papers allowed per AI analysis.`);
           return prev;
         }
         next.add(paperId);
@@ -72,9 +76,9 @@ export function GlobalAiCollectionModal({
   };
 
   const selectAllPapers = () => {
-    if (papers.length > 30) {
-      toast.info("Selected first 30 papers (maximum supported per analysis).");
-      setSelectedPaperIds(new Set(papers.slice(0, 30).map((p) => p.id)));
+    if (papers.length > maxPapers) {
+      toast.info(`Selected first ${maxPapers} papers (maximum supported per analysis).`);
+      setSelectedPaperIds(new Set(papers.slice(0, maxPapers).map((p) => p.id)));
     } else {
       setSelectedPaperIds(new Set(papers.map((p) => p.id)));
     }
@@ -250,13 +254,13 @@ export function GlobalAiCollectionModal({
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
                           <FileText className="size-3.5 text-brand" />
-                          {activeCollection.paperIds.length > 30 ? "Analyze Top 30 Recent Papers" : "Analyze All Papers"}
+                          {activeCollection.paperIds.length > maxPapers ? `Analyze Top ${maxPapers} Recent Papers` : "Analyze All Papers"}
                         </span>
                         {!isSelectMode && <CheckCircle2 className="size-4 text-brand" />}
                       </div>
                       <p className="text-[11px] text-muted-foreground leading-snug">
-                        {activeCollection.paperIds.length > 30
-                          ? `Analyzes 30 most recent papers out of ${activeCollection.paperIds.length}`
+                        {activeCollection.paperIds.length > maxPapers
+                          ? `Analyzes ${maxPapers} most recent papers out of ${activeCollection.paperIds.length}`
                           : `Full collection analysis (${activeCollection.paperIds.length} paper${activeCollection.paperIds.length === 1 ? "" : "s"})`}
                       </p>
                     </button>
@@ -278,17 +282,17 @@ export function GlobalAiCollectionModal({
                         {isSelectMode && <CheckCircle2 className="size-4 text-brand" />}
                       </div>
                       <p className="text-[11px] text-muted-foreground leading-snug">
-                        Choose specific papers (up to 30)
+                        Choose specific papers (up to {maxPapers})
                       </p>
                     </button>
                   </div>
 
-                  {activeCollection.paperIds.length > 30 && !isSelectMode && (
+                  {activeCollection.paperIds.length > maxPapers && !isSelectMode && (
                     <div className="p-3 rounded-xl border border-amber-500/30 bg-amber-500/10 text-amber-400 text-xs flex items-start gap-2">
                       <Info className="size-4 shrink-0 mt-0.5" />
                       <div>
                         <span className="font-semibold">Notice: </span>
-                        This collection contains <strong>{activeCollection.paperIds.length} papers</strong>. The 30 most recent papers will be analyzed. To choose specific papers, switch to <strong>Custom Paper Selection</strong>.
+                        This collection contains <strong>{activeCollection.paperIds.length} papers</strong>. The {maxPapers} most recent papers will be analyzed. To choose specific papers, switch to <strong>Custom Paper Selection</strong>.
                       </div>
                     </div>
                   )}
