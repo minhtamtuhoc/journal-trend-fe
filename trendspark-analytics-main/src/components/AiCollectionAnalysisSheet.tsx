@@ -202,7 +202,7 @@ export function AiCollectionAnalysisSheet({
                     Partial Collection Analysis ({data.analyzedPaperCount} of {data.paperCount} papers analyzed)
                   </p>
                   <p className="text-[11px] text-muted-foreground leading-relaxed">
-                    This collection contains <strong>{data.paperCount} papers</strong>. Due to the 30-paper AI limit per analysis, the <strong>{data.paperCount - data.analyzedPaperCount} oldest paper(s)</strong> below were excluded from this run.
+                    This collection contains <strong>{data.paperCount} papers</strong>. Due to the {data.analyzedPaperCount}-paper AI limit per analysis, the <strong>{data.paperCount - data.analyzedPaperCount} oldest paper(s)</strong> below were excluded from this run.
                   </p>
                 </div>
               </div>

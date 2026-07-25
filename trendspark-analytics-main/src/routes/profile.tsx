@@ -6,9 +6,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { ApiError } from "@/api/errors";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { User, ShieldCheck, KeyRound, Eye, EyeOff, Lock, CheckCircle2, Sparkles, Clock, ExternalLink, AlertCircle } from "lucide-react";
-import { useMyRoleRequest } from "@/hooks/data/use-role-request";
-import { RoleRequestModal } from "@/components/RoleRequestModal";
+import { User, ShieldCheck, KeyRound, Eye, EyeOff, Lock, CheckCircle2, AlertCircle } from "lucide-react";
 
 export const Route = createFileRoute("/profile")({ component: ProfilePage });
 
@@ -16,9 +14,6 @@ function ProfilePage() {
   const { user, updateProfile, changePassword } = useAuth();
   const [name, setName] = useState(user?.name ?? "");
   const [saving, setSaving] = useState(false);
-  const [showRoleModal, setShowRoleModal] = useState(false);
-
-  const { data: pendingRequest, refetch: refetchPendingRequest } = useMyRoleRequest();
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -145,15 +140,7 @@ function ProfilePage() {
         : { type: "error" as const, text: "Confirm password does not match new password" }
       : undefined;
 
-  const formattedDate = pendingRequest?.createdAt
-    ? new Date(pendingRequest.createdAt).toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    : "";
+
 
   return (
     <AppLayout>
@@ -192,7 +179,6 @@ function ProfilePage() {
                   hint="Email is your account identifier and cannot be changed"
                 />
 
-                {/* Role field with upgrade request action inside input / status banner */}
                 <div className="space-y-2">
                   <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                     System Role
@@ -203,45 +189,9 @@ function ProfilePage() {
                       type="text"
                       disabled
                       value={displayRole}
-                      className="w-full h-10 pl-3.5 pr-44 rounded-lg border border-border bg-secondary/50 text-foreground text-sm font-medium opacity-80 cursor-not-allowed"
+                      className="w-full h-10 px-3.5 rounded-lg border border-border bg-secondary/50 text-foreground text-sm font-medium opacity-80 cursor-not-allowed"
                     />
-
-                    {/* Request button positioned directly inside input bar */}
-                    {!pendingRequest && !isAdminUser(user) && (
-                      <button
-                        type="button"
-                        onClick={() => setShowRoleModal(true)}
-                        className="absolute right-1.5 h-7 px-3 rounded-md text-xs font-semibold bg-brand/15 text-brand hover:bg-brand/25 border border-brand/30 transition-all flex items-center gap-1.5"
-                      >
-                        <Sparkles className="size-3.5" />
-                        <span>Request Role Change</span>
-                      </button>
-                    )}
                   </div>
-
-                  {/* Pending Request Status Banner */}
-                  {pendingRequest && (
-                    <div className="p-3 bg-brand/10 border border-brand/30 rounded-xl space-y-1 text-xs">
-                      <div className="flex items-center justify-between font-semibold text-brand">
-                        <span className="flex items-center gap-1.5">
-                          <Clock className="size-3.5 animate-spin" />
-                          Pending Review: {pendingRequest.currentRole} → {pendingRequest.requestedRole}
-                        </span>
-                        <span className="text-[11px] font-mono text-muted-foreground">{formattedDate}</span>
-                      </div>
-                      {pendingRequest.proofUrl && (
-                        <a
-                          href={pendingRequest.proofUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-[11px] text-brand hover:underline"
-                        >
-                          <ExternalLink className="size-3" />
-                          Submitted Proof
-                        </a>
-                      )}
-                    </div>
-                  )}
                 </div>
 
                 <div className="pt-2">
@@ -257,12 +207,7 @@ function ProfilePage() {
               </form>
             </Card>
 
-            <RoleRequestModal
-              open={showRoleModal}
-              onOpenChange={setShowRoleModal}
-              currentRole={user.rawRole || user.role}
-              onSuccess={() => void refetchPendingRequest()}
-            />
+
           </TabsContent>
 
           <TabsContent value="security">
