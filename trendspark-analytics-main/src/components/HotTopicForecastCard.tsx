@@ -5,6 +5,7 @@ import {
   TooltipContent as UiTooltipContent,
   TooltipProvider as UiTooltipProvider,
 } from "@/components/ui/tooltip";
+import { ExternalLink, BookOpen } from "lucide-react";
 
 const CATEGORY_BADGE: Record<ForecastCategory, { label: string; class: string }> = {
   EARLY_BOOM: { label: "Early Boom",    class: "bg-orange-500/15 text-orange-500 border-orange-500/30" },
@@ -71,7 +72,7 @@ export function HotTopicForecastCard({ items, isLoading, months = 6, selectedKey
                       sTPS
                     </span>
                   </UiTooltipTrigger>
-                  <UiTooltipContent side="top" align="center" className="p-3 max-w-[280px] bg-popover text-popover-foreground border border-border shadow-lg rounded-xl">
+                  <UiTooltipContent side="top" align="center" className="p-3 max-w-[300px] bg-popover text-popover-foreground border border-border shadow-lg rounded-xl pointer-events-auto">
                     <div className="space-y-1.5 text-xs font-sans text-left normal-case tracking-normal">
                       <p className="font-bold text-brand uppercase tracking-wider text-[10px]">
                         Scaled Trend Potential Score (sTPS)
@@ -81,9 +82,37 @@ export function HotTopicForecastCard({ items, isLoading, months = 6, selectedKey
                         <code className="block bg-secondary/40 p-1.5 rounded-md font-mono text-[10px] mb-2 text-center text-foreground font-semibold">
                           (w_slope × Slope_norm + w_acc × Acc_norm + w_vol × Volume_norm) × 100
                         </code>
-                        <p className="mt-2 text-[10px] border-t border-border pt-1.5 leading-snug">
-                          Standardized composite score (0-100) evaluating growth rate (slope), speed change (acceleration), and overall publication volume.
+                        <p className="text-[10px] border-t border-border pt-1.5 leading-snug">
+                          Standardized composite score (0-100) evaluating growth rate, speed change, and publication volume using SAW & Min-Max Normalization.
                         </p>
+                        <div className="mt-2 text-[10px] border-t border-border pt-1.5 space-y-1">
+                          <p className="font-semibold text-foreground flex items-center gap-1">
+                            <BookOpen className="size-3 text-brand shrink-0" />
+                            <span>Methodology References:</span>
+                          </p>
+                          <div className="flex flex-col gap-1 pl-4">
+                            <a
+                              href="https://doi.org/10.1287/opre.15.3.537"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="inline-flex items-center gap-1 text-brand hover:underline font-medium text-[10px] transition-colors"
+                            >
+                              <span>SAW Method (Fishburn 1967)</span>
+                              <ExternalLink className="size-2.5 shrink-0" />
+                            </a>
+                            <a
+                              href="https://doi.org/10.1016/C2009-0-61819-5"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="inline-flex items-center gap-1 text-brand hover:underline font-medium text-[10px] transition-colors"
+                            >
+                              <span>Min-Max Normalization (Han et al.)</span>
+                              <ExternalLink className="size-2.5 shrink-0" />
+                            </a>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </UiTooltipContent>
@@ -96,7 +125,7 @@ export function HotTopicForecastCard({ items, isLoading, months = 6, selectedKey
                       {tableMonthsHeader}M Forecast
                     </span>
                   </UiTooltipTrigger>
-                  <UiTooltipContent side="top" align="center" className="p-3 max-w-[280px] bg-popover text-popover-foreground border border-border shadow-lg rounded-xl">
+                  <UiTooltipContent side="top" align="center" className="p-3 max-w-[300px] bg-popover text-popover-foreground border border-border shadow-lg rounded-xl pointer-events-auto">
                     <div className="space-y-1.5 text-xs font-sans text-left normal-case tracking-normal">
                       <p className="font-bold text-brand uppercase tracking-wider text-[10px]">
                         Predicted Publications ({tableMonthsHeader} Months)
@@ -106,9 +135,37 @@ export function HotTopicForecastCard({ items, isLoading, months = 6, selectedKey
                         <code className="block bg-secondary/40 p-1.5 rounded-md font-mono text-[10px] mb-2 text-center text-foreground font-semibold">
                           Σ (Slope × Month + Intercept)
                         </code>
-                        <p className="mt-2 text-[10px] border-t border-border pt-1.5 leading-snug">
+                        <p className="text-[10px] border-t border-border pt-1.5 leading-snug">
                           Extrapolated total publication count over the next {tableMonthsHeader} months using Linear Regression.
                         </p>
+                        <div className="mt-2 text-[10px] border-t border-border pt-1.5 space-y-1">
+                          <p className="font-semibold text-foreground flex items-center gap-1">
+                            <BookOpen className="size-3 text-brand shrink-0" />
+                            <span>Formula References:</span>
+                          </p>
+                          <div className="flex flex-col gap-1 pl-4">
+                            <a
+                              href="https://en.wikipedia.org/wiki/Simple_linear_regression"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="inline-flex items-center gap-1 text-brand hover:underline font-medium text-[10px] transition-colors"
+                            >
+                              <span>Simple Linear Regression (Wikipedia)</span>
+                              <ExternalLink className="size-2.5 shrink-0" />
+                            </a>
+                            <a
+                              href="https://otexts.com/fpp3/regression-intro.html"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="inline-flex items-center gap-1 text-brand hover:underline font-medium text-[10px] transition-colors"
+                            >
+                              <span>Regression Intro (fpp3)</span>
+                              <ExternalLink className="size-2.5 shrink-0" />
+                            </a>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </UiTooltipContent>
@@ -148,7 +205,7 @@ export function HotTopicForecastCard({ items, isLoading, months = 6, selectedKey
                           {item.potentialScore}
                         </span>
                       </UiTooltipTrigger>
-                      <UiTooltipContent side="top" align="center" className="p-3 max-w-[280px] bg-popover text-popover-foreground border border-border shadow-lg rounded-xl">
+                      <UiTooltipContent side="top" align="center" className="p-3 max-w-[300px] bg-popover text-popover-foreground border border-border shadow-lg rounded-xl pointer-events-auto">
                         <div className="space-y-1.5 text-xs font-sans text-left">
                           <p className="font-bold text-brand uppercase tracking-wider text-[10px]">
                             sTPS - {item.term}
@@ -159,10 +216,35 @@ export function HotTopicForecastCard({ items, isLoading, months = 6, selectedKey
                               (w_slope × Slope_norm + w_acc × Acc_norm + w_vol × Volume_norm) × 100
                             </code>
                             <p className="font-medium text-foreground mb-1">Calculated Score:</p>
-                            <p className="font-mono text-xs text-foreground font-bold">{item.potentialScore} / 100</p>
-                            <p className="mt-2 text-[10px] border-t border-border pt-1.5 leading-snug">
-                              Composite potential score based on historical growth trajectory and volume.
-                            </p>
+                            <p className="font-mono text-xs text-foreground font-bold mb-2">{item.potentialScore} / 100</p>
+                            <div className="text-[10px] border-t border-border pt-1.5 space-y-1">
+                              <p className="font-semibold text-foreground flex items-center gap-1">
+                                <BookOpen className="size-3 text-brand shrink-0" />
+                                <span>Methodology References:</span>
+                              </p>
+                              <div className="flex flex-col gap-1 pl-4">
+                                <a
+                                  href="https://doi.org/10.1287/opre.15.3.537"
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="inline-flex items-center gap-1 text-brand hover:underline font-medium text-[10px] transition-colors"
+                                >
+                                  <span>SAW Method (Fishburn 1967)</span>
+                                  <ExternalLink className="size-2.5 shrink-0" />
+                                </a>
+                                <a
+                                  href="https://doi.org/10.1016/C2009-0-61819-5"
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="inline-flex items-center gap-1 text-brand hover:underline font-medium text-[10px] transition-colors"
+                                >
+                                  <span>Min-Max Normalization (Han et al.)</span>
+                                  <ExternalLink className="size-2.5 shrink-0" />
+                                </a>
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </UiTooltipContent>
@@ -175,7 +257,7 @@ export function HotTopicForecastCard({ items, isLoading, months = 6, selectedKey
                           {item.predictedPapers}
                         </span>
                       </UiTooltipTrigger>
-                      <UiTooltipContent side="top" align="center" className="p-3 max-w-[280px] bg-popover text-popover-foreground border border-border shadow-lg rounded-xl">
+                      <UiTooltipContent side="top" align="center" className="p-3 max-w-[300px] bg-popover text-popover-foreground border border-border shadow-lg rounded-xl pointer-events-auto">
                         <div className="space-y-1.5 text-xs font-sans text-left">
                           <p className="font-bold text-brand uppercase tracking-wider text-[10px]">
                             {tableMonthsHeader}M Forecast - {item.term}
@@ -186,11 +268,39 @@ export function HotTopicForecastCard({ items, isLoading, months = 6, selectedKey
                               Σ (Slope × Month + Intercept)
                             </code>
                             <p className="font-medium text-foreground mb-1">Forecast Details:</p>
-                            <ul className="list-disc pl-4 space-y-0.5 font-mono text-[10px]">
+                            <ul className="list-disc pl-4 space-y-0.5 font-mono text-[10px] mb-2">
                               <li>Horizon: <span className="text-foreground font-bold">{tableMonthsHeader} months</span></li>
                               <li>Predicted Papers: <span className="text-foreground font-bold">{item.predictedPapers}</span></li>
                               <li>Growth: <span className="text-foreground font-bold">+{item.predictedGrowthRate.toFixed(1)}%</span></li>
                             </ul>
+                            <div className="text-[10px] border-t border-border pt-1.5 space-y-1">
+                              <p className="font-semibold text-foreground flex items-center gap-1">
+                                <BookOpen className="size-3 text-brand shrink-0" />
+                                <span>Formula References:</span>
+                              </p>
+                              <div className="flex flex-col gap-1 pl-4">
+                                <a
+                                  href="https://en.wikipedia.org/wiki/Simple_linear_regression"
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="inline-flex items-center gap-1 text-brand hover:underline font-medium text-[10px] transition-colors"
+                                >
+                                  <span>Simple Linear Regression (Wikipedia)</span>
+                                  <ExternalLink className="size-2.5 shrink-0" />
+                                </a>
+                                <a
+                                  href="https://otexts.com/fpp3/regression-intro.html"
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="inline-flex items-center gap-1 text-brand hover:underline font-medium text-[10px] transition-colors"
+                                >
+                                  <span>Regression Intro (fpp3)</span>
+                                  <ExternalLink className="size-2.5 shrink-0" />
+                                </a>
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </UiTooltipContent>
@@ -214,7 +324,7 @@ export function HotTopicForecastCard({ items, isLoading, months = 6, selectedKey
   };
 
   return (
-    <UiTooltipProvider>
+    <UiTooltipProvider delayDuration={100}>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div>{renderTable(leftItems, 0)}</div>
         <div>{renderTable(rightItems, 5)}</div>

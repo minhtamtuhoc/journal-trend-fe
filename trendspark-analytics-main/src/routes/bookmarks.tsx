@@ -10,7 +10,7 @@ import { mockQueryDefaults } from "@/hooks/data/query-options";
 import type { Author, FollowedAuthor } from "@/types/domain";
 import { useMemo, useState } from "react";
 
-import { Download, Trash2, Users, Hash, Flame, ArrowRight, BookOpen } from "lucide-react";
+import { Download, Trash2, Users, Hash, Flame, ArrowRight, ArrowUpRight, BookOpen } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/auth";
 import { useFollowedJournals, useUnfollowJournal, useFollowedTopics, useUnfollowTopic, useFollowedAuthors, useUnfollowAuthor } from "@/hooks/data/use-follows";
@@ -317,18 +317,30 @@ function BookmarksPage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {followedJournals.map((j) => (
-                <Card key={j.id} className="flex items-center justify-between hover:border-purple-500/40 transition-colors group">
-                  <div className="min-w-0">
-                    <div className="font-semibold text-sm flex items-center gap-1.5 text-foreground">
-                      <BookOpen className="size-3.5 text-purple-400 shrink-0" /> {j.name}
-                    </div>
-                    <div className="text-[10px] text-muted-foreground mt-1 truncate">
-                      {[j.publisher, j.domain].filter(Boolean).join(" · ") || "Academic journal"}
-                    </div>
-                  </div>
+                <div key={j.id} className="relative group">
+                  <Link
+                    to="/search"
+                    search={{ q: j.name }}
+                    className="block"
+                  >
+                    <Card className="flex items-center justify-between hover:border-purple-500/40 transition-colors cursor-pointer pr-12">
+                      <div className="min-w-0">
+                        <div className="font-semibold text-sm flex items-center gap-1.5 text-foreground group-hover:text-purple-400 transition-colors">
+                          <BookOpen className="size-3.5 text-purple-400 shrink-0" />
+                          <span className="truncate">{j.name}</span>
+                          <ArrowUpRight className="size-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                        </div>
+                        <div className="text-[10px] text-muted-foreground mt-1 truncate">
+                          {[j.publisher, j.domain].filter(Boolean).join(" · ") || "Academic journal"}
+                        </div>
+                      </div>
+                    </Card>
+                  </Link>
                   <button
                     type="button"
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
                       unfollowJournal.mutate(j.id, {
                         onSuccess: () => toast.info(`Unfollowed journal: ${j.name}`),
                         onError: (err) => {
@@ -337,12 +349,12 @@ function BookmarksPage() {
                         },
                       });
                     }}
-                    className="p-1.5 rounded-md border border-border hover:border-destructive/40 hover:text-destructive transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 cursor-pointer shrink-0"
+                    className="absolute top-1/2 -translate-y-1/2 right-3 z-10 p-1.5 rounded-md border border-border hover:border-destructive/40 hover:text-destructive transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 cursor-pointer shrink-0 bg-background/80"
                     title="Unfollow journal"
                   >
                     <Trash2 className="size-3" />
                   </button>
-                </Card>
+                </div>
               ))}
             </div>
           )}
@@ -365,39 +377,49 @@ function BookmarksPage() {
         <div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {savedKeywords.map((k) => (
-              <Card
-                key={k.id}
-                className="flex items-center justify-between hover:border-blue-500/40 transition-colors group"
-              >
-                <div>
-                  <div className="font-semibold text-sm flex items-center gap-1.5 text-foreground">
-                    <Hash className="size-3.5 text-blue-400" /> {k.term}
-                  </div>
-                  <div className="text-[10px] text-muted-foreground mt-1">
-                    {k.count} papers · {k.category}
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className={`font-mono text-sm ${k.trendScore >= 0 ? "text-success" : "text-destructive"}`}>
-                    {k.trendScore > 0 ? "+" : ""}{k.trendScore.toFixed(1)}%
-                  </span>
-                  <button
-                    onClick={() => {
-                      unfollowTopic.mutate(k.id, {
-                        onSuccess: () => toast.info(`Unfollowed keyword: ${k.term}`),
-                        onError: (err) => {
-                          const msg = err instanceof ApiError ? err.message : "Unfollow failed";
-                          toast.error(msg);
-                        },
-                      });
-                    }}
-                    className="p-1.5 rounded-md border border-border hover:border-destructive/40 hover:text-destructive transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 cursor-pointer"
-                    title="Unfollow Keyword"
-                  >
-                    <Trash2 className="size-3" />
-                  </button>
-                </div>
-              </Card>
+              <div key={k.id} className="relative group">
+                <Link
+                  to="/topics/$topicId"
+                  params={{ topicId: String(k.id) }}
+                  className="block"
+                >
+                  <Card className="flex items-center justify-between hover:border-blue-500/40 transition-colors cursor-pointer pr-12">
+                    <div>
+                      <div className="font-semibold text-sm flex items-center gap-1.5 text-foreground group-hover:text-blue-400 transition-colors">
+                        <Hash className="size-3.5 text-blue-400 shrink-0" />
+                        <span className="truncate">{k.term}</span>
+                        <ArrowUpRight className="size-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                      </div>
+                      <div className="text-[10px] text-muted-foreground mt-1">
+                        {k.count} papers · {k.category}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className={`font-mono text-sm ${k.trendScore >= 0 ? "text-success" : "text-destructive"}`}>
+                        {k.trendScore > 0 ? "+" : ""}{k.trendScore.toFixed(1)}%
+                      </span>
+                    </div>
+                  </Card>
+                </Link>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    unfollowTopic.mutate(k.id, {
+                      onSuccess: () => toast.info(`Unfollowed keyword: ${k.term}`),
+                      onError: (err) => {
+                        const msg = err instanceof ApiError ? err.message : "Unfollow failed";
+                        toast.error(msg);
+                      },
+                    });
+                  }}
+                  className="absolute top-1/2 -translate-y-1/2 right-3 z-10 p-1.5 rounded-md border border-border hover:border-destructive/40 hover:text-destructive transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 cursor-pointer bg-background/80"
+                  title="Unfollow Keyword"
+                >
+                  <Trash2 className="size-3" />
+                </button>
+              </div>
             ))}
           </div>
           {savedKeywords.length === 0 && (

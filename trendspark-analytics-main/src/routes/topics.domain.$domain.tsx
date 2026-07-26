@@ -77,15 +77,6 @@ function TopicDomainPage() {
                       <Calendar className="size-2.5" />
                       {p.year}
                     </span>
-                    {(p.trendScore ?? 0) > 0 && (
-                      <>
-                        <span>·</span>
-                        <span className="flex items-center gap-1 text-success">
-                          <TrendingUp className="size-2.5" />
-                          +{(p.trendScore ?? 0).toFixed(1)}%
-                        </span>
-                      </>
-                    )}
                   </div>
                   <div className="text-sm font-semibold text-foreground group-hover:text-brand transition-colors line-clamp-2">
                     {p.title}
