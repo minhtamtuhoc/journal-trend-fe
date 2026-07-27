@@ -83,6 +83,7 @@ function TopicPapersPage() {
             ) : null}
             <Link
               to="/bookmarks"
+              search={{ tab: "keywords" }}
               className="inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-medium border border-border hover:bg-secondary/50"
             >
               <ArrowLeft className="size-4" /> Bookmarks

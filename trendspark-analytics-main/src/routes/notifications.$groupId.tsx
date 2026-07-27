@@ -22,6 +22,13 @@ import {
 import { useState, useEffect, useMemo } from "react";
 import { formatDistanceToNow, parseISO, isValid } from "date-fns";
 import { groupNotifications, type NotificationGroup } from "@/utils/notification-grouper";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const groupDetailSearchSchema = z.object({
   filter: z.enum(["all", "openAccess", "highImpact"]).catch("all").optional(),
@@ -424,15 +431,16 @@ function NotificationGroupDetailPage() {
 
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] text-muted-foreground uppercase font-mono tracking-wider">Sort:</span>
-                  <select
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value as any)}
-                    className="bg-secondary/40 border border-border text-xs font-semibold rounded-md px-3 py-1.5 text-foreground focus:outline-none focus:ring-1 focus:ring-brand/40 cursor-pointer"
-                  >
-                    <option value="default">Default Order</option>
-                    <option value="trendScore">Trend Score</option>
-                    <option value="citations">Citations</option>
-                  </select>
+                  <Select value={sortBy} onValueChange={(v) => setSortBy(v as any)}>
+                    <SelectTrigger className="w-[140px] h-8 text-xs font-semibold bg-secondary/40 border-border text-foreground focus:ring-1 focus:ring-brand/40 cursor-pointer">
+                      <SelectValue placeholder="Sort order" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-popover/95 backdrop-blur-md border border-border text-popover-foreground shadow-xl rounded-lg z-50">
+                      <SelectItem value="default" className="text-xs cursor-pointer focus:bg-brand/15 focus:text-brand font-medium">Default Order</SelectItem>
+                      <SelectItem value="trendScore" className="text-xs cursor-pointer focus:bg-brand/15 focus:text-brand font-medium">Trend Score</SelectItem>
+                      <SelectItem value="citations" className="text-xs cursor-pointer focus:bg-brand/15 focus:text-brand font-medium">Citations</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
