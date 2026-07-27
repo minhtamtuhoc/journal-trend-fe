@@ -216,6 +216,7 @@ function AuthorsIndexPage() {
 
           <Link
             to="/bookmarks"
+            search={{ tab: "authors" }}
             className="glass rounded-2xl p-4 flex flex-col justify-between min-w-32 border border-border hover:border-brand/40 hover:bg-brand/5 transition-all text-left group cursor-pointer"
           >
             <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mb-1">Followed Authors</div>

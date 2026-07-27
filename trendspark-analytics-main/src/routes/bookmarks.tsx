@@ -1,4 +1,5 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { z } from "zod";
 import { AppLayout, PageHeader } from "@/components/AppLayout";
 import { Card } from "@/components/Card";
 import { useAnalyticsSnapshot } from "@/hooks/data/use-analytics";
@@ -8,7 +9,7 @@ import { getServices, queryKeys } from "@/services";
 import { mockQueryDefaults } from "@/hooks/data/query-options";
 
 import type { Author, FollowedAuthor } from "@/types/domain";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { Download, Trash2, Users, Hash, Flame, ArrowRight, ArrowUpRight, BookOpen } from "lucide-react";
 import { toast } from "sonner";
@@ -16,7 +17,14 @@ import { useAuth } from "@/auth";
 import { useFollowedJournals, useUnfollowJournal, useFollowedTopics, useUnfollowTopic, useFollowedAuthors, useUnfollowAuthor } from "@/hooks/data/use-follows";
 import { ApiError } from "@/api/errors";
 
-export const Route = createFileRoute("/bookmarks")({ component: BookmarksPage });
+const bookmarksSearchSchema = z.object({
+  tab: z.enum(["authors", "keywords", "journals"]).optional(),
+});
+
+export const Route = createFileRoute("/bookmarks")({
+  validateSearch: (search) => bookmarksSearchSchema.parse(search),
+  component: BookmarksPage,
+});
 
 type SavedAuthorCard = Author & { profileId: string | null };
 
@@ -102,7 +110,37 @@ function BookmarksPage() {
     { id: "journals", label: "Journals", count: followedJournals.length },
   ] as const;
 
-  const [tab, setTab] = useState<(typeof tabs)[number]["id"]>("authors");
+  const navigate = useNavigate({ from: Route.fullPath });
+  const { tab: searchTab } = Route.useSearch();
+
+  const initialTab = useMemo((): "authors" | "keywords" | "journals" => {
+    if (searchTab && ["authors", "keywords", "journals"].includes(searchTab)) {
+      return searchTab;
+    }
+    if (typeof window !== "undefined") {
+      const saved = sessionStorage.getItem("bookmarks_active_tab");
+      if (saved && ["authors", "keywords", "journals"].includes(saved)) {
+        return saved as "authors" | "keywords" | "journals";
+      }
+    }
+    return "authors";
+  }, [searchTab]);
+
+  const [tab, setTabState] = useState<"authors" | "keywords" | "journals">(initialTab);
+
+  useEffect(() => {
+    if (searchTab && ["authors", "keywords", "journals"].includes(searchTab)) {
+      setTabState(searchTab);
+    }
+  }, [searchTab]);
+
+  const setTab = (newTab: "authors" | "keywords" | "journals") => {
+    setTabState(newTab);
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("bookmarks_active_tab", newTab);
+    }
+    navigate({ search: { tab: newTab }, replace: true });
+  };
 
   const exportCsv = () => {
     if (tab === "authors") {
