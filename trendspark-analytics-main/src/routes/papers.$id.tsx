@@ -16,19 +16,29 @@ import { ApiError } from "@/api/errors";
 
 export const Route = createFileRoute("/papers/$id")({
   component: PaperDetailPage,
+  validateSearch: (search: Record<string, unknown>) => ({
+    tab: (search.tab as "overview" | "graph") || undefined,
+  }),
 });
 
 function PaperDetailPage() {
   const { id } = Route.useParams();
+  const search = Route.useSearch();
   const { data: paper, isLoading, isError } = usePaper(id);
   const category = paper?.category ?? "General";
   const { data: related = [] } = useRelatedPapers(id, category);
 
-  const [activeTab, setActiveTab] = useState<"overview" | "graph">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "graph">(search?.tab ?? "overview");
   const [citeModalOpen, setCiteModalOpen] = useState(false);
 
+  useEffect(() => {
+    if (search?.tab) {
+      setActiveTab(search.tab);
+    }
+  }, [search?.tab]);
+
   // References configuration
-  const [refLimit, setRefLimit] = useState(50);
+  const [refLimit, setRefLimit] = useState(20);
   const { data: references = [], isLoading: isLoadingRefs } = usePaperReferences(
     id,
     refLimit,
@@ -55,10 +65,22 @@ function PaperDetailPage() {
   const [showRefs, setShowRefs] = useState(true);
   const [showCites, setShowCites] = useState(true);
 
-  // Combine and format nodes
+  // Combine and format nodes with stable displayIndex
+  const referencesWithIndex = references.map((n, idx) => ({
+    ...n,
+    relationType: "reference" as const,
+    displayIndex: idx + 1,
+  }));
+
+  const citationsWithIndex = citations.map((n, idx) => ({
+    ...n,
+    relationType: "citation" as const,
+    displayIndex: references.length + idx + 1,
+  }));
+
   const combinedNodes = [
-    ...(showRefs ? references.map((n) => ({ ...n, relationType: "reference" as const })) : []),
-    ...(showCites ? citations.map((n) => ({ ...n, relationType: "citation" as const })) : []),
+    ...(showRefs ? referencesWithIndex : []),
+    ...(showCites ? citationsWithIndex : []),
   ];
 
   const [isAuthorDropdownOpen, setIsAuthorDropdownOpen] = useState(false);
@@ -389,9 +411,9 @@ function PaperDetailPage() {
                         value={refLimit}
                         onChange={(e) => setRefLimit(Number(e.target.value))}
                       >
+                        <option value={10}>10</option>
                         <option value={20}>20</option>
                         <option value={50}>50</option>
-                        <option value={100}>100</option>
                       </select>
                     </div>
                   )}
@@ -440,7 +462,6 @@ function PaperDetailPage() {
                           <option value={10}>10</option>
                           <option value={20}>20</option>
                           <option value={50}>50</option>
-                          <option value={100}>100</option>
                         </select>
                       </div>
                     </div>

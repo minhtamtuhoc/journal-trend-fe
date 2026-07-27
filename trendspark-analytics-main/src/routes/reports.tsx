@@ -7,8 +7,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { SaveToCollectionButton } from "@/components/SaveToCollectionButton";
 import { usePersonalReport } from "@/hooks/data/use-personal-report";
 import { useCollections } from "@/hooks/data/use-collections";
+import { useQuery } from "@tanstack/react-query";
+import { apiClient } from "@/api/client";
+import { mockQueryDefaults } from "@/hooks/data/query-options";
 import { useAuthor, useAuthorPapers } from "@/hooks/data/use-authors";
 import { useFollowedTopics, useFollowedAuthors, useFollowAuthor, useUnfollowAuthor, useFollowedJournals } from "@/hooks/data/use-follows";
+import { useDashboardSummary } from "@/hooks/data/use-dashboard";
 import { useAuth } from "@/auth";
 import { toast } from "sonner";
 import { ApiError } from "@/api/errors";
@@ -26,6 +30,7 @@ import {
 } from "recharts";
 import {
   Sparkles,
+  HelpCircle,
   Lock,
   BookOpen,
   User,
@@ -65,19 +70,19 @@ function getCleanSearchTerm(term: string): string {
 }
 
 // === HÀM CHUYỂN ĐỔI DỮ LIỆU BẢNG BIỂU ĐƯỜNG (RECHARTS LINE CHART TRANSFORMER) ===
-// Chuẩn hóa mốc thời gian 3 tháng gần nhất và gom từ khóa xu hướng để vẽ biểu đồ LineChart
-function transformLineChartData(points: KeywordTrendPoint[]) {
+// Chuẩn hóa mốc thời gian N tháng gần nhất và gom từ khóa xu hướng để vẽ biểu đồ LineChart
+function transformLineChartData(points: KeywordTrendPoint[], months: number = 3) {
   const periodMap: Record<string, { label: string; sortKey: number; values: Record<string, number> }> = {};
   const terms = new Set<string>();
 
   // 1. Gom tất cả danh sách các từ khóa độc nhất
   points.forEach((p) => terms.add(p.term));
 
-  // 2. Tự động khởi tạo mốc thời gian 3 tháng gần đây nhất (bỏ tháng hiện tại, ví dụ tháng 7)
-  const generateLast3Months = () => {
+  // 2. Tự động khởi tạo mốc thời gian N tháng gần đây nhất (bỏ tháng hiện tại)
+  const generateLastNMonths = (n: number) => {
     const list: { label: string; sortKey: number }[] = [];
     const now = new Date();
-    for (let i = 3; i >= 1; i--) {
+    for (let i = n; i >= 1; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const year = d.getFullYear();
       const month = d.getMonth() + 1;
@@ -90,7 +95,7 @@ function transformLineChartData(points: KeywordTrendPoint[]) {
     return list;
   };
 
-  const periods = generateLast3Months();
+  const periods = generateLastNMonths(months);
   periods.forEach((p) => {
     periodMap[p.label] = {
       label: p.label,
@@ -321,8 +326,8 @@ function CustomAuthorReportView({ authorId }: { authorId: string }) {
                 }
               }}
               className={`inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-medium border transition-colors cursor-pointer ${followed
-                  ? "border-brand/40 bg-brand/10 text-brand"
-                  : "border-border hover:bg-secondary/50 text-foreground"
+                ? "border-brand/40 bg-brand/10 text-brand"
+                : "border-border hover:bg-secondary/50 text-foreground"
                 }`}
             >
               <Bookmark className="size-4" fill={followed ? "currentColor" : "none"} />
@@ -383,22 +388,20 @@ function CustomAuthorReportView({ authorId }: { authorId: string }) {
               <button
                 type="button"
                 onClick={() => setViewMode("matched")}
-                className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
-                  viewMode === "matched"
-                    ? "bg-brand/15 text-brand font-semibold border border-brand/30"
-                    : "bg-secondary/40 text-muted-foreground hover:text-foreground"
-                }`}
+                className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${viewMode === "matched"
+                  ? "bg-brand/15 text-brand font-semibold border border-brand/30"
+                  : "bg-secondary/40 text-muted-foreground hover:text-foreground"
+                  }`}
               >
                 Matched ({matchedPapers.length})
               </button>
               <button
                 type="button"
                 onClick={() => setViewMode("all")}
-                className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${
-                  viewMode === "all"
-                    ? "bg-brand/15 text-brand font-semibold border border-brand/30"
-                    : "bg-secondary/40 text-muted-foreground hover:text-foreground"
-                }`}
+                className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer ${viewMode === "all"
+                  ? "bg-brand/15 text-brand font-semibold border border-brand/30"
+                  : "bg-secondary/40 text-muted-foreground hover:text-foreground"
+                  }`}
               >
                 All Papers ({papers.length})
               </button>
@@ -487,8 +490,8 @@ function CustomAuthorReportView({ authorId }: { authorId: string }) {
                     key={p}
                     onClick={() => setCurrentPage(p)}
                     className={`inline-flex items-center justify-center size-8 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${currentPage === p
-                        ? "bg-brand/10 border-brand/45 text-brand"
-                        : "border-border hover:border-brand/40"
+                      ? "bg-brand/10 border-brand/45 text-brand"
+                      : "border-border hover:border-brand/40"
                       }`}
                   >
                     {p}
@@ -599,9 +602,8 @@ function DomainTabBar({
         onMouseLeave={handleMouseLeaveOrUp}
         onMouseUp={handleMouseLeaveOrUp}
         onMouseMove={handleMouseMove}
-        className={`flex items-center gap-1.5 p-1.5 bg-secondary/30 backdrop-blur-md rounded-2xl border border-border/60 overflow-x-auto scrollbar-none w-full select-none ${
-          isDragging ? "cursor-grabbing" : "cursor-grab"
-        }`}
+        className={`flex items-center gap-1.5 p-1.5 bg-secondary/30 backdrop-blur-md rounded-2xl border border-border/60 overflow-x-auto scrollbar-none w-full select-none ${isDragging ? "cursor-grabbing" : "cursor-grab"
+          }`}
       >
         {domains.map((d) => {
           const isSelected = selectedDomain === d.domain;
@@ -610,11 +612,10 @@ function DomainTabBar({
               key={d.domain}
               type="button"
               onClick={() => onSelectDomain(d.domain)}
-              className={`h-9 px-4 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 shrink-0 ${
-                isSelected
-                  ? "bg-brand/15 border border-brand/40 text-brand shadow-sm"
-                  : "border border-transparent text-muted-foreground hover:text-foreground hover:bg-secondary/60"
-              }`}
+              className={`h-9 px-4 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 shrink-0 ${isSelected
+                ? "bg-brand/15 border border-brand/40 text-brand shadow-sm"
+                : "border border-transparent text-muted-foreground hover:text-foreground hover:bg-secondary/60"
+                }`}
             >
               <span className={`size-2 rounded-full ${isSelected ? "bg-brand animate-pulse" : "bg-muted-foreground/40"}`} />
               {d.domain}
@@ -641,16 +642,24 @@ function DomainTabBar({
 function ReportsPage() {
   const { authorId } = Route.useSearch() as { authorId?: string }; // ID tác giả nếu chuyển từ báo cáo chi tiết tác giả
   const [activeTab, setActiveTab] = useState<"ALL" | "KEYWORD" | "AUTHOR" | "JOURNAL">("ALL"); // Tab bộ lọc đề xuất bài báo
-  const { data: report, isLoading, error } = usePersonalReport(activeTab); // Hook gọi API lấy báo cáo cá nhân hóa
+  const [monthHorizon, setMonthHorizon] = useState<number>(3); // Số tháng hiển thị (min 2, max 6 tháng)
+  const { data: report, isLoading, error } = usePersonalReport(activeTab, monthHorizon); // Hook gọi API lấy báo cáo cá nhân hóa
+  const { data: dashboardSummary } = useDashboardSummary();
   const { data: collectionsData } = useCollections();
   const collections = useMemo(() => collectionsData ?? [], [collectionsData]);
+
+  // Lấy danh sách Top 10 Bảng xếp hạng Trending Keywords từ hệ thống
+  const top10TrendingKeywordNames = useMemo(() => {
+    if (!dashboardSummary?.trendingKeywords) return [];
+    return dashboardSummary.trendingKeywords.slice(0, 10).map((k) => k.keyword.toLowerCase().trim());
+  }, [dashboardSummary?.trendingKeywords]);
 
   // Lấy dữ liệu các đối tượng người dùng đang theo dõi
   const { data: followedTopics = [], isLoading: isLoadingTopics } = useFollowedTopics();
   const { data: followedAuthors = [], isLoading: isLoadingAuthors } = useFollowedAuthors();
   const { data: followedJournals = [], isLoading: isLoadingJournals } = useFollowedJournals();
 
-  const isPageLoading = isLoading || isLoadingTopics || isLoadingAuthors || isLoadingJournals;
+  const isPageLoading = (!report && isLoading) || (followedTopics.length === 0 && isLoadingTopics) || (followedAuthors.length === 0 && isLoadingAuthors) || (followedJournals.length === 0 && isLoadingJournals);
   // Kiểm tra xem người dùng đã follow ít nhất 1 thực thể (keyword/author/journal) nào chưa
   const hasFollowedEntities = followedTopics.length > 0 || followedAuthors.length > 0 || followedJournals.length > 0;
 
@@ -671,16 +680,59 @@ function ReportsPage() {
   const followedDomains = report?.landscape?.followedDomains ?? [];
   const activeDomain = followedDomains.find((d) => d.domain === selectedDomain) ?? followedDomains[0];
 
+  // Xác định tháng gần nhất để lấy dữ liệu Bảng xếp hạng Trend Score Ranking từ hệ thống
+  const currentMainMonth = useMemo(() => {
+    const date = new Date();
+    date.setDate(1);
+    date.setMonth(date.getMonth() - 1);
+    return {
+      year: date.getFullYear(),
+      month: date.getMonth() + 1,
+    };
+  }, []);
+
+  // Fetch dữ liệu từ khóa từ Bảng xếp hạng TREND SCORE RANKING hệ thống (/v1/keywords/trending)
+  const { data: databaseTrendingKeywords = [] } = useQuery({
+    queryKey: ["trending-keywords-month", currentMainMonth.year, currentMainMonth.month],
+    queryFn: async () => {
+      const res = await apiClient.get<{
+        data: Array<{
+          keywordId: number;
+          term: string;
+          domain?: string;
+          paperCount: number;
+          trendScore: number;
+          rank: number;
+        }>;
+      }>("/v1/keywords/trending", {
+        params: {
+          year: currentMainMonth.year,
+          month: currentMainMonth.month,
+        },
+      });
+      return res.data ?? [];
+    },
+    ...mockQueryDefaults,
+  });
+
+  // Lấy danh sách từ khóa thuộc Bảng xếp hạng Trend Score Ranking (Ảnh 3 - Bảng chỉ hiển thị Top 8)
+  const trendScoreRankingKeywordNames = useMemo(() => {
+    return databaseTrendingKeywords
+      .filter((k) => k.term && k.term.trim())
+      .slice(0, 8)
+      .map((k) => k.term.toLowerCase().trim());
+  }, [databaseTrendingKeywords]);
+
   const followedKeywordNames = useMemo(() => {
     return new Set(followedTopics.map((t) => t.name.toLowerCase()));
   }, [followedTopics]);
 
   // Chuẩn hóa dữ liệu vẽ biểu đồ LineChart xu hướng từ khóa
   const { chartData, terms: allTerms } = useMemo(() => {
-    return transformLineChartData(report?.trends?.lineChart ?? []);
-  }, [report?.trends?.lineChart]);
+    return transformLineChartData(report?.trends?.lineChart ?? [], monthHorizon);
+  }, [report?.trends?.lineChart, monthHorizon]);
 
-  // Danh sách từ khóa người dùng đang theo dõi (hiển thị đầy đủ kể cả chưa có bài báo trong 3 tháng)
+  // Danh sách từ khóa người dùng đang theo dõi (hiển thị đầy đủ kể cả chưa có bài báo trong các tháng)
   const displayedTerms = useMemo(() => {
     return (followedTopics ?? []).map((t) => t?.name).filter((name): name is string => Boolean(name));
   }, [followedTopics]);
@@ -709,83 +761,121 @@ function ReportsPage() {
     }
   }, [displayedTermsSerialized, displayedTerms.length]);
 
-  // Tổng hợp dữ liệu hiển thị cho bảng Summary Card 3 tháng gần đây
+  // Tổng hợp dữ liệu hiển thị cho bảng Summary Card N tháng gần đây
   const keywordSummary = useMemo(() => {
     return selectedKeywords.map((term) => {
       const monthlyData = chartData.map((row) => ({
         period: row.period as string,
         count: ((row as Record<string, unknown>)[term] as number) ?? 0,
       }));
+
+      // Logic 1: Tìm mốc dữ liệu đầu tiên lớn hơn 0 (First Non-Zero Baseline) để tránh con số tăng trưởng ảo từ số 0
+      const baselineEntry = monthlyData.find((m) => m.count > 0) ?? monthlyData[0];
+      const baselineCount = baselineEntry?.count ?? 0;
+      const baselinePeriod = baselineEntry?.period ?? (monthlyData[0]?.period ?? "");
+
       const first = monthlyData[0]?.count ?? 0;
       const last = monthlyData[monthlyData.length - 1]?.count ?? 0;
       const firstPeriod = monthlyData[0]?.period ?? "";
       const lastPeriod = monthlyData[monthlyData.length - 1]?.period ?? "";
 
-      const m1 = monthlyData[0] ?? { period: "", count: 0 };
-      const m2 = monthlyData[1] ?? { period: "", count: 0 };
-      const m3 = monthlyData[monthlyData.length - 1] ?? { period: "", count: 0 };
-
-      // Chặng 1: m1 -> m2
-      let stage1Label = "0%";
-      if (m1.count === 0 && m2.count > 0) {
-        stage1Label = `+${m2.count} new`;
-      } else if (m1.count > 0) {
-        const pct1 = Math.round(((m2.count - m1.count) / m1.count) * 100);
-        stage1Label = `${pct1 >= 0 ? "+" : ""}${pct1}%`;
-      }
-
-      // Chặng 2: m2 -> m3
-      let stage2Label = "0%";
-      if (m2.count === 0 && m3.count > 0) {
-        stage2Label = `+${m3.count} new`;
-      } else if (m2.count > 0) {
-        const pct2 = Math.round(((m3.count - m2.count) / m2.count) * 100);
-        stage2Label = `${pct2 >= 0 ? "+" : ""}${pct2}%`;
+      // Tính toán chuyển tiếp giữa các tháng liên tiếp
+      const stages: { from: string; to: string; fromCount: number; toCount: number; label: string }[] = [];
+      for (let i = 0; i < monthlyData.length - 1; i++) {
+        const prev = monthlyData[i];
+        const next = monthlyData[i + 1];
+        let stageLabel = "0%";
+        if (prev.count === 0 && next.count > 0) {
+          stageLabel = `+${next.count} new`;
+        } else if (prev.count > 0) {
+          const pct = Math.round(((next.count - prev.count) / prev.count) * 100);
+          stageLabel = `${pct >= 0 ? "+" : ""}${pct}%`;
+        }
+        stages.push({
+          from: prev.period,
+          to: next.period,
+          fromCount: prev.count,
+          toCount: next.count,
+          label: stageLabel,
+        });
       }
 
       let trend = "0%";
       let trendColor = "text-muted-foreground";
-      let trendFormula = "";
+      let pct = 0;
 
-      if (first === 0 && last > 0) {
-        trend = `↑ +${last}`;
-        trendColor = "text-emerald-500";
-        trendFormula = `New Growth: From 0 papers (${firstPeriod}) to ${last} papers (${lastPeriod}) (+${last} new)`;
-      } else if (first > 0) {
-        const pct = Math.round(((last - first) / first) * 100);
+      if (baselineCount > 0) {
+        pct = Math.round(((last - baselineCount) / baselineCount) * 100);
         if (pct > 0) {
           trend = `↑ +${pct}%`;
           trendColor = "text-emerald-500";
-          trendFormula = `Formula: [(${lastPeriod}: ${last} papers - ${firstPeriod}: ${first} papers) / ${first}] × 100% = +${pct}%`;
         } else if (pct < 0) {
           trend = `↓ ${pct}%`;
           trendColor = "text-rose-500";
-          trendFormula = `Formula: [(${lastPeriod}: ${last} papers - ${firstPeriod}: ${first} papers) / ${first}] × 100% = ${pct}%`;
         } else {
           trend = "→ 0%";
           trendColor = "text-muted-foreground";
-          trendFormula = `No Change: ${firstPeriod}: ${first} papers → ${lastPeriod}: ${last} papers (0%)`;
         }
+      } else if (last > 0) {
+        trend = `↑ +${last}`;
+        trendColor = "text-emerald-500";
       } else {
         trend = "—";
         trendColor = "text-muted-foreground";
-        trendFormula = "No paper data available in the last 3 months";
       }
+
+      // 1. Top 10 Trending Keywords ở Dashboard (Bảng Top 10 Trending Keywords - Ảnh 2)
+      const normTerm = term.toLowerCase().trim();
+      const cleanNormTerm = getCleanSearchTerm(normTerm);
+
+      const isTopTrend =
+        top10TrendingKeywordNames.length > 0 &&
+        top10TrendingKeywordNames.some((topKw) => {
+          const cleanTop = topKw.toLowerCase().trim();
+          if (!cleanTop) return false;
+          return normTerm === cleanTop || (cleanNormTerm && cleanNormTerm === getCleanSearchTerm(cleanTop));
+        });
+
+      // 2. Trend Score Ranking ở Trang Trends (Bảng TREND SCORE RANKING - Ảnh 3)
+      const isTrendScoreRank =
+        trendScoreRankingKeywordNames.length > 0 &&
+        trendScoreRankingKeywordNames.some((rankKw) => {
+          const cleanRank = rankKw.toLowerCase().trim();
+          if (!cleanRank) return false;
+          return normTerm === cleanRank || (cleanNormTerm && cleanNormTerm === getCleanSearchTerm(cleanRank));
+        });
+
+      const isConsistentlyRising =
+        pct > 0 &&
+        monthlyData.length >= 2 &&
+        monthlyData.every((m, idx) => {
+          if (idx === 0) return true;
+          return m.count >= monthlyData[idx - 1].count;
+        });
+
+      const isHotTrend = pct >= 25 && !isTopTrend && !isTrendScoreRank;
+      const isFeatured = isTopTrend || isTrendScoreRank || isConsistentlyRising || isHotTrend;
 
       return {
         term,
         monthlyData,
-        m1,
-        m2,
-        m3,
-        stage1Label,
-        stage2Label,
+        firstPeriod,
+        lastPeriod,
+        baselinePeriod,
+        baselineCount,
+        firstCount: first,
+        lastCount: last,
+        stages,
         trend,
         trendColor,
-        trendFormula,
+        isTopTrend,
+        isTrendScoreRank,
+        isConsistentlyRising,
+        isHotTrend,
+        isFeatured,
       };
     });
-  }, [selectedKeywords, chartData]);
+  }, [selectedKeywords, chartData, allTerms, top10TrendingKeywordNames, trendScoreRankingKeywordNames]);
 
   // Handler khi người dùng nhấp chọn/bỏ chọn 1 từ khóa trong cửa sổ Dropdown
   const handleToggleKeyword = (term: string) => {
@@ -823,6 +913,8 @@ function ReportsPage() {
   const trendDropdownRef = useRef<HTMLDivElement>(null);
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const filterDropdownRef = useRef<HTMLDivElement>(null);
+  const [showChartLegendPopover, setShowChartLegendPopover] = useState(false);
+  const chartLegendRef = useRef<HTMLDivElement>(null);
 
   // Đóng dropdown bộ lọc khi nhấp chuột ra ngoài
   useEffect(() => {
@@ -832,6 +924,9 @@ function ReportsPage() {
       }
       if (filterDropdownRef.current && !filterDropdownRef.current.contains(event.target as Node)) {
         setShowFilterDropdown(false);
+      }
+      if (chartLegendRef.current && !chartLegendRef.current.contains(event.target as Node)) {
+        setShowChartLegendPopover(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -898,14 +993,19 @@ function ReportsPage() {
     }
   };
 
-  // Hàm sinh màu sắc đường đồ thị LineChart
+  // Hàm sinh màu sắc độc bản dịu nhẹ, thanh lịch (10 màu pastel dịu mắt không trùng cho tối đa 10 từ khóa)
   const getLineColor = (index: number) => {
     const colors = [
-      "var(--chart-1, #3b82f6)",
-      "var(--chart-2, #10b981)",
-      "var(--chart-3, #f59e0b)",
-      "var(--chart-4, #8b5cf6)",
-      "var(--chart-5, #ec4899)",
+      "#38bdf8", // 0: Soft Sky Blue
+      "#34d399", // 1: Soft Mint Green
+      "#fbbf24", // 2: Soft Golden Amber
+      "#c084fc", // 3: Soft Lavender Purple
+      "#f472b6", // 4: Soft Rose Pink
+      "#60a5fa", // 5: Soft Periwinkle Blue
+      "#fb923c", // 6: Soft Coral Orange
+      "#a3e635", // 7: Soft Sage Green
+      "#e879f9", // 8: Soft Orchid Pink
+      "#f87171", // 9: Soft Pastel Red
     ];
     return colors[index % colors.length];
   };
@@ -1034,66 +1134,139 @@ function ReportsPage() {
               {/* 1.1 Biểu đồ đường (Line Chart) biến động từ khóa qua các tháng */}
               <Card
                 className="lg:col-span-2"
-                title="Keyword Trends by Month"
+                title="Keyword Article Count Over Time"
                 action={
-                  /* Dropdown chọn xem tất cả hoặc chọn lọc từng từ khóa hiển thị trên Line Chart */
-                  displayedTerms.length > 0 && (
-                    <div className="relative" ref={trendDropdownRef}>
-                      <button
-                        onClick={() => setShowKeywordDropdown(!showKeywordDropdown)}
-                        className="inline-flex items-center justify-between gap-1.5 h-8 px-3 rounded-lg border border-border bg-secondary/40 hover:bg-secondary/70 hover:text-foreground text-xs font-semibold text-muted-foreground transition-all cursor-pointer min-w-[180px] text-left"
-                      >
-                        <span className="truncate">
-                          {selectedKeywords.length === displayedTerms.length
-                            ? "All followed keywords"
-                            : selectedKeywords.length === 0
-                              ? "No keywords selected"
-                              : selectedKeywords.length === 1
-                                ? selectedKeywords[0]
-                                : `${selectedKeywords.length} keywords selected`}
-                        </span>
-                        <ChevronDown className="size-3.5 opacity-75 shrink-0" />
-                      </button>
+                  <div className="flex flex-col items-end gap-2.5">
+                    {/* Hàng 1: Ngang hàng với Tiêu đề (Chart Legend + Horizon Slider) */}
+                    <div className="flex items-center gap-3">
+                      {/* Nút Popover Chú thích Biểu đồ & Thuật toán - CLICK ĐỂ MỞ/ĐÓNG */}
+                      <div className="relative" ref={chartLegendRef}>
+                        <button
+                          type="button"
+                          onClick={() => setShowChartLegendPopover((prev) => !prev)}
+                          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-brand/10 border border-brand/25 text-brand hover:bg-brand/20 text-xs font-medium transition-all shadow-sm cursor-pointer select-none"
+                        >
+                          <HelpCircle className="size-3.5 text-brand" />
+                          <span>Chart Legend</span>
+                        </button>
 
-                      {showKeywordDropdown && (
-                        <div className="absolute right-0 top-[calc(100%+6px)] w-56 max-h-60 overflow-y-auto bg-popover border border-border rounded-xl shadow-lg p-1.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
-                          <div
-                            onClick={handleToggleAll}
-                            className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-lg text-muted-foreground hover:bg-secondary/40 hover:text-foreground transition-colors cursor-pointer select-none text-left"
-                          >
-                            <div className={`size-3.5 rounded border flex items-center justify-center shrink-0 transition-all ${selectedKeywords.length === displayedTerms.length
+                        {showChartLegendPopover && (
+                          <div className="absolute left-0 lg:left-auto lg:right-0 top-[calc(100%+6px)] w-80 p-3.5 text-xs space-y-2 bg-popover/95 backdrop-blur-md border border-border/80 rounded-xl shadow-2xl text-popover-foreground z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                            <div className="flex items-center justify-between font-bold border-b border-border/60 pb-1.5 text-foreground">
+                              <div className="flex items-center gap-1.5">
+                                <Sparkles className="size-4 text-amber-400" />
+                                <span>Chart Legend & Methodology</span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setShowChartLegendPopover(false)}
+                                className="text-muted-foreground hover:text-foreground text-xs p-0.5 rounded-md transition-colors"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                            <div className="space-y-2 text-[11px] leading-relaxed">
+                              <div className="flex items-start gap-2">
+                                <span className="shrink-0 text-brand font-bold">⚡ Solid Neon Line:</span>
+                                <span>Featured trending keyword with positive growth.</span>
+                              </div>
+                              <div className="flex items-start gap-2">
+                                <span className="shrink-0 text-muted-foreground font-bold">🌫️ Standard Line:</span>
+                                <span>Other followed keywords.</span>
+                              </div>
+                              <div className="border-t border-border/40 pt-1.5 space-y-1 text-[11px]">
+                                <p><strong className="text-purple-400">🏆 Top 10 Trending:</strong> In Dashboard Top 10 Trending Keywords table.</p>
+                                <p><strong className="text-amber-400">🔥 Trend Score Ranking:</strong> In Trend Score Ranking table.</p>
+                                <p className="text-[10px] text-muted-foreground italic pt-0.5">✨ Keywords present in both rankings display both (🏆 🔥) icons.</p>
+                              </div>
+                              <div className="border-t border-border/40 pt-1 text-[10px] text-muted-foreground">
+                                📊 <i>Calculated using standard publication volume growth over {monthHorizon} Months.</i>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Thanh chọn số lượng tháng (Horizon Slider) - Ghi rõ "Months" thay vì "M" */}
+                      <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-secondary/40 border border-border/60 text-xs select-none">
+                        <span className="text-muted-foreground font-semibold">Horizon:</span>
+                        <input
+                          type="range"
+                          min={2}
+                          max={6}
+                          step={1}
+                          value={monthHorizon}
+                          onChange={(e) => setMonthHorizon(Number(e.target.value))}
+                          className="w-20 accent-brand cursor-pointer h-1.5 rounded-lg appearance-none bg-muted/40"
+                          style={{
+                            background: `linear-gradient(to right, var(--brand) 0%, var(--brand) ${((monthHorizon - 2) / 4) * 100}%, rgba(255, 255, 255, 0.2) ${((monthHorizon - 2) / 4) * 100}%, rgba(255, 255, 255, 0.2) 100%)`
+                          }}
+                        />
+                        <span className="font-mono font-bold text-foreground min-w-[62px] text-right">
+                          {monthHorizon} Months
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Hàng 2: Dropdown All followed keywords nằm bên dưới phía bên phải */}
+                    {displayedTerms.length > 0 && (
+                      <div className="relative" ref={trendDropdownRef}>
+                        <button
+                          onClick={() => setShowKeywordDropdown(!showKeywordDropdown)}
+                          className="inline-flex items-center justify-between gap-1.5 h-8 px-3 rounded-lg border border-border bg-secondary/40 hover:bg-secondary/70 hover:text-foreground text-xs font-semibold text-muted-foreground transition-all cursor-pointer min-w-[180px] text-left"
+                        >
+                          <span className="truncate">
+                            {selectedKeywords.length === displayedTerms.length
+                              ? "All followed keywords"
+                              : selectedKeywords.length === 0
+                                ? "No keywords selected"
+                                : selectedKeywords.length === 1
+                                  ? selectedKeywords[0]
+                                  : `${selectedKeywords.length} keywords selected`}
+                          </span>
+                          <ChevronDown className="size-3.5 opacity-75 shrink-0" />
+                        </button>
+
+                        {showKeywordDropdown && (
+                          <div className="absolute right-0 top-[calc(100%+6px)] w-56 max-h-60 overflow-y-auto bg-popover border border-border rounded-xl shadow-lg p-1.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                            <div
+                              onClick={handleToggleAll}
+                              className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-lg text-muted-foreground hover:bg-secondary/40 hover:text-foreground transition-colors cursor-pointer select-none text-left"
+                            >
+                              <div className={`size-3.5 rounded border flex items-center justify-center shrink-0 transition-all ${selectedKeywords.length === displayedTerms.length
                                 ? "bg-brand border-brand text-brand-foreground"
                                 : "border-border hover:border-brand/40 bg-background"
-                              }`}>
-                              {selectedKeywords.length === displayedTerms.length && <Check className="size-2.5 stroke-[3]" />}
+                                }`}>
+                                {selectedKeywords.length === displayedTerms.length && <Check className="size-2.5 stroke-[3]" />}
+                              </div>
+                              <span className="font-semibold text-foreground">All followed keywords</span>
                             </div>
-                            <span className="font-semibold text-foreground">All followed keywords</span>
-                          </div>
 
-                          <div className="h-px bg-border my-1" />
+                            <div className="h-px bg-border my-1" />
 
-                          {displayedTerms.map((t) => {
-                            const isSelected = selectedKeywords.includes(t);
-                            return (
-                              <div
-                                key={t}
-                                onClick={() => handleToggleKeyword(t)}
-                                className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-lg text-muted-foreground hover:bg-secondary/40 hover:text-foreground transition-colors cursor-pointer select-none text-left"
-                              >
-                                <div className={`size-3.5 rounded border flex items-center justify-center shrink-0 transition-all ${isSelected
+                            {displayedTerms.map((t) => {
+                              const isSelected = selectedKeywords.includes(t);
+                              return (
+                                <div
+                                  key={t}
+                                  onClick={() => handleToggleKeyword(t)}
+                                  className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-lg text-muted-foreground hover:bg-secondary/40 hover:text-foreground transition-colors cursor-pointer select-none text-left"
+                                >
+                                  <div className={`size-3.5 rounded border flex items-center justify-center shrink-0 transition-all ${isSelected
                                     ? "bg-brand border-brand text-brand-foreground"
                                     : "border-border hover:border-brand/40 bg-background"
-                                  }`}>
-                                  {isSelected && <Check className="size-2.5 stroke-[3]" />}
+                                    }`}>
+                                    {isSelected && <Check className="size-2.5 stroke-[3]" />}
+                                  </div>
+                                  <span className="truncate text-foreground">{t}</span>
                                 </div>
-                                <span className="truncate text-foreground">{t}</span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  )
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 }
               >
                 {report.trends?.lineChart?.length === 0 ? (
@@ -1101,8 +1274,18 @@ function ReportsPage() {
                     No followed keywords to display trends.
                   </div>
                 ) : (
-                  <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={chartData}>
+                  <ResponsiveContainer width="100%" height={340}>
+                    <LineChart data={chartData} margin={{ top: 10, right: 55, left: 10, bottom: 5 }}>
+                      <defs>
+                        {/* High-intensity Neon Glow Filter cho từ khóa Trending / Rising */}
+                        <filter id="neon-glow-line" x="-30%" y="-30%" width="160%" height="160%">
+                          <feGaussianBlur stdDeviation="3.5" result="blur" />
+                          <feMerge>
+                            <feMergeNode in="blur" />
+                            <feMergeNode in="SourceGraphic" />
+                          </feMerge>
+                        </filter>
+                      </defs>
                       <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} />
                       <XAxis
                         dataKey="period"
@@ -1124,20 +1307,136 @@ function ReportsPage() {
                           borderRadius: 8,
                           fontSize: 12,
                         }}
+                        formatter={(val: unknown, name: unknown) => {
+                          const count = typeof val === "number" ? val : parseInt(String(val), 10) || 0;
+                          const term = String(name ?? "");
+                          const kwInfo = keywordSummary.find((k) => k.term === term);
+                          const isTopTrend = kwInfo?.isTopTrend;
+                          const isTrendScoreRank = kwInfo?.isTrendScoreRank;
+                          const badgeIcon =
+                            isTopTrend && isTrendScoreRank
+                              ? " 🏆 🔥"
+                              : isTopTrend
+                                ? " 🏆"
+                                : isTrendScoreRank
+                                  ? " 🔥"
+                                  : "";
+                          return [`${count} ${count === 1 ? "paper" : "papers"}`, `${term}${badgeIcon}`];
+                        }}
                       />
-                      <Legend wrapperStyle={{ fontSize: 11 }} />
+                      <Legend
+                        wrapperStyle={{ fontSize: 11 }}
+                        formatter={(value: string) => {
+                          const kwInfo = keywordSummary.find((k) => k.term === value);
+                          const isTopTrend = kwInfo?.isTopTrend;
+                          const isTrendScoreRank = kwInfo?.isTrendScoreRank;
+                          const badgeIcon =
+                            isTopTrend && isTrendScoreRank
+                              ? " 🏆 🔥"
+                              : isTopTrend
+                                ? " 🏆"
+                                : isTrendScoreRank
+                                  ? " 🔥"
+                                  : "";
+                          return `${value}${badgeIcon}`;
+                        }}
+                      />
                       {displayedTerms
                         .filter((term) => selectedKeywords.includes(term))
-                        .map((term) => (
-                          <Line
-                            key={term}
-                            type="monotone"
-                            dataKey={term}
-                            stroke={getLineColor(displayedTerms.indexOf(term))}
-                            strokeWidth={2}
-                            activeDot={{ r: 6 }}
-                          />
-                        ))}
+                        .map((term) => {
+                          const kwInfo = keywordSummary.find((k) => k.term === term);
+                          const isTopTrend = kwInfo?.isTopTrend;
+                          const isTrendScoreRank = kwInfo?.isTrendScoreRank;
+                          const isFeaturedLine = kwInfo?.isFeatured;
+                          const color = getLineColor(displayedTerms.indexOf(term));
+
+                          return (
+                            <Line
+                              key={term}
+                              type="monotone"
+                              dataKey={term}
+                              stroke={color}
+                              strokeWidth={isFeaturedLine ? 3.5 : 1.8}
+                              strokeOpacity={isFeaturedLine ? 1 : 0.6}
+                              style={{
+                                filter: isFeaturedLine ? "url(#neon-glow-line)" : undefined,
+                              }}
+                              dot={(props: Record<string, unknown>) => {
+                                const cx = props.cx as number;
+                                const cy = props.cy as number;
+                                const index = props.index as number;
+                                if (
+                                  typeof cx !== "number" ||
+                                  typeof cy !== "number" ||
+                                  isNaN(cx) ||
+                                  isNaN(cy) ||
+                                  typeof index !== "number" ||
+                                  index < 0
+                                ) {
+                                  return null;
+                                }
+
+                                const isLastPoint = index === chartData.length - 1;
+
+                                if (isLastPoint && (isTopTrend || isTrendScoreRank)) {
+                                  const badgeIcon =
+                                    isTopTrend && isTrendScoreRank
+                                      ? "🏆 🔥"
+                                      : isTopTrend
+                                        ? "🏆"
+                                        : "🔥";
+
+                                  const badgeWidth = isTopTrend && isTrendScoreRank ? 38 : 24;
+
+                                  return (
+                                    <g key={`end-badge-${term}-${index}`}>
+                                      <circle cx={cx} cy={cy} r={6.5} fill={color} stroke="#ffffff" strokeWidth={2} className="animate-pulse" />
+                                      <rect
+                                        x={cx + 8}
+                                        y={cy - 10}
+                                        width={badgeWidth}
+                                        height={20}
+                                        rx={10}
+                                        fill="#0f172a"
+                                        stroke={color}
+                                        strokeWidth={1.5}
+                                      />
+                                      <text
+                                        x={cx + 8 + badgeWidth / 2}
+                                        y={cy + 3.5}
+                                        textAnchor="middle"
+                                        fill={color}
+                                        fontSize={11}
+                                        fontWeight="bold"
+                                        fontFamily="sans-serif"
+                                      >
+                                        {badgeIcon}
+                                      </text>
+                                    </g>
+                                  );
+                                }
+
+                                return (
+                                  <circle
+                                    key={`dot-${term}-${index}`}
+                                    cx={cx}
+                                    cy={cy}
+                                    r={isFeaturedLine ? 4.5 : 3}
+                                    fill={color}
+                                    stroke="#ffffff"
+                                    strokeWidth={isFeaturedLine ? 1.5 : 1}
+                                    strokeOpacity={isFeaturedLine ? 0.9 : 0.5}
+                                  />
+                                );
+                              }}
+                              activeDot={{
+                                r: isFeaturedLine ? 8 : 5,
+                                strokeWidth: isFeaturedLine ? 3 : 1,
+                                stroke: "var(--background)",
+                              }}
+                            />
+                          );
+                        })}
                     </LineChart>
                   </ResponsiveContainer>
                 )}
@@ -1150,151 +1449,61 @@ function ReportsPage() {
                     No popular journals in your followed research area.
                   </div>
                 ) : (
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart layout="vertical" data={report.trends.barChart}>
+                  <ResponsiveContainer width="100%" height={340}>
+                    <BarChart layout="vertical" data={report.trends.barChart} margin={{ top: 10, right: 15, left: 0, bottom: 5 }}>
                       <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" horizontal={false} />
                       <XAxis type="number" stroke="var(--muted-foreground)" fontSize={10} tickLine={false} axisLine={false} />
                       <YAxis
                         dataKey="journalName"
                         type="category"
                         stroke="var(--muted-foreground)"
-                        fontSize={10}
                         tickLine={false}
                         axisLine={false}
-                        width={140}
-                        tickFormatter={(val) => (val && val.length > 20) ? `${val.substring(0, 18)}...` : (val || "")}
+                        width={115}
+                        tick={(props: Record<string, unknown>) => {
+                          const y = (props.y as number) ?? 0;
+                          const payload = props.payload as { value?: string } | undefined;
+                          const rawText = payload?.value ?? "";
+                          const displayText = rawText.length > 17 ? `${rawText.substring(0, 15)}...` : rawText;
+
+                          return (
+                            <g transform={`translate(0,${y})`}>
+                              <text
+                                x={0}
+                                y={3}
+                                textAnchor="start"
+                                fill="var(--muted-foreground)"
+                                fontSize={10}
+                                fontWeight="500"
+                              >
+                                {displayText}
+                              </text>
+                            </g>
+                          );
+                        }}
                       />
                       <Tooltip
+                        wrapperStyle={{ zIndex: 1000 }}
                         contentStyle={{
                           background: "var(--popover)",
                           border: "1px solid var(--border)",
                           borderRadius: 8,
                           fontSize: 11,
+                          maxWidth: 280,
+                          whiteSpace: "normal",
+                          wordBreak: "break-word",
+                        }}
+                        formatter={(val: unknown) => {
+                          const count = typeof val === "number" ? val : parseInt(String(val), 10) || 0;
+                          return [`${count.toLocaleString()} ${count === 1 ? "paper" : "papers"}`, "Paper Count"];
                         }}
                       />
-                      <Bar dataKey="paperCount" fill="var(--chart-1)" radius={[0, 4, 4, 0]} />
+                      <Bar dataKey="paperCount" fill="var(--chart-1)" radius={[0, 6, 6, 0]} barSize={18} minBarLength={14} />
                     </BarChart>
                   </ResponsiveContainer>
                 )}
               </Card>
             </div>
-
-            {/* 1.3 Bảng tổng hợp Summary Card — NGOÀI grid, full width */}
-            {keywordSummary.length > 0 && (
-              <Card title="Keyword Trend Summary (3 Months)" className="mt-6">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs border-collapse">
-                    <thead className="block w-full">
-                      <tr className="border-b border-border flex w-full items-center">
-                        <th className="text-left py-2 px-3 font-semibold text-muted-foreground flex-[2.5] min-w-[220px]">Keyword</th>
-                        {chartData.map((row) => (
-                          <th key={row.period as string} className="text-center py-2 px-3 font-semibold text-muted-foreground flex-1 min-w-[80px]">
-                            {row.period as string}
-                          </th>
-                        ))}
-                        <th className="text-center py-2 px-3 font-semibold text-muted-foreground flex-1 min-w-[90px]">Trend</th>
-                      </tr>
-                    </thead>
-                    <tbody className="block max-h-[220px] overflow-y-auto w-full">
-                      {keywordSummary.map((kw) => (
-                        <tr key={kw.term} className="border-b border-border/50 hover:bg-secondary/30 transition-colors flex w-full items-center">
-                          <td className="py-2 px-3 flex-[2.5] min-w-[220px] min-w-0 flex items-center gap-2">
-                            <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: getLineColor(displayedTerms.indexOf(kw.term)) }} />
-                            <Link
-                              to="/search"
-                              search={{ q: kw.term, searchType: "keywords" }}
-                              className="truncate font-medium text-foreground hover:text-brand hover:underline transition-colors"
-                              title={kw.term}
-                            >
-                              {kw.term}
-                            </Link>
-                          </td>
-                          {kw.monthlyData.map((m) => {
-                            const [monthStr, yearStr] = (m.period as string).split("/");
-                            const monthNum = parseInt(monthStr, 10);
-                            const yearNum = parseInt(yearStr, 10);
-
-                            return (
-                              <td key={m.period} className="text-center py-2 px-3 text-muted-foreground flex-1 min-w-[80px]">
-                                <Link
-                                  to="/search"
-                                  search={{
-                                    q: kw.term,
-                                    searchType: "keywords",
-                                    fromYear: yearNum,
-                                    toYear: yearNum,
-                                    month: monthNum,
-                                  } as any}
-                                  className="inline-flex flex-col items-center justify-center hover:text-brand transition-colors group cursor-pointer"
-                                  title={`View ${m.count} papers for "${kw.term}" in ${m.period}`}
-                                >
-                                  <span className="font-mono font-bold text-sm text-foreground group-hover:text-brand leading-none">{m.count}</span>
-                                  <span className="text-[9px] text-muted-foreground group-hover:text-brand/80 leading-tight mt-0.5">
-                                    {m.count === 1 ? "paper" : "papers"}
-                                  </span>
-                                </Link>
-                              </td>
-                            );
-                          })}
-                          <td className="text-center py-2 px-3 font-semibold whitespace-nowrap flex-1 min-w-[90px]">
-                            <UiTooltipProvider delayDuration={100}>
-                              <UiTooltip>
-                                <UiTooltipTrigger asChild>
-                                  <span className={`cursor-help font-semibold hover:underline decoration-dotted underline-offset-4 ${kw.trendColor}`}>
-                                    {kw.trend}
-                                  </span>
-                                </UiTooltipTrigger>
-                                <UiTooltipContent side="left" className="bg-popover/95 backdrop-blur-md border border-border/80 p-3 rounded-xl shadow-2xl text-xs space-y-2.5 max-w-xs z-50">
-                                  <div className="font-bold text-foreground border-b border-border/50 pb-1.5 flex items-center justify-between gap-3">
-                                    <span>3-Month Trend Breakdown</span>
-                                    <span className="text-[10px] text-muted-foreground font-mono">({kw.m1.period} → {kw.m3.period})</span>
-                                  </div>
-                                  <div className="space-y-1 text-[11px]">
-                                    <div className="flex items-center justify-between gap-4 text-muted-foreground">
-                                      <span>• {kw.m1.period} → {kw.m2.period}:</span>
-                                      <span className="font-mono text-foreground font-medium">{kw.m1.count} → {kw.m2.count} ({kw.stage1Label})</span>
-                                    </div>
-                                    <div className="flex items-center justify-between gap-4 text-muted-foreground">
-                                      <span>• {kw.m2.period} → {kw.m3.period}:</span>
-                                      <span className="font-mono text-foreground font-medium">{kw.m2.count} → {kw.m3.count} ({kw.stage2Label})</span>
-                                    </div>
-                                  </div>
-
-                                  {/* Công thức toán học dùng số liệu thật từ Backend */}
-                                  <div className="bg-secondary/40 rounded-lg p-2 border border-border/40 space-y-1 font-mono text-[10px]">
-                                    <div className="font-semibold text-muted-foreground uppercase text-[9px] tracking-wider">Calculation Formula:</div>
-                                    {kw.m1.count > 0 ? (
-                                      <div className="text-foreground leading-relaxed">
-                                        [({kw.m3.period}: {kw.m3.count} - {kw.m1.period}: {kw.m1.count}) / {kw.m1.count}] × 100%
-                                        <div className={`font-bold mt-0.5 ${kw.trendColor}`}>
-                                          = [({kw.m3.count - kw.m1.count}) / {kw.m1.count}] × 100% = {kw.trend}
-                                        </div>
-                                      </div>
-                                    ) : (
-                                      <div className="text-foreground leading-relaxed">
-                                        From 0 papers ({kw.m1.period}) to {kw.m3.count} papers ({kw.m3.period})
-                                        <div className={`font-bold mt-0.5 ${kw.trendColor}`}>
-                                          = {kw.trend} new growth
-                                        </div>
-                                      </div>
-                                    )}
-                                  </div>
-
-                                  <div className="border-t border-border/50 pt-1.5 flex items-center justify-between font-semibold text-xs">
-                                    <span className="text-foreground">Overall 3-Month Trend:</span>
-                                    <span className={kw.trendColor}>{kw.trend}</span>
-                                  </div>
-                                </UiTooltipContent>
-                              </UiTooltip>
-                            </UiTooltipProvider>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </Card>
-            )}
 
             {/* === PHẦN 2: DANH SÁCH ĐỀ XUẤT BÀI BÁO ĐỌC TIẾP CÁ NHÂN HÓA (RECOMMENDED READS) === */}
             <div>
@@ -1581,11 +1790,10 @@ function ReportsPage() {
                                     className="flex items-center justify-between gap-3 p-2.5 rounded-xl border border-border/30 bg-secondary/15 hover:bg-secondary/40 hover:border-orange-500/30 transition-all group"
                                   >
                                     <div className="flex items-center gap-2.5 min-w-0">
-                                      <span className={`size-5 rounded-md font-mono font-extrabold text-[10px] flex items-center justify-center shrink-0 ${
-                                        idx === 0
-                                          ? "bg-orange-500/20 border border-orange-500/40 text-orange-400"
-                                          : "bg-secondary text-muted-foreground"
-                                      }`}>
+                                      <span className={`size-5 rounded-md font-mono font-extrabold text-[10px] flex items-center justify-center shrink-0 ${idx === 0
+                                        ? "bg-orange-500/20 border border-orange-500/40 text-orange-400"
+                                        : "bg-secondary text-muted-foreground"
+                                        }`}>
                                         {idx + 1}
                                       </span>
                                       <span className="text-xs font-semibold truncate text-foreground group-hover:text-brand transition-colors">
@@ -1636,11 +1844,10 @@ function ReportsPage() {
                                     className="flex items-center justify-between gap-3 p-2.5 rounded-xl border border-border/30 bg-secondary/15 hover:bg-secondary/40 hover:border-amber-500/30 transition-all group"
                                   >
                                     <div className="flex items-center gap-2.5 min-w-0">
-                                      <span className={`size-5 rounded-md font-mono font-extrabold text-[10px] flex items-center justify-center shrink-0 ${
-                                        idx === 0
-                                          ? "bg-amber-500/20 border border-amber-500/40 text-amber-400"
-                                          : "bg-secondary text-muted-foreground"
-                                      }`}>
+                                      <span className={`size-5 rounded-md font-mono font-extrabold text-[10px] flex items-center justify-center shrink-0 ${idx === 0
+                                        ? "bg-amber-500/20 border border-amber-500/40 text-amber-400"
+                                        : "bg-secondary text-muted-foreground"
+                                        }`}>
                                         {idx + 1}
                                       </span>
                                       <span className="text-xs font-semibold truncate text-foreground group-hover:text-brand transition-colors">

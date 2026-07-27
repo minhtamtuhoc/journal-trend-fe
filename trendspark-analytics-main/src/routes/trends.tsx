@@ -819,7 +819,7 @@ function TrendsPage() {
                       >
                         <UiTooltip>
                           <UiTooltipTrigger asChild>
-                            <span className="hover:opacity-85 transition-opacity">
+                            <span className="hover:underline decoration-dotted underline-offset-4 hover:opacity-85 transition-opacity">
                               {k.trendScore > 0 ? `+${k.trendScore.toFixed(1)}%` : k.trendScore < 0 ? `▼ ${Math.abs(k.trendScore).toFixed(1)}%` : "0.0%"}
                             </span>
                           </UiTooltipTrigger>
@@ -1091,7 +1091,7 @@ function TrendsPage() {
                                   <span
                                     className={`font-semibold ${
                                       rowData.trendScore !== null
-                                        ? `underline decoration-dotted underline-offset-4 hover:opacity-85 transition-opacity ${
+                                        ? `hover:underline decoration-dotted underline-offset-4 hover:opacity-85 transition-opacity ${
                                             rowData.trendScore >= 15
                                               ? "text-success"
                                               : rowData.trendScore < 0
