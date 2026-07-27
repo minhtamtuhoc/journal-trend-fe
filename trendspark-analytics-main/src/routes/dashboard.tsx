@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppLayout, PageHeader } from "@/components/AppLayout";
 import { Card, KpiCard } from "@/components/Card";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   CartesianGrid,
   Legend,
@@ -67,6 +67,162 @@ const MONTH_NAMES = [
 function formatMonthYear(month: number, year: number) {
   const m = MONTH_NAMES[month] || String(month);
   return `${m} ${year}`;
+}
+
+function TrendingKeywordTooltipContent({
+  keywordId,
+  keyword,
+  trendScore,
+}: {
+  keywordId: number;
+  keyword: string;
+  trendScore: number;
+}) {
+  const { data: chartData, isLoading } = useKeywordChartData(keywordId);
+
+  const recentMonths = useMemo(() => {
+    const now = new Date();
+    const m1Date = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const m2Date = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+    const m3Date = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+
+    const m1Num = m1Date.getMonth() + 1;
+    const m2Num = m2Date.getMonth() + 1;
+    const m3Num = m3Date.getMonth() + 1;
+
+    return [
+      {
+        year: m3Date.getFullYear(),
+        month: m3Num,
+        label: MONTH_NAMES[m3Num] || `Month ${m3Num}`,
+      },
+      {
+        year: m2Date.getFullYear(),
+        month: m2Num,
+        label: MONTH_NAMES[m2Num] || `Month ${m2Num}`,
+      },
+      {
+        year: m1Date.getFullYear(),
+        month: m1Num,
+        label: MONTH_NAMES[m1Num] || `Month ${m1Num}`,
+        isCurrent: true,
+      },
+    ];
+  }, []);
+
+  const history = chartData?.history || [];
+  const m3Info = history.find((h) => h.year === recentMonths[0].year && h.month === recentMonths[0].month);
+  const m2Info = history.find((h) => h.year === recentMonths[1].year && h.month === recentMonths[1].month);
+  const m1Info = history.find((h) => h.year === recentMonths[2].year && h.month === recentMonths[2].month);
+
+  const scoreM3 = m3Info?.trendScore;
+  const scoreM2 = m2Info?.trendScore;
+  const scoreM1 = m1Info?.trendScore ?? trendScore;
+
+  const countM1 = m1Info?.paperCount;
+  const countM2 = m2Info?.paperCount;
+
+  return (
+    <UiTooltipContent
+      side="left"
+      className="w-80 p-3.5 space-y-3 bg-card border border-border text-foreground shadow-2xl rounded-xl z-50"
+    >
+      <div className="flex items-center justify-between border-b border-border/50 pb-2">
+        <div className="flex items-center gap-1.5 text-xs font-bold text-brand">
+          <Activity className="size-4" />
+          <span>Keyword Growth Rate</span>
+        </div>
+        <span className="text-[11px] font-semibold text-foreground truncate max-w-[120px]" title={keyword}>
+          "{keyword}"
+        </span>
+      </div>
+
+      {isLoading ? (
+        <div className="text-xs text-muted-foreground py-3 text-center animate-pulse">
+          Loading growth metrics...
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {/* Lịch sử 3 tháng gần nhất */}
+          <div className="space-y-1.5">
+            <div className="text-[11px] font-semibold text-muted-foreground flex justify-between">
+              <span>Growth History (Last 3 Months):</span>
+            </div>
+            <div className="grid grid-cols-3 gap-1.5">
+              {recentMonths.map((m, idx) => {
+                const score = idx === 0 ? scoreM3 : idx === 1 ? scoreM2 : scoreM1;
+                const ptCount = idx === 0 ? m3Info?.paperCount : idx === 1 ? m2Info?.paperCount : countM1;
+
+                return (
+                  <div
+                    key={m.label}
+                    className={`p-2 rounded-lg border text-center transition-all ${
+                      m.isCurrent
+                        ? "bg-brand/10 border-brand/40 text-brand font-bold shadow-sm"
+                        : "bg-secondary/40 border-border/40 text-muted-foreground"
+                    }`}
+                  >
+                    <div className="text-[10px] opacity-80">{m.label}</div>
+                    <div
+                      className={`text-xs font-mono font-bold mt-0.5 ${
+                        score === undefined
+                          ? "text-muted-foreground"
+                          : score >= 0
+                          ? "text-success"
+                          : "text-destructive"
+                      }`}
+                    >
+                      {score !== undefined ? `${score > 0 ? "+" : ""}${score.toFixed(0)}%` : "N/A"}
+                    </div>
+                    {ptCount !== undefined && (
+                      <div className="text-[9px] font-mono text-muted-foreground mt-0.5">
+                        {ptCount} papers
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Công thức tính toán cho tháng hiện tại */}
+          <div className="bg-secondary/50 p-2.5 rounded-lg border border-border/60 space-y-1.5">
+            <div className="text-[11px] font-bold text-foreground flex items-center justify-between">
+              <span>Formula ({recentMonths[2].label}):</span>
+              <span className={`font-mono font-bold ${scoreM1 >= 0 ? "text-success" : "text-destructive"}`}>
+                {scoreM1 > 0 ? "+" : ""}
+                {scoreM1.toFixed(0)}%
+              </span>
+            </div>
+
+            <div className="text-[10px] font-mono bg-background/90 p-2 rounded border border-border/40 text-foreground leading-relaxed space-y-1">
+              <div>
+                Formula: <span className="text-brand font-bold">((C - P) / P) × 100%</span>
+              </div>
+
+              {countM1 !== undefined && countM2 !== undefined ? (
+                <>
+                  <div className="text-muted-foreground">
+                    Values: (({countM1} - {countM2}) / {countM2 > 0 ? countM2 : "1"}) × 100%
+                  </div>
+                  <div className="text-success font-bold">
+                    = {countM2 === 0 ? "+100% (default when P = 0)" : `${scoreM1 > 0 ? "+" : ""}${scoreM1.toFixed(1)}%`}
+                  </div>
+                </>
+              ) : (
+                <div className="text-muted-foreground">
+                  = (({recentMonths[2].label} - {recentMonths[1].label}) / {recentMonths[1].label}) × 100%
+                </div>
+              )}
+            </div>
+            <p className="text-[9px] text-muted-foreground italic leading-tight">
+              * C: Paper count for {recentMonths[2].label}, P: Paper count for {recentMonths[1].label}.
+            </p>
+          </div>
+        </div>
+      )}
+    </UiTooltipContent>
+  );
 }
 
 function DashboardPage() {
@@ -348,15 +504,11 @@ function DashboardPage() {
                           {k.trendScore > 0 ? "+" : ""}{k.trendScore.toFixed(0)}%
                         </span>
                       </UiTooltipTrigger>
-                      <UiTooltipContent side="left" className="max-w-xs p-3 space-y-1 bg-card border border-border text-foreground shadow-xl rounded-xl z-50">
-                        <div className="flex items-center gap-1.5 text-xs font-bold text-brand">
-                          <Activity className="size-3.5" />
-                          <span>Keyword Growth Rate</span>
-                        </div>
-                        <p className="text-[11px] text-muted-foreground leading-relaxed">
-                          Growth rate in published papers for keyword <span className="text-foreground font-semibold">"{k.keyword}"</span> ({k.paperCount} papers) compared to previous month.
-                        </p>
-                      </UiTooltipContent>
+                      <TrendingKeywordTooltipContent
+                        keywordId={k.keywordId}
+                        keyword={k.keyword}
+                        trendScore={k.trendScore}
+                      />
                     </UiTooltip>
                   </div>
                 </Link>

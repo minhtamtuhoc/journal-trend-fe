@@ -8,7 +8,7 @@ export function Card({
 }: {
   children: React.ReactNode;
   className?: string;
-  title?: string;
+  title?: React.ReactNode;
   action?: React.ReactNode;
   onClick?: React.MouseEventHandler<HTMLDivElement>;
   id?: string;
@@ -16,8 +16,8 @@ export function Card({
   return (
     <div id={id} onClick={onClick} className={`glass rounded-2xl p-6 ${className}`}>
       {(title || action) && (
-        <div className="flex items-center justify-between mb-6">
-          {title && <h3 className="font-bold text-foreground text-sm uppercase tracking-wider">{title}</h3>}
+        <div className="flex items-start justify-between mb-6">
+          {title && <h3 className="font-bold text-foreground text-sm uppercase tracking-wider pt-1">{title}</h3>}
           {action}
         </div>
       )}
