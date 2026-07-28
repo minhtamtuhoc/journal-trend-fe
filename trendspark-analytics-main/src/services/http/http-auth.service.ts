@@ -17,9 +17,7 @@ export class HttpAuthService implements AuthService {
       fullName: credentials.name,
       email: credentials.email,
       password: credentials.password,
-      role: credentials.role,
     };
-    console.log("REQUEST PAYLOAD", payload);
     await apiClient.post("/v1/auth/register", payload);
   }
 
