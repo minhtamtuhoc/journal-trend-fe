@@ -30,8 +30,8 @@ export type ForecastDetail = {
   forecastMonthsCount: number;
   predictedGrowthRate: number;
   forecastReason: ForecastCategory;
-  historicalMonths: ForecastMonth[]; // 12 tháng (nét liền)
-  forecastMonths: ForecastMonth[]; // N tháng (nét đứt)
+  historicalMonths: ForecastMonth[]; // tối đa 6 tháng lịch sử đã chốt sổ (nét liền)
+  forecastMonths: ForecastMonth[]; // N tháng dự báo (nét đứt)
 };
 
 // Lý do nút Run Forecast bị khoá (mã ổn định từ BE)

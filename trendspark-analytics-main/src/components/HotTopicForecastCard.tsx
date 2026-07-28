@@ -171,8 +171,49 @@ export function HotTopicForecastCard({ items, isLoading, months = 6, selectedKey
                   </UiTooltipContent>
                 </UiTooltip>
               </th>
-              <th className="py-3 px-4 text-center">Growth</th>
-              <th className="py-3 px-4">Category</th>
+              <th className="py-3 px-4 text-center cursor-help">
+                <UiTooltip>
+                  <UiTooltipTrigger asChild>
+                    <span className="underline decoration-dotted underline-offset-4 hover:opacity-85 transition-opacity">
+                      Growth
+                    </span>
+                  </UiTooltipTrigger>
+                  <UiTooltipContent side="top" align="center" className="p-3 max-w-[300px] bg-popover text-popover-foreground border border-border shadow-lg rounded-xl pointer-events-auto">
+                    <div className="space-y-1.5 text-xs font-sans text-left normal-case tracking-normal">
+                      <p className="font-bold text-brand uppercase tracking-wider text-[10px]">Net Growth Rate</p>
+                      <div className="text-[11px] text-muted-foreground leading-relaxed">
+                        <p className="font-medium text-foreground mb-1">Formula:</p>
+                        <code className="block bg-secondary/40 p-1.5 rounded-md font-mono text-[10px] mb-2 text-center text-foreground font-semibold">
+                          (Predicted₂ − Baseline) / Baseline × 100
+                        </code>
+                        <p className="text-[10px] border-t border-border pt-1.5 leading-snug">
+                          Baseline = avg monthly × N months. Compares forecast output against the recent average pace — <span className="text-destructive font-semibold">negative</span> means slower than current pace.
+                        </p>
+                      </div>
+                    </div>
+                  </UiTooltipContent>
+                </UiTooltip>
+              </th>
+              <th className="py-3 px-4 cursor-help">
+                <UiTooltip>
+                  <UiTooltipTrigger asChild>
+                    <span className="underline decoration-dotted underline-offset-4 hover:opacity-85 transition-opacity">
+                      Category
+                    </span>
+                  </UiTooltipTrigger>
+                  <UiTooltipContent side="top" align="center" className="p-3 max-w-[300px] bg-popover text-popover-foreground border border-border shadow-lg rounded-xl pointer-events-auto">
+                    <div className="space-y-1.5 text-xs font-sans text-left normal-case tracking-normal">
+                      <p className="font-bold text-brand uppercase tracking-wider text-[10px]">Forecast Category</p>
+                      <div className="text-[11px] text-muted-foreground leading-relaxed space-y-1.5">
+                        <p className="leading-snug">Classified by composite <span className="font-semibold text-foreground">sTPS score</span> (slope + acceleration + volume) — not by Growth rate.</p>
+                        <p className="text-[10px] border-t border-border pt-1.5 leading-snug text-muted-foreground">
+                          ⚠️ Category and Growth measure <span className="font-semibold text-foreground">different axes</span>: sTPS is a relative rank across all keywords; Growth is the forecast amplitude vs. recent pace. A "Steady" keyword can still show high Growth if its pace is accelerating.
+                        </p>
+                      </div>
+                    </div>
+                  </UiTooltipContent>
+                </UiTooltip>
+              </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border/40">
@@ -271,7 +312,11 @@ export function HotTopicForecastCard({ items, isLoading, months = 6, selectedKey
                             <ul className="list-disc pl-4 space-y-0.5 font-mono text-[10px] mb-2">
                               <li>Horizon: <span className="text-foreground font-bold">{tableMonthsHeader} months</span></li>
                               <li>Predicted Papers: <span className="text-foreground font-bold">{item.predictedPapers}</span></li>
-                              <li>Growth: <span className="text-foreground font-bold">+{item.predictedGrowthRate.toFixed(1)}%</span></li>
+                              <li>Growth: <span className={`font-bold ${
+                                item.predictedGrowthRate > 0 ? "text-success" :
+                                item.predictedGrowthRate < 0 ? "text-destructive" :
+                                "text-muted-foreground"
+                              }`}>{item.predictedGrowthRate > 0 ? "+" : ""}{item.predictedGrowthRate.toFixed(1)}%</span></li>
                             </ul>
                             <div className="text-[10px] border-t border-border pt-1.5 space-y-1">
                               <p className="font-semibold text-foreground flex items-center gap-1">
@@ -306,8 +351,12 @@ export function HotTopicForecastCard({ items, isLoading, months = 6, selectedKey
                       </UiTooltipContent>
                     </UiTooltip>
                   </td>
-                  <td className="py-3 px-4 text-center font-mono text-success font-semibold">
-                    +{item.predictedGrowthRate.toFixed(1)}%
+                  <td className={`py-3 px-4 text-center font-mono font-semibold ${
+                    item.predictedGrowthRate > 0 ? "text-success" :
+                    item.predictedGrowthRate < 0 ? "text-destructive" :
+                    "text-muted-foreground"
+                  }`}>
+                    {item.predictedGrowthRate > 0 ? "+" : ""}{item.predictedGrowthRate.toFixed(1)}%
                   </td>
                   <td className="py-3 px-4">
                     <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold border ${badge.class}`}>

@@ -88,7 +88,14 @@ export function ForecastLineChart({ detail, isLoading }: Props) {
         <div>
           <h4 className="text-sm font-bold text-foreground">Forecast Chart: {detail.term}</h4>
           <p className="text-xs text-muted-foreground font-mono mt-0.5">
-            sTPS Potential Score: <strong className="text-brand">{detail.potentialScore}</strong> · {monthsCount}M Growth: <strong className="text-success">+{detail.predictedGrowthRate.toFixed(1)}%</strong>
+            sTPS Potential Score: <strong className="text-brand">{detail.potentialScore}</strong> · {monthsCount}M Growth:{" "}
+            <strong className={
+              detail.predictedGrowthRate > 0 ? "text-success" :
+              detail.predictedGrowthRate < 0 ? "text-destructive" :
+              "text-muted-foreground"
+            }>
+              {detail.predictedGrowthRate > 0 ? "+" : ""}{detail.predictedGrowthRate.toFixed(1)}%
+            </strong>
           </p>
         </div>
       </div>
