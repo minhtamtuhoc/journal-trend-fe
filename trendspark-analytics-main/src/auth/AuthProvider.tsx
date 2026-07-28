@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { getServices } from "@/services";
 import { authStorage } from "@/auth/storage";
-import type { LoginCredentials, RegisterCredentials, RegisterRole, User } from "@/auth/types";
+import type { LoginCredentials, RegisterCredentials, User } from "@/auth/types";
 import { normalizeUser } from "@/auth/roles";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -12,7 +12,7 @@ type AuthContextValue = {
   isLoading: boolean;
   initializing: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string, role: RegisterRole) => Promise<void>;
+  register: (name: string, email: string, password: string) => Promise<void>;
   logout: () => void;
   updateProfile: (fullName: string) => Promise<void>;
   updateNotificationPreferences: (prefs: {
@@ -78,8 +78,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(normalizeUser(session.user));
   }, [qc]);
 
-    const register = useCallback(async (name: string, email: string, password: string, role: RegisterRole) => {
-    const credentials: RegisterCredentials = { name, email, password, role };
+  const register = useCallback(async (name: string, email: string, password: string) => {
+    const credentials: RegisterCredentials = { name, email, password };
     await getServices().auth.register(credentials);
   }, []);
 

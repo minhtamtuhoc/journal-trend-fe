@@ -3,16 +3,9 @@ import { useState } from "react";
 import { z } from "zod";
 import { ApiError } from "@/api/errors";
 import { AuthShell } from "@/components/AuthShell";
-import { useAuth, type RegisterRole } from "@/auth";
+import { useAuth } from "@/auth";
 import { toast } from "sonner";
 import { Eye, EyeOff } from "lucide-react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 export const Route = createFileRoute("/register")({ component: RegisterPage });
 
@@ -33,18 +26,9 @@ const schema = z.object({
     .min(8, "Min 8 characters")
     .regex(/[A-Z]/, "Include at least one uppercase letter")
     .regex(/\d/, "Include at least one digit"),
-  role: z.enum(["STUDENT", "LECTURER", "RESEARCHER"], {
-    errorMap: () => ({ message: "Please select a role" }),
-  }),
 });
 
 const TAKEN = ["taken@helix.io"];
-
-const ROLE_OPTIONS = [
-  { label: "Student", value: "STUDENT" },
-  { label: "Lecturer", value: "LECTURER" },
-  { label: "Researcher", value: "RESEARCHER" },
-];
 
 function Field({
   label,
@@ -96,7 +80,6 @@ type FormErrors = {
   name?: string;
   email?: string;
   password?: string;
-  role?: string;
   global?: string;
 };
 
@@ -106,7 +89,6 @@ function RegisterPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<string>("");
   const [errors, setErrors] = useState<FormErrors>({});
   const [loading, setLoading] = useState(false);
 
@@ -114,7 +96,7 @@ function RegisterPage() {
     e.preventDefault();
     setErrors({});
 
-    const r = schema.safeParse({ name, email, password, role });
+    const r = schema.safeParse({ name, email, password });
     if (!r.success) {
       const fieldErrors: FormErrors = {};
       for (const issue of r.error.issues) {
@@ -134,7 +116,7 @@ function RegisterPage() {
     setLoading(true);
 
     try {
-      await register(name, email, password, role as RegisterRole);
+      await register(name, email, password);
       toast.success("Registration successful. Please verify your email.");
       navigate({ to: "/verify-email", search: { email } });
     } catch (error) {
@@ -144,10 +126,8 @@ function RegisterPage() {
           : error instanceof Error
             ? error.message
             : "Registration failed";
-      
-      if (message.toLowerCase().includes("role")) {
-        setErrors({ role: message });
-      } else if (message.toLowerCase().includes("email")) {
+
+      if (message.toLowerCase().includes("email")) {
         setErrors({ email: message });
       } else {
         setErrors({ global: message });
@@ -197,31 +177,7 @@ function RegisterPage() {
           placeholder="At least 8 characters"
           error={errors.password}
         />
-        
-        <div>
-          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Role</label>
-          <Select
-            value={role}
-            onValueChange={(val) => {
-              setRole(val);
-              if (errors.role) setErrors((prev) => ({ ...prev, role: undefined }));
-            }}
-          >
-            <SelectTrigger className={`mt-1 w-full h-10 px-3 bg-secondary/40 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand/40 text-left cursor-pointer ${
-              errors.role ? "border-destructive focus:ring-destructive/40" : "border-border"
-            }`}>
-              <SelectValue placeholder="Select your role" />
-            </SelectTrigger>
-            <SelectContent>
-              {ROLE_OPTIONS.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value} className="cursor-pointer">
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {errors.role && <div className="mt-1 text-xs text-destructive">{errors.role}</div>}
-        </div>
+
 
         {errors.global && <div className="text-xs text-destructive">{errors.global}</div>}
         <button disabled={loading} type="submit" className="w-full h-10 rounded-lg text-sm font-semibold text-brand-foreground glow-brand transition-transform hover:scale-[1.01] disabled:opacity-60" style={{ background: "var(--gradient-brand)" }}>
