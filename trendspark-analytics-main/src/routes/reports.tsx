@@ -638,11 +638,18 @@ function DomainTabBar({
   );
 }
 
+// Bộ nhớ tạm thời gian thực (in-memory) để lưu lại lựa chọn biểu đồ Keyword Article Count Over Time trong phiên làm việc.
+// Tự động reset về mặc định khi F5 Reload trình duyệt hoặc khi Đăng xuất / Đăng nhập lại.
+let persistedMonthHorizon: number = 3;
+let persistedSelectedKeywords: string[] | null = null;
+let persistedUseLogScale: boolean = false;
+
 // === TRANG CHÍNH BÁO CÁO & PHÂN TÍCH THÔNG MINH (REPORTS & INSIGHTS PAGE) ===
 function ReportsPage() {
   const { authorId } = Route.useSearch() as { authorId?: string }; // ID tác giả nếu chuyển từ báo cáo chi tiết tác giả
   const [activeTab, setActiveTab] = useState<"ALL" | "KEYWORD" | "AUTHOR" | "JOURNAL">("ALL"); // Tab bộ lọc đề xuất bài báo
-  const [monthHorizon, setMonthHorizon] = useState<number>(3); // Số tháng hiển thị (min 2, max 6 tháng)
+  const [monthHorizon, setMonthHorizon] = useState<number>(persistedMonthHorizon); // Số tháng hiển thị (min 2, max 6 tháng)
+  const [useLogScale, setUseLogScale] = useState<boolean>(persistedUseLogScale); // Chế độ thang đo Logarit cho biểu đồ
   const { data: report, isLoading, error } = usePersonalReport(activeTab, monthHorizon); // Hook gọi API lấy báo cáo cá nhân hóa
   const { data: dashboardSummary } = useDashboardSummary();
   const { data: collectionsData } = useCollections();
@@ -739,19 +746,28 @@ function ReportsPage() {
 
   // Giới hạn tối đa số lượng từ khóa được hiển thị đồng thời trên biểu đồ
   const MAX_KEYWORDS_LIMIT = 10;
-  const [selectedKeywords, setSelectedKeywords] = useState<string[]>([]);
+  const [selectedKeywords, setSelectedKeywords] = useState<string[]>(persistedSelectedKeywords ?? []);
   const hasInitialized = useRef(false);
   const displayedTermsSerialized = displayedTerms.join(",");
 
   useEffect(() => {
     if (displayedTerms.length > 0) {
-      // Thông báo cho người dùng nếu tổng số từ khóa follow vượt quá 10
-      if (displayedTerms.length > MAX_KEYWORDS_LIMIT && !hasInitialized.current) {
-        toast.info(`Only up to 10 keywords can be displayed on the chart at once. Showing the first 10 keywords.`);
-      }
       if (!hasInitialized.current) {
-        // Mặc định ban đầu chọn tối đa 10 từ khóa đầu tiên để vẽ biểu đồ
-        setSelectedKeywords(displayedTerms.slice(0, MAX_KEYWORDS_LIMIT));
+        if (persistedSelectedKeywords !== null) {
+          // Khôi phục các từ khóa đã chọn trước đó (chỉ giữ các từ khóa vẫn nằm trong danh sách follow)
+          const validPersisted = persistedSelectedKeywords.filter((k) => displayedTerms.includes(k));
+          if (validPersisted.length > 0) {
+            setSelectedKeywords(validPersisted);
+          } else {
+            setSelectedKeywords(displayedTerms.slice(0, MAX_KEYWORDS_LIMIT));
+          }
+        } else {
+          // Thông báo cho người dùng nếu tổng số từ khóa follow vượt quá 10
+          if (displayedTerms.length > MAX_KEYWORDS_LIMIT) {
+            toast.info(`Only up to 10 keywords can be displayed on the chart at once. Showing the first 10 keywords.`);
+          }
+          setSelectedKeywords(displayedTerms.slice(0, MAX_KEYWORDS_LIMIT));
+        }
         hasInitialized.current = true;
       } else {
         setSelectedKeywords((prev) => prev.filter((k) => displayedTerms.includes(k)));
@@ -760,6 +776,13 @@ function ReportsPage() {
       setSelectedKeywords([]);
     }
   }, [displayedTermsSerialized, displayedTerms.length]);
+
+  // Đồng bộ lựa chọn từ khóa của biểu đồ vào bộ nhớ tạm thời của phiên
+  useEffect(() => {
+    if (hasInitialized.current) {
+      persistedSelectedKeywords = selectedKeywords;
+    }
+  }, [selectedKeywords]);
 
   // Tổng hợp dữ liệu hiển thị cho bảng Summary Card N tháng gần đây
   const keywordSummary = useMemo(() => {
@@ -1187,6 +1210,39 @@ function ReportsPage() {
                         )}
                       </div>
 
+                      {/* Toggle Chuyển đổi Thang đo Trục Y: Linear vs Log Scale */}
+                      <div className="flex items-center p-0.5 rounded-xl bg-secondary/40 border border-border/60 text-xs select-none">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setUseLogScale(false);
+                            persistedUseLogScale = false;
+                          }}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                            !useLogScale
+                              ? "bg-brand text-white shadow-sm font-bold"
+                              : "text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          Linear
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setUseLogScale(true);
+                            persistedUseLogScale = true;
+                          }}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                            useLogScale
+                              ? "bg-brand text-white shadow-sm font-bold"
+                              : "text-muted-foreground hover:text-foreground"
+                          }`}
+                          title="Logarithmic scale helps visualize small values alongside massive outliers"
+                        >
+                          Log Scale
+                        </button>
+                      </div>
+
                       {/* Thanh chọn số lượng tháng (Horizon Slider) - Ghi rõ "Months" thay vì "M" */}
                       <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-secondary/40 border border-border/60 text-xs select-none">
                         <span className="text-muted-foreground font-semibold">Horizon:</span>
@@ -1196,7 +1252,11 @@ function ReportsPage() {
                           max={6}
                           step={1}
                           value={monthHorizon}
-                          onChange={(e) => setMonthHorizon(Number(e.target.value))}
+                          onChange={(e) => {
+                            const val = Number(e.target.value);
+                            setMonthHorizon(val);
+                            persistedMonthHorizon = val;
+                          }}
                           className="w-20 accent-brand cursor-pointer h-1.5 rounded-lg appearance-none bg-muted/40"
                           style={{
                             background: `linear-gradient(to right, var(--brand) 0%, var(--brand) ${((monthHorizon - 2) / 4) * 100}%, rgba(255, 255, 255, 0.2) ${((monthHorizon - 2) / 4) * 100}%, rgba(255, 255, 255, 0.2) 100%)`
@@ -1299,6 +1359,8 @@ function ReportsPage() {
                         fontSize={11}
                         tickLine={false}
                         axisLine={false}
+                        scale={useLogScale ? "log" : "auto"}
+                        domain={useLogScale ? [1, "auto"] : [0, "auto"]}
                       />
                       <Tooltip
                         contentStyle={{
@@ -1325,11 +1387,20 @@ function ReportsPage() {
                         }}
                       />
                       <Legend
-                        wrapperStyle={{ fontSize: 11 }}
+                        wrapperStyle={{ fontSize: 11, cursor: "pointer", paddingTop: 8 }}
+                        onClick={(e: any) => {
+                          const term = e?.dataKey || e?.value;
+                          if (term && typeof term === "string") {
+                            handleToggleKeyword(term);
+                          }
+                        }}
                         formatter={(value: string) => {
+                          const isSelected = selectedKeywords.includes(value);
                           const kwInfo = keywordSummary.find((k) => k.term === value);
                           const isTopTrend = kwInfo?.isTopTrend;
                           const isTrendScoreRank = kwInfo?.isTrendScoreRank;
+                          const isFeaturedLine = kwInfo?.isFeatured;
+                          const color = getLineColor(displayedTerms.indexOf(value));
                           const badgeIcon =
                             isTopTrend && isTrendScoreRank
                               ? " 🏆 🔥"
@@ -1338,97 +1409,112 @@ function ReportsPage() {
                                 : isTrendScoreRank
                                   ? " 🔥"
                                   : "";
-                          return `${value}${badgeIcon}`;
+                          return (
+                            <span
+                              title={isSelected ? "Click to hide this keyword from chart" : "Click to show this keyword on chart"}
+                              className={`transition-all select-none inline-flex items-center gap-1 font-semibold ${
+                                isSelected ? "opacity-100" : "line-through opacity-40 text-muted-foreground"
+                              } ${isSelected && isFeaturedLine ? "animate-pulse" : ""}`}
+                              style={{
+                                color: isSelected ? color : undefined,
+                                textShadow: isSelected && isFeaturedLine ? `0 0 8px ${color}, 0 0 16px ${color}` : undefined,
+                              }}
+                            >
+                              <span>{value}</span>
+                              {badgeIcon && <span>{badgeIcon}</span>}
+                            </span>
+                          );
                         }}
                       />
-                      {displayedTerms
-                        .filter((term) => selectedKeywords.includes(term))
-                        .map((term) => {
-                          const kwInfo = keywordSummary.find((k) => k.term === term);
-                          const isTopTrend = kwInfo?.isTopTrend;
-                          const isTrendScoreRank = kwInfo?.isTrendScoreRank;
-                          const isFeaturedLine = kwInfo?.isFeatured;
-                          const color = getLineColor(displayedTerms.indexOf(term));
+                      {displayedTerms.map((term) => {
+                        const isSelected = selectedKeywords.includes(term);
+                        const kwInfo = keywordSummary.find((k) => k.term === term);
+                        const isTopTrend = kwInfo?.isTopTrend;
+                        const isTrendScoreRank = kwInfo?.isTrendScoreRank;
+                        const isFeaturedLine = kwInfo?.isFeatured;
+                        const color = getLineColor(displayedTerms.indexOf(term));
 
-                          return (
-                            <Line
-                              key={term}
-                              type="monotone"
-                              dataKey={term}
-                              stroke={color}
-                              strokeWidth={isFeaturedLine ? 3.5 : 1.8}
-                              strokeOpacity={isFeaturedLine ? 1 : 0.6}
-                              style={{
-                                filter: isFeaturedLine ? "url(#neon-glow-line)" : undefined,
-                              }}
-                              dot={(props: Record<string, unknown>) => {
-                                const cx = props.cx as number;
-                                const cy = props.cy as number;
-                                const index = props.index as number;
-                                if (
-                                  typeof cx !== "number" ||
-                                  typeof cy !== "number" ||
-                                  isNaN(cx) ||
-                                  isNaN(cy) ||
-                                  typeof index !== "number" ||
-                                  index < 0
-                                ) {
-                                  return null;
-                                }
+                        return (
+                          <Line
+                            key={term}
+                            type="monotone"
+                            dataKey={term}
+                            stroke={color}
+                            hide={!isSelected}
+                            strokeWidth={isFeaturedLine ? 3.5 : 1.8}
+                            strokeOpacity={isFeaturedLine ? 1 : 0.6}
+                            style={{
+                              filter: isFeaturedLine ? "url(#neon-glow-line)" : undefined,
+                            }}
+                            dot={(props: Record<string, unknown>) => {
+                              if (!isSelected) return <g key={`empty-${term}`} />;
+                              const cx = props.cx as number;
+                              const cy = props.cy as number;
+                              const index = props.index as number;
+                              if (
+                                typeof cx !== "number" ||
+                                typeof cy !== "number" ||
+                                isNaN(cx) ||
+                                isNaN(cy) ||
+                                typeof index !== "number" ||
+                                index < 0
+                              ) {
+                                return <g key={`empty-${term}`} />;
+                              }
 
-                                const isLastPoint = index === chartData.length - 1;
+                              const isLastPoint = index === chartData.length - 1;
 
-                                if (isLastPoint && (isTopTrend || isTrendScoreRank)) {
-                                  const badgeIcon =
-                                    isTopTrend && isTrendScoreRank
-                                      ? "🏆 🔥"
-                                      : isTopTrend
-                                        ? "🏆"
-                                        : "🔥";
+                              if (isLastPoint && (isTopTrend || isTrendScoreRank)) {
+                                const badgeIcon =
+                                  isTopTrend && isTrendScoreRank
+                                    ? "🏆 🔥"
+                                    : isTopTrend
+                                      ? "🏆"
+                                      : "🔥";
 
-                                  const badgeWidth = isTopTrend && isTrendScoreRank ? 38 : 24;
-
-                                  return (
-                                    <g key={`end-badge-${term}-${index}`}>
-                                      <circle cx={cx} cy={cy} r={6.5} fill={color} stroke="#ffffff" strokeWidth={2} className="animate-pulse" />
-                                      <rect
-                                        x={cx + 8}
-                                        y={cy - 10}
-                                        width={badgeWidth}
-                                        height={20}
-                                        rx={10}
-                                        fill="#0f172a"
-                                        stroke={color}
-                                        strokeWidth={1.5}
-                                      />
-                                      <text
-                                        x={cx + 8 + badgeWidth / 2}
-                                        y={cy + 3.5}
-                                        textAnchor="middle"
-                                        fill={color}
-                                        fontSize={11}
-                                        fontWeight="bold"
-                                        fontFamily="sans-serif"
-                                      >
-                                        {badgeIcon}
-                                      </text>
-                                    </g>
-                                  );
-                                }
+                                const badgeWidth = isTopTrend && isTrendScoreRank ? 38 : 24;
 
                                 return (
-                                  <circle
-                                    key={`dot-${term}-${index}`}
-                                    cx={cx}
-                                    cy={cy}
-                                    r={isFeaturedLine ? 4.5 : 3}
-                                    fill={color}
-                                    stroke="#ffffff"
-                                    strokeWidth={isFeaturedLine ? 1.5 : 1}
-                                    strokeOpacity={isFeaturedLine ? 0.9 : 0.5}
-                                  />
+                                  <g key={`end-badge-${term}-${index}`}>
+                                    <circle cx={cx} cy={cy} r={6.5} fill={color} stroke="#ffffff" strokeWidth={2} className="animate-pulse" />
+                                    <rect
+                                      x={cx + 8}
+                                      y={cy - 10}
+                                      width={badgeWidth}
+                                      height={20}
+                                      rx={10}
+                                      fill="#0f172a"
+                                      stroke={color}
+                                      strokeWidth={1.5}
+                                    />
+                                    <text
+                                      x={cx + 8 + badgeWidth / 2}
+                                      y={cy + 3.5}
+                                      textAnchor="middle"
+                                      fill={color}
+                                      fontSize={11}
+                                      fontWeight="bold"
+                                      fontFamily="sans-serif"
+                                    >
+                                      {badgeIcon}
+                                    </text>
+                                  </g>
                                 );
-                              }}
+                              }
+
+                              return (
+                                <circle
+                                  key={`dot-${term}-${index}`}
+                                  cx={cx}
+                                  cy={cy}
+                                  r={isFeaturedLine ? 4.5 : 3}
+                                  fill={color}
+                                  stroke="#ffffff"
+                                  strokeWidth={isFeaturedLine ? 1.5 : 1}
+                                  strokeOpacity={isFeaturedLine ? 0.9 : 0.5}
+                                />
+                              );
+                            }}
                               activeDot={{
                                 r: isFeaturedLine ? 8 : 5,
                                 strokeWidth: isFeaturedLine ? 3 : 1,
