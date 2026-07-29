@@ -750,6 +750,71 @@ function ReportsPage() {
   const hasInitialized = useRef(false);
   const displayedTermsSerialized = displayedTerms.join(",");
 
+  // Tự động phát hiện từ khóa vượt trội (Outlier Keyword) và Zoom dãn Y-Axis ở chế độ Linear để thấy rõ đường cong uốn lượn
+  const outlierAnalysis = useMemo(() => {
+    const activeTerms = displayedTerms.filter((term) => selectedKeywords.includes(term));
+    if (activeTerms.length === 0 || chartData.length === 0) {
+      return { hasOutlier: false, linearDomain: [0, "auto"] as [any, any], outlierTerm: null };
+    }
+
+    const keywordStats = activeTerms.map((term) => {
+      let min = Infinity;
+      let max = -Infinity;
+      chartData.forEach((row) => {
+        const val = ((row as Record<string, unknown>)[term] as number) ?? 0;
+        if (val < min) min = val;
+        if (val > max) max = val;
+      });
+      if (min === Infinity) min = 0;
+      if (max === -Infinity) max = 0;
+      return { term, min, max };
+    });
+
+    keywordStats.sort((a, b) => b.max - a.max);
+
+    const topKeyword = keywordStats[0];
+    const secondKeyword = keywordStats[1];
+
+    // Phát hiện Outlier: Từ khóa lớn nhất >= 100 bài VÀ lớn gấp ít nhất 4 lần từ khóa xếp thứ 2
+    const hasOutlier =
+      Boolean(topKeyword) &&
+      topKeyword.max >= 100 &&
+      (!secondKeyword || topKeyword.max >= 4 * Math.max(secondKeyword.max, 1));
+
+    if (hasOutlier && topKeyword) {
+      const diff = topKeyword.max - topKeyword.min;
+      const padding = Math.max(Math.ceil(diff * 0.25), 20);
+      const domainMin = Math.max(0, Math.floor(topKeyword.min - padding));
+      const domainMax = Math.ceil(topKeyword.max + padding);
+      return {
+        hasOutlier: true,
+        outlierTerm: topKeyword.term,
+        linearDomain: [domainMin, domainMax] as [any, any],
+      };
+    }
+
+    return { hasOutlier: false, linearDomain: [0, "auto"] as [any, any], outlierTerm: null };
+  }, [displayedTerms, selectedKeywords, chartData]);
+
+  // Chỉ kích hoạt Log Scale khi người dùng bật Log Scale VÀ thực sự có từ khóa vượt trội (Outlier)
+  const isLogScaleActive = useLogScale && outlierAnalysis.hasOutlier;
+
+  // Xử lý an toàn cho Log Scale: Thay thế giá trị <= 0 bằng mốc 0.2 để D3 scaleLog không bị NaN khi render
+  const displayChartData = useMemo(() => {
+    if (!isLogScaleActive) return chartData;
+    return chartData.map((row) => {
+      const newRow: Record<string, unknown> = { ...row };
+      Object.keys(newRow).forEach((key) => {
+        if (key !== "period" && typeof newRow[key] === "number") {
+          if ((newRow[key] as number) <= 0) {
+            newRow[key] = 0.2;
+          }
+        }
+      });
+      return newRow;
+    });
+  }, [chartData, isLogScaleActive]);
+
   useEffect(() => {
     if (displayedTerms.length > 0) {
       if (!hasInitialized.current) {
@@ -1218,6 +1283,7 @@ function ReportsPage() {
                             setUseLogScale(false);
                             persistedUseLogScale = false;
                           }}
+                          title="Linear Scale: Standard absolute paper counts with smooth organic curves"
                           className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                             !useLogScale
                               ? "bg-brand text-white shadow-sm font-bold"
@@ -1232,12 +1298,12 @@ function ReportsPage() {
                             setUseLogScale(true);
                             persistedUseLogScale = true;
                           }}
+                          title="Log Scale: Balanced logarithmic scale to visualize small keywords alongside massive outliers"
                           className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                             useLogScale
                               ? "bg-brand text-white shadow-sm font-bold"
                               : "text-muted-foreground hover:text-foreground"
                           }`}
-                          title="Logarithmic scale helps visualize small values alongside massive outliers"
                         >
                           Log Scale
                         </button>
@@ -1335,13 +1401,15 @@ function ReportsPage() {
                   </div>
                 ) : (
                   <ResponsiveContainer width="100%" height={340}>
-                    <LineChart data={chartData} margin={{ top: 10, right: 55, left: 10, bottom: 5 }}>
+                    <LineChart data={displayChartData} margin={{ top: 10, right: 55, left: 10, bottom: 5 }}>
                       <defs>
-                        {/* High-intensity Neon Glow Filter cho từ khóa Trending / Rising */}
-                        <filter id="neon-glow-line" x="-30%" y="-30%" width="160%" height="160%">
-                          <feGaussianBlur stdDeviation="3.5" result="blur" />
+                        {/* Multi-layer High-intensity Neon Glow Filter cho từ khóa Trending / Outlier */}
+                        <filter id="neon-glow-line" x="-50%" y="-50%" width="200%" height="200%">
+                          <feGaussianBlur stdDeviation="6" result="blur1" />
+                          <feGaussianBlur stdDeviation="2.5" result="blur2" />
                           <feMerge>
-                            <feMergeNode in="blur" />
+                            <feMergeNode in="blur1" />
+                            <feMergeNode in="blur2" />
                             <feMergeNode in="SourceGraphic" />
                           </feMerge>
                         </filter>
@@ -1359,8 +1427,14 @@ function ReportsPage() {
                         fontSize={11}
                         tickLine={false}
                         axisLine={false}
-                        scale={useLogScale ? "log" : "auto"}
-                        domain={useLogScale ? [1, "auto"] : [0, "auto"]}
+                        allowDecimals={false}
+                        scale={isLogScaleActive ? "log" : "auto"}
+                        domain={isLogScaleActive ? [0.2, "auto"] : outlierAnalysis.linearDomain}
+                        tickFormatter={(val: number) => {
+                          if (isLogScaleActive && val <= 0.2) return "0";
+                          if (val >= 1000) return `${Math.round(val / 1000)}k`;
+                          return String(Math.round(val));
+                        }}
                       />
                       <Tooltip
                         contentStyle={{
@@ -1370,7 +1444,8 @@ function ReportsPage() {
                           fontSize: 12,
                         }}
                         formatter={(val: unknown, name: unknown) => {
-                          const count = typeof val === "number" ? val : parseInt(String(val), 10) || 0;
+                          const rawCount = typeof val === "number" ? val : parseFloat(String(val)) || 0;
+                          const count = (isLogScaleActive && rawCount <= 0.2) ? 0 : Math.round(rawCount);
                           const term = String(name ?? "");
                           const kwInfo = keywordSummary.find((k) => k.term === term);
                           const isTopTrend = kwInfo?.isTopTrend;
@@ -1437,12 +1512,12 @@ function ReportsPage() {
                         return (
                           <Line
                             key={term}
-                            type="monotone"
+                            type="natural"
                             dataKey={term}
                             stroke={color}
                             hide={!isSelected}
-                            strokeWidth={isFeaturedLine ? 3.5 : 1.8}
-                            strokeOpacity={isFeaturedLine ? 1 : 0.6}
+                            strokeWidth={isFeaturedLine ? 3.8 : 2}
+                            strokeOpacity={isFeaturedLine ? 1 : 0.65}
                             style={{
                               filter: isFeaturedLine ? "url(#neon-glow-line)" : undefined,
                             }}
