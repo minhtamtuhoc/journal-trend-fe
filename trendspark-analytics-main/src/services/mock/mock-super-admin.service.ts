@@ -17,7 +17,7 @@ export class MockSuperAdminService implements SuperAdminService {
     await mockDelay(150);
     const user = MOCK_USERS.find(u => String(u.id) === String(userId));
     if (user) {
-      user.role = "STUDENT";
+      user.role = "USER";
     }
     return { status: "SUCCESS" };
   }

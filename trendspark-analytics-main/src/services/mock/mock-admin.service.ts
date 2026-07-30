@@ -7,8 +7,8 @@ import type { PageResponse } from "@/services/interfaces/papers.service";
 
 export const MOCK_USERS: UserAdminResponse[] = [
   { id: 1, email: "admin@research.local", fullName: "System Super Admin", role: "SUPER_ADMIN", status: "ACTIVE", createdAt: "2026-01-01T00:00:00", updatedAt: "2026-01-01T00:00:00" },
-  { id: 2, email: "lecturer1@helix.io", fullName: "Dr. John Doe", role: "LECTURER", status: "ACTIVE", createdAt: "2026-01-02T00:00:00", updatedAt: "2026-01-02T00:00:00" },
-  { id: 3, email: "student1@helix.io", fullName: "Jane Smith", role: "STUDENT", status: "ACTIVE", createdAt: "2026-01-03T00:00:00", updatedAt: "2026-01-03T00:00:00" },
+  { id: 2, email: "user1@helix.io", fullName: "Dr. John Doe", role: "USER", status: "ACTIVE", createdAt: "2026-01-02T00:00:00", updatedAt: "2026-01-02T00:00:00" },
+  { id: 3, email: "user2@helix.io", fullName: "Jane Smith", role: "USER", status: "ACTIVE", createdAt: "2026-01-03T00:00:00", updatedAt: "2026-01-03T00:00:00" },
   { id: 4, email: "admin1@helix.io", fullName: "Admin Manager", role: "ADMIN", status: "ACTIVE", createdAt: "2026-01-04T00:00:00", updatedAt: "2026-01-04T00:00:00" },
 ];
 

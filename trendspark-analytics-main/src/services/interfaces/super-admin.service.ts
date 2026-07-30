@@ -1,6 +1,6 @@
 import type { UserAdminResponse } from "@/types/domain";
 
-export type Role = "STUDENT" | "LECTURER" | "RESEARCHER" | "ADMIN" | "SUPER_ADMIN";
+export type Role = "USER" | "ADMIN" | "SUPER_ADMIN";
 
 export interface SuperAdminService {
   grantAdmin(userId: string | number): Promise<unknown>;

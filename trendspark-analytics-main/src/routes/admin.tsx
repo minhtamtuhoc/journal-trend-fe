@@ -27,6 +27,37 @@ function AdminPage() {
   const { data: PENDING_REVIEW = [] } = usePendingReview();
   const [syncing, setSyncing] = useState(false);
 
+  useEffect(() => {
+    let isMounted = true;
+    const isMountedRef = { current: true };
+
+    const checkAndResumeSync = async () => {
+      try {
+        const status = await getServices().admin.getSyncStatus();
+        if (!isMounted) return;
+        if (status && status.status === "RUNNING") {
+          setSyncing(true);
+          try {
+            await pollSyncUntilDone(isMountedRef);
+          } finally {
+            if (isMounted) {
+              setSyncing(false);
+            }
+          }
+        }
+      } catch {
+        // Silently ignore errors during initial status check
+      }
+    };
+
+    checkAndResumeSync();
+
+    return () => {
+      isMounted = false;
+      isMountedRef.current = false;
+    };
+  }, []);
+
   if (!isExactAdmin) {
     return <Outlet />;
   }
@@ -65,22 +96,29 @@ function AdminPage() {
       queryClient.invalidateQueries({ queryKey: ["authors"] }),
     ]);
 
-  const pollSyncUntilDone = async () => {
+  const pollSyncUntilDone = async (isMountedRef?: { current: boolean }) => {
     const admin = getServices().admin;
     for (let i = 0; i < 90; i++) {
       await new Promise((r) => setTimeout(r, 4000));
-      const status = await admin.getSyncStatus();
-      if (status.status === "RUNNING") {
-        continue;
+      if (isMountedRef && !isMountedRef.current) return;
+      try {
+        const status = await admin.getSyncStatus();
+        if (status.status === "RUNNING") {
+          continue;
+        }
+        await invalidateAfterSync();
+        if (isMountedRef && !isMountedRef.current) return;
+        if (status.status === "SUCCESS") {
+          toast.success(status.message || `Sync completed · ${status.papersFetched} papers`);
+        } else {
+          toast.error(status.message || "Sync failed — check Audit Logs");
+        }
+        return;
+      } catch {
+        // Continue polling loop if network glitch occurs
       }
-      await invalidateAfterSync();
-      if (status.status === "SUCCESS") {
-        toast.success(status.message || `Sync completed · ${status.papersFetched} papers`);
-      } else {
-        toast.error(status.message || "Sync failed — check Audit Logs");
-      }
-      return;
     }
+    if (isMountedRef && !isMountedRef.current) return;
     toast.warning("Sync is still running. Check progress in Audit Logs.");
     await invalidateAfterSync();
   };
@@ -88,6 +126,7 @@ function AdminPage() {
   const resetStaleSync = async () => {
     try {
       const result = await getServices().admin.resetStaleSync();
+      setSyncing(false);
       await invalidateAfterSync();
       toast.success(result.message || "Stale sync reset — you can run sync again");
     } catch (err) {
