@@ -41,7 +41,7 @@ export const Route = createFileRoute("/admin/users")({
   component: SuperAdminUsersPage,
 });
 
-const ROLES: Role[] = ["STUDENT", "LECTURER", "RESEARCHER", "ADMIN", "SUPER_ADMIN"];
+const ROLES: Role[] = ["USER", "ADMIN", "SUPER_ADMIN"];
 
 function SuperAdminUsersPage() {
   const { user } = useAuth();
@@ -219,7 +219,7 @@ function SuperAdminUsersPage() {
           title="All Users Database"
         >
           <div className="text-xs text-muted-foreground mb-4 -mt-3">
-            Search and modify roles for students, lecturers, researchers, and other users.
+            Search and modify roles for users, administrators, and super administrators.
           </div>
           <div className="flex items-center gap-2 mb-4 relative max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />

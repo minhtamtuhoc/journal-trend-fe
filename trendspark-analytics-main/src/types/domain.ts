@@ -168,7 +168,7 @@ export type UserAdminResponse = {
   id: number;
   email: string;
   fullName: string;
-  role: "STUDENT" | "LECTURER" | "RESEARCHER" | "ADMIN" | "SUPER_ADMIN";
+  role: "USER" | "ADMIN" | "SUPER_ADMIN" | string;
   status: "ACTIVE" | "LOCKED" | string;
   createdAt: string;
   updatedAt: string;
