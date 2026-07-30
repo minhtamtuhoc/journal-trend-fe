@@ -60,7 +60,6 @@ function LoginPage() {
   return (
     <AuthShell
       title="Sign in to your observatory"
-      subtitle="Demo admin: admin@helix.io / admin12345"
       footer={
         <>
           No account? <Link to="/register" className="text-brand hover:underline">Create one</Link>

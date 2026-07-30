@@ -13,7 +13,8 @@ import { useDashboardSummary, KeywordChartResponse, KeywordChartPointDto } from 
 import { apiClient } from "@/api/client";
 import { AiHistoryDrawer } from "@/components/AiHistoryDrawer";
 import { mockQueryDefaults } from "@/hooks/data/query-options";
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
+import { getServices, queryKeys } from "@/services";
 import {
   Select,
   SelectContent,
@@ -85,12 +86,46 @@ function getPreviousMonthName() {
 function TrendsPage() {
   const { data: analytics } = useAnalyticsSnapshot();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const { data: followedAuthors = [] } = useFollowedAuthors();
   const followAuthorMut = useFollowAuthor();
   const unfollowAuthorMut = useUnfollowAuthor();
   const { data: followedTopics = [] } = useFollowedTopics();
   const followTopic = useFollowTopic();
   const unfollowTopic = useUnfollowTopic();
+
+  // Monitor background sync status & auto-update trend rankings when finished
+  const { data: syncStatus } = useQuery({
+    queryKey: ["admin-sync-status"],
+    queryFn: () => getServices().admin.getSyncStatus(),
+    refetchInterval: (query) => {
+      const status = query.state.data?.status;
+      return status === "RUNNING" ? 3000 : 15000;
+    },
+    enabled: !!user,
+    ...mockQueryDefaults,
+  });
+
+  const prevSyncStatusRef = useRef<string | undefined>(undefined);
+
+  useEffect(() => {
+    const currentStatus = syncStatus?.status;
+    const prevStatus = prevSyncStatusRef.current;
+
+    if (prevStatus === "RUNNING" && currentStatus === "SUCCESS") {
+      void Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["trending-keywords-month"] }),
+        queryClient.invalidateQueries({ queryKey: ["trending-keywords-month-check"] }),
+        queryClient.invalidateQueries({ queryKey: ["dashboard"] }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.analytics.snapshot }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.summary }),
+      ]).then(() => {
+        toast.success("Synchronization complete! Trend Score Ranking updated automatically.");
+      });
+    }
+
+    prevSyncStatusRef.current = currentStatus;
+  }, [syncStatus?.status, queryClient]);
 
   const isTopicFollowed = (topicId: string) => followedTopics.some((t) => t.id === topicId);
   const isAuthorFollowed = (authorId: string) => followedAuthors.some((a) => a.id === authorId);
@@ -239,7 +274,6 @@ function TrendsPage() {
     timestamp: string;
   }
 
-  const queryClient = useQueryClient();
   const [isHistoryDrawerOpen, setIsHistoryDrawerOpen] = useState(false);
   const aiStorageKey = user?.email ? `journal_trend_ai_analysis_${user.email.toLowerCase()}` : null;
   const [savedAiAnalysis, setSavedAiAnalysis] = useState<StoredAiAnalysis | null>(null);
@@ -756,7 +790,17 @@ function TrendsPage() {
         <Card
           id="trend-score-ranking"
           className="h-full flex flex-col"
-          title={`TREND SCORE RANKING - ${getPreviousMonthName()}`}
+          title={
+            <div className="flex items-center gap-2 flex-wrap">
+              <span>{`TREND SCORE RANKING - ${getPreviousMonthName()}`}</span>
+              {syncStatus?.status === "RUNNING" && (
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-brand/10 text-brand border border-brand/20 text-[10px] font-semibold animate-pulse">
+                  <RefreshCw className="size-3 animate-spin text-brand" />
+                  Syncing & Auto-Updating...
+                </span>
+              )}
+            </div>
+          }
           action={
             <div className="w-[180px]">
               <Select
@@ -789,8 +833,15 @@ function TrendsPage() {
           }
         >
           {TRENDING_KEYWORDS.length === 0 ? (
-            <div className="h-[200px] flex items-center justify-center text-sm text-muted-foreground font-medium text-center px-4">
-              No trend data available for this month. Please run Manual Sync in Admin panel.
+            <div className="h-[200px] flex flex-col items-center justify-center text-sm text-muted-foreground font-medium text-center px-4 space-y-2">
+              {syncStatus?.status === "RUNNING" ? (
+                <>
+                  <RefreshCw className="size-6 text-brand animate-spin" />
+                  <span>Syncing articles from OpenAlex... Data will automatically update once completed.</span>
+                </>
+              ) : (
+                <span>No trend data available for this month. Please run Manual Sync in Admin panel.</span>
+              )}
             </div>
           ) : (
             <table className="w-full text-sm">
