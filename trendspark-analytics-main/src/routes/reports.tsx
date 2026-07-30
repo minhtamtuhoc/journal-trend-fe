@@ -212,42 +212,34 @@ function CustomAuthorReportView({ authorId }: { authorId: string }) {
 
   // Danh sách các từ khóa tiếng Anh viết thường mà người dùng đang follow
   const followedTerms = useMemo(() => new Set(followedTopics.map(t => t.name.toLowerCase().trim())), [followedTopics]);
-  const followedTermList = useMemo(() => Array.from(followedTerms), [followedTerms]);
 
-  // Hàm kiểm tra từ khóa của bài báo có khớp với từ khóa follow (so sánh chính xác hoặc chứa chuỗi)
-  const isKeywordMatch = (kwName: string) => {
+  // Hàm kiểm tra từ khóa của bài báo có khớp với từ khóa follow (so sánh chính xác theo tên chuẩn hoá)
+  const isKeywordMatch = useCallback((kwName: string) => {
     if (!kwName) return false;
-    const lower = kwName.toLowerCase().trim();
-    if (followedTerms.has(lower)) return true;
-    return followedTermList.some(t => lower.length > 2 && (lower.includes(t) || t.includes(lower)));
-  };
+    return followedTerms.has(kwName.toLowerCase().trim());
+  }, [followedTerms]);
 
   // Lọc các bài báo của tác giả có chứa từ khóa mà người dùng đang theo dõi
   const matchedPapers = useMemo(() => {
     if (followedTerms.size === 0) return papers;
     return papers.filter(p => p.keywords?.some(k => isKeywordMatch(k.name)));
-  }, [papers, followedTerms, followedTermList]);
+  }, [papers, followedTerms, isKeywordMatch]);
 
   // Danh sách từ khóa trùng khớp giữa bài báo của tác giả và danh sách follow của người dùng
   const matchedFollowedKeywords = useMemo(() => {
     const matches = new Set<string>();
     papers.forEach(p => {
       p.keywords?.forEach(k => {
-        if (isKeywordMatch(k.name)) {
-          const kwLower = k.name.toLowerCase().trim();
-          // Ưu tiên khớp tên từ khóa follow chính xác trước
-          const exactOriginal = followedTopics.find(t => t.name.toLowerCase().trim() === kwLower);
-          if (exactOriginal) {
-            matches.add(exactOriginal.name);
-          } else {
-            // Nếu khớp qua tìm kiếm chứa chuỗi, giữ nguyên tên từ khóa k.name để không bị trùng lặp/ép tên khiến giảm số lượng từ khóa
-            matches.add(k.name.trim());
-          }
+        if (!k.name) return;
+        const kwLower = k.name.toLowerCase().trim();
+        const exactOriginal = followedTopics.find(t => t.name.toLowerCase().trim() === kwLower);
+        if (exactOriginal) {
+          matches.add(exactOriginal.name);
         }
       });
     });
     return Array.from(matches);
-  }, [papers, followedTerms, followedTopics, followedTermList]);
+  }, [papers, followedTopics]);
 
   // Quyết định danh sách bài báo hiển thị (ưu tiên matched, nếu rỗng hoặc chọn 'all' thì hiện tất cả)
   const displayPapers = (viewMode === "matched" && matchedPapers.length > 0) ? matchedPapers : papers;
@@ -1927,24 +1919,24 @@ function ReportsPage() {
                               </div>
                               <div>
                                 <h3 className="text-xs font-extrabold uppercase tracking-wider text-foreground">
-                                  Hot Topics in Field
+                                  Top Research Keywords
                                 </h3>
-                                <p className="text-[11px] text-muted-foreground">Most published research topics in {activeDomain.domain}</p>
+                                <p className="text-[11px] text-muted-foreground">Keywords with highest published paper volume in {activeDomain.domain}</p>
                               </div>
                             </div>
                             <Badge variant="outline" className="text-[10px] border-orange-500/30 bg-orange-500/10 text-orange-400 font-mono">
-                              Top Trending
+                              High Volume
                             </Badge>
                           </div>
 
                           {activeDomain.hotTopics.length === 0 ? (
                             <div className="py-6 text-center space-y-1">
-                              <p className="text-xs text-muted-foreground">No additional hot topics found in <strong>{activeDomain.domain}</strong>.</p>
+                              <p className="text-xs text-muted-foreground">No additional research keywords found in <strong>{activeDomain.domain}</strong>.</p>
                               <p className="text-[10px] text-muted-foreground/75">(All existing topics in this domain are already followed or pending sync)</p>
                             </div>
                           ) : (
                             <ul className="space-y-2">
-                              {activeDomain.hotTopics.map((item, idx) => (
+                              {activeDomain.hotTopics.map((item) => (
                                 <li key={item.term}>
                                   <Link
                                     to="/search"
@@ -1952,12 +1944,6 @@ function ReportsPage() {
                                     className="flex items-center justify-between gap-3 p-2.5 rounded-xl border border-border/30 bg-secondary/15 hover:bg-secondary/40 hover:border-orange-500/30 transition-all group"
                                   >
                                     <div className="flex items-center gap-2.5 min-w-0">
-                                      <span className={`size-5 rounded-md font-mono font-extrabold text-[10px] flex items-center justify-center shrink-0 ${idx === 0
-                                        ? "bg-orange-500/20 border border-orange-500/40 text-orange-400"
-                                        : "bg-secondary text-muted-foreground"
-                                        }`}>
-                                        {idx + 1}
-                                      </span>
                                       <span className="text-xs font-semibold truncate text-foreground group-hover:text-brand transition-colors">
                                         {item.term}
                                       </span>
@@ -1981,13 +1967,13 @@ function ReportsPage() {
                               </div>
                               <div>
                                 <h3 className="text-xs font-extrabold uppercase tracking-wider text-foreground">
-                                  Research Gaps
+                                  Least Frequent Keywords
                                 </h3>
-                                <p className="text-[11px] text-muted-foreground">Fewest published papers — niche opportunities</p>
+                                <p className="text-[11px] text-muted-foreground">Keywords with lowest published paper volume — potential gaps</p>
                               </div>
                             </div>
                             <Badge variant="outline" className="text-[10px] border-amber-500/30 bg-amber-500/10 text-amber-400 font-mono">
-                              Niche Gaps
+                              Low Volume
                             </Badge>
                           </div>
 
@@ -1998,7 +1984,7 @@ function ReportsPage() {
                             </div>
                           ) : (
                             <ul className="space-y-2">
-                              {activeDomain.researchGaps.map((item, idx) => (
+                              {activeDomain.researchGaps.map((item) => (
                                 <li key={item.term}>
                                   <Link
                                     to="/search"
@@ -2006,12 +1992,6 @@ function ReportsPage() {
                                     className="flex items-center justify-between gap-3 p-2.5 rounded-xl border border-border/30 bg-secondary/15 hover:bg-secondary/40 hover:border-amber-500/30 transition-all group"
                                   >
                                     <div className="flex items-center gap-2.5 min-w-0">
-                                      <span className={`size-5 rounded-md font-mono font-extrabold text-[10px] flex items-center justify-center shrink-0 ${idx === 0
-                                        ? "bg-amber-500/20 border border-amber-500/40 text-amber-400"
-                                        : "bg-secondary text-muted-foreground"
-                                        }`}>
-                                        {idx + 1}
-                                      </span>
                                       <span className="text-xs font-semibold truncate text-foreground group-hover:text-brand transition-colors">
                                         {item.term}
                                       </span>
