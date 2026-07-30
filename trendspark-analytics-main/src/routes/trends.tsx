@@ -287,6 +287,13 @@ function TrendsPage() {
         } catch {}
       }
       queryClient.invalidateQueries({ queryKey: ["ai-history-list"] });
+      toast.success("AI Analysis completed & saved to history!", {
+        description: "Your comparative trend analysis report has been saved to your AI History.",
+        action: {
+          label: "View History",
+          onClick: () => setIsHistoryDrawerOpen(true),
+        },
+      });
     },
   });
 
@@ -652,6 +659,10 @@ function TrendsPage() {
                               <span>Deep analysis by Groq AI model</span>
                               <span>•</span>
                               <span className="font-mono text-brand font-semibold">Analysis Time: {timestamp}</span>
+                              <span>•</span>
+                              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                                <CheckCircle className="size-3" /> Saved to History
+                              </span>
                             </p>
                           </div>
                         </div>

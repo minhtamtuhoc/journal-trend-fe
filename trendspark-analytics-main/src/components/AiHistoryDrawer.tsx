@@ -340,7 +340,6 @@ export function AiHistoryDrawer({
       onSelectHistory(detailData.result, formattedTimestamp, detailData.analysisType);
       setSelectedIdForLoad(null);
       onOpenChange(false);
-      toast.success("Loaded historical AI analysis report");
     }
   }, [detailData, selectedIdForLoad, onSelectHistory, onOpenChange]);
 

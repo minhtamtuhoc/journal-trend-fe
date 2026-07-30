@@ -62,7 +62,7 @@ function ForecastPage() {
             <AlertTriangle className="size-8 mx-auto text-warning mb-2" />
             <h2 className="font-semibold text-lg">Access Denied</h2>
             <p className="text-muted-foreground text-sm mt-1">
-              The Hot Topic Forecast feature is only available for Lecturers, Researchers, and Admins.
+              The Hot Keyword Forecast feature is only available for Lecturers, Researchers, and Admins.
             </p>
           </div>
         </Card>
@@ -121,7 +121,7 @@ function ForecastPage() {
   return (
     <AppLayout>
       <PageHeader
-        title="Hot Topic Forecast"
+        title="Hot Keyword Forecast"
         subtitle={`Predicting the most promising research keywords for the next ${monthsRaw} month(s)`}
         action={
           <div className="flex items-center gap-3">
@@ -216,7 +216,7 @@ function ForecastPage() {
       </div>
 
       <div className="space-y-8">
-        <Card title="Hot Topics Ranking">
+        <Card title="Hot Keyword Ranking">
           <HotTopicForecastCard
             items={forecastList}
             isLoading={loadingList || isPending}
