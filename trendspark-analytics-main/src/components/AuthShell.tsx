@@ -1,8 +1,25 @@
 import { Link } from "@tanstack/react-router";
 import { Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
+import { useDashboardSummary } from "@/hooks/data/use-dashboard";
 
-export function AuthShell({ title, subtitle, children, footer }: { title: string; subtitle?: string; children: React.ReactNode; footer?: React.ReactNode }) {
+export function AuthShell({ title, subtitle, children, footer }: { title: string; subtitle: string; children: React.ReactNode; footer?: React.ReactNode }) {
+  const { data: dashboardData } = useDashboardSummary();
+
+  const totalPapers = dashboardData?.kpi?.totalPapers;
+  const totalJournals = dashboardData?.kpi?.totalJournals;
+  const totalKeywords = dashboardData?.kpi?.totalKeywords;
+
+  const papersLabel = totalPapers !== undefined ? totalPapers.toLocaleString() : "...";
+  const journalsLabel = totalJournals !== undefined ? totalJournals.toLocaleString() : "...";
+  const keywordsLabel = totalKeywords !== undefined ? totalKeywords.toLocaleString() : "...";
+
+  const stats = [
+    [papersLabel, "Papers"],
+    [keywordsLabel, "Keywords"],
+    [journalsLabel, "Journals"],
+  ];
+
   return (
     <div className="min-h-screen grid lg:grid-cols-2">
       <div className="hidden lg:flex flex-col justify-between p-12 relative overflow-hidden border-r border-border">
@@ -16,13 +33,13 @@ export function AuthShell({ title, subtitle, children, footer }: { title: string
             Observe the galaxy of human knowledge — paper by paper, citation by citation.
           </p>
           <p className="text-sm text-muted-foreground mt-4 max-w-md">
-            Trusted by 14,000+ researchers across 4,203 indexed journals.
+            Indexed repository across {journalsLabel} journals &amp; {papersLabel} scientific papers.
           </p>
         </motion.div>
         <div className="grid grid-cols-3 gap-6 relative">
-          {[["+42.8M", "Citations"], ["1,284", "Keywords"], ["99.9%", "Uptime"]].map(([v, l]) => (
+          {stats.map(([v, l]) => (
             <div key={l}>
-              <div className="text-xl font-bold font-mono">{v}</div>
+              <div className="text-xl font-bold font-mono text-brand">{v}</div>
               <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{l}</div>
             </div>
           ))}
