@@ -29,6 +29,8 @@ import {
   TrendingUp,
   HelpCircle,
   Calculator,
+  BookOpen,
+  ExternalLink,
 } from "lucide-react";
 import {
   Tooltip as UiTooltip,
@@ -366,6 +368,24 @@ function DashboardPage() {
             <p className="text-[11px] text-muted-foreground leading-relaxed">
               Keywords with a trend score &gt; 15% for 3 consecutive months.
             </p>
+            <div className="mt-2 text-[10px] border-t border-border/50 pt-1.5 space-y-1">
+              <p className="font-semibold text-foreground flex items-center gap-1">
+                <BookOpen className="size-3 text-brand shrink-0" />
+                <span>Formula References:</span>
+              </p>
+              <div className="flex flex-col gap-1 pl-4">
+                <a
+                  href="https://www.wallstreetprep.com/knowledge/month-over-month-growth-rate/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="inline-flex items-center gap-1 text-brand hover:underline font-medium text-[10px] transition-colors"
+                >
+                  <span>Month-over-Month Growth Rate (WallStreetPrep)</span>
+                  <ExternalLink className="size-2.5 shrink-0" />
+                </a>
+              </div>
+            </div>
           </UiTooltipContent>
         </UiTooltip>
 
@@ -645,6 +665,24 @@ function DashboardPage() {
                         <p className="text-[11px] text-muted-foreground leading-relaxed">
                           Average citations per published paper for this journal (proxy bibliometric impact metric).
                         </p>
+                        <div className="mt-2 text-[10px] border-t border-border/50 pt-1.5 space-y-1">
+                          <p className="font-semibold text-foreground flex items-center gap-1">
+                            <BookOpen className="size-3 text-brand shrink-0" />
+                            <span>Formula References:</span>
+                          </p>
+                          <div className="flex flex-col gap-1 pl-4">
+                            <a
+                              href="https://link.springer.com/article/10.1007/s11192-007-1838-1"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="inline-flex items-center gap-1 text-brand hover:underline font-medium text-[10px] transition-colors"
+                            >
+                              <span>Bibliometric CPP Indicator (Springer)</span>
+                              <ExternalLink className="size-2.5 shrink-0" />
+                            </a>
+                          </div>
+                        </div>
                       </UiTooltipContent>
                     </UiTooltip>
                   </tr>
@@ -653,17 +691,13 @@ function DashboardPage() {
                   {topJournals.map((j) => (
                     <tr
                       key={j.journalId}
-                      className="hover:bg-brand/5 transition-colors cursor-pointer group"
+                      className="hover:bg-brand/5 transition-colors group"
                     >
-                      <td className="py-3 pr-4 font-medium text-foreground truncate max-w-[220px]">
-                        <Link
-                          to="/search"
-                          search={{ q: j.journalName }}
-                          className="group-hover:text-brand transition-colors flex items-center gap-1"
-                        >
-                          {j.journalName}
-                          <ArrowUpRight className="size-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-                        </Link>
+                      <td
+                        className="py-3 pr-4 font-medium text-foreground truncate max-w-[220px]"
+                        title={j.journalName}
+                      >
+                        {j.journalName}
                       </td>
                       <td className="py-3 px-4 text-right font-mono text-brand font-bold">{j.totalPapers.toLocaleString()}</td>
                       <td className="py-3 px-4 text-right font-mono font-semibold">
