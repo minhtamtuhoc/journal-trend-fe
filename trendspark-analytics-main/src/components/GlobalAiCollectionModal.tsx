@@ -117,7 +117,9 @@ export function GlobalAiCollectionModal({
         }
       }
 
-      toast.success(`AI Analysis complete for "${responseData.collectionName}"!`);
+      toast.success(`AI Analysis completed & saved to history!`, {
+        description: `The analysis report for "${responseData.collectionName}" has been automatically saved to your AI History.`,
+      });
       onAnalysisSuccess(responseData, nowFormatted, selectedCollectionId);
       onOpenChange(false);
     },
