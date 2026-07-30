@@ -750,6 +750,11 @@ function ReportsPage() {
   const hasInitialized = useRef(false);
   const displayedTermsSerialized = displayedTerms.join(",");
 
+  // Danh sách các từ khóa thực sự đang được chọn hiển thị (tối đa 10 từ)
+  const activeTermsToRender = useMemo(() => {
+    return displayedTerms.filter((term) => selectedKeywords.includes(term)).slice(0, MAX_KEYWORDS_LIMIT);
+  }, [displayedTerms, selectedKeywords]);
+
   // Tự động phát hiện từ khóa vượt trội (Outlier Keyword) và Zoom dãn Y-Axis ở chế độ Linear để thấy rõ đường cong uốn lượn
   const outlierAnalysis = useMemo(() => {
     const activeTerms = displayedTerms.filter((term) => selectedKeywords.includes(term));
@@ -1470,7 +1475,6 @@ function ReportsPage() {
                           }
                         }}
                         formatter={(value: string) => {
-                          const isSelected = selectedKeywords.includes(value);
                           const kwInfo = keywordSummary.find((k) => k.term === value);
                           const isTopTrend = kwInfo?.isTopTrend;
                           const isTrendScoreRank = kwInfo?.isTrendScoreRank;
@@ -1486,13 +1490,13 @@ function ReportsPage() {
                                   : "";
                           return (
                             <span
-                              title={isSelected ? "Click to hide this keyword from chart" : "Click to show this keyword on chart"}
-                              className={`transition-all select-none inline-flex items-center gap-1 font-semibold ${
-                                isSelected ? "opacity-100" : "line-through opacity-40 text-muted-foreground"
-                              } ${isSelected && isFeaturedLine ? "animate-pulse" : ""}`}
+                              title="Click to toggle this keyword from chart"
+                              className={`transition-all select-none inline-flex items-center gap-1 font-semibold opacity-100 ${
+                                isFeaturedLine ? "animate-pulse" : ""
+                              }`}
                               style={{
-                                color: isSelected ? color : undefined,
-                                textShadow: isSelected && isFeaturedLine ? `0 0 8px ${color}, 0 0 16px ${color}` : undefined,
+                                color: color,
+                                textShadow: isFeaturedLine ? `0 0 8px ${color}, 0 0 16px ${color}` : undefined,
                               }}
                             >
                               <span>{value}</span>
@@ -1501,8 +1505,7 @@ function ReportsPage() {
                           );
                         }}
                       />
-                      {displayedTerms.map((term) => {
-                        const isSelected = selectedKeywords.includes(term);
+                      {activeTermsToRender.map((term) => {
                         const kwInfo = keywordSummary.find((k) => k.term === term);
                         const isTopTrend = kwInfo?.isTopTrend;
                         const isTrendScoreRank = kwInfo?.isTrendScoreRank;
@@ -1515,14 +1518,12 @@ function ReportsPage() {
                             type="natural"
                             dataKey={term}
                             stroke={color}
-                            hide={!isSelected}
                             strokeWidth={isFeaturedLine ? 3.8 : 2}
                             strokeOpacity={isFeaturedLine ? 1 : 0.65}
                             style={{
                               filter: isFeaturedLine ? "url(#neon-glow-line)" : undefined,
                             }}
                             dot={(props: Record<string, unknown>) => {
-                              if (!isSelected) return <g key={`empty-${term}`} />;
                               const cx = props.cx as number;
                               const cy = props.cy as number;
                               const index = props.index as number;

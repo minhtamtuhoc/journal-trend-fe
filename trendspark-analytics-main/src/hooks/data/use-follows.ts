@@ -3,6 +3,8 @@ import { useAuth } from "@/auth";
 import { getServices, queryKeys } from "@/services";
 import { mockQueryDefaults } from "@/hooks/data/query-options";
 import { isBrowser } from "@/hooks/data/client-only";
+import { toast } from "sonner";
+import { ApiError } from "@/api/errors";
 
 export function useFollowedTopics() {
   const { user } = useAuth();
@@ -48,6 +50,10 @@ export function useFollowTopic() {
       qc.invalidateQueries({ queryKey: queryKeys.follows.topics });
       qc.invalidateQueries({ queryKey: ["reports"] });
     },
+    onError: (err: unknown) => {
+      const msg = err instanceof ApiError ? err.message : "Failed to follow keyword.";
+      toast.error(msg);
+    },
   });
 }
 
@@ -70,6 +76,10 @@ export function useFollowJournal() {
       qc.invalidateQueries({ queryKey: queryKeys.follows.journals });
       qc.invalidateQueries({ queryKey: ["reports"] });
     },
+    onError: (err: unknown) => {
+      const msg = err instanceof ApiError ? err.message : "Failed to follow journal.";
+      toast.error(msg);
+    },
   });
 }
 
@@ -91,6 +101,10 @@ export function useFollowAuthor() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.follows.authors });
       qc.invalidateQueries({ queryKey: ["reports"] });
+    },
+    onError: (err: unknown) => {
+      const msg = err instanceof ApiError ? err.message : "Failed to follow author.";
+      toast.error(msg);
     },
   });
 }

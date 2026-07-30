@@ -356,24 +356,17 @@ function BookmarksPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {followedJournals.map((j) => (
                 <div key={j.id} className="relative group">
-                  <Link
-                    to="/search"
-                    search={{ q: j.name }}
-                    className="block"
-                  >
-                    <Card className="flex items-center justify-between hover:border-purple-500/40 transition-colors cursor-pointer pr-12">
-                      <div className="min-w-0">
-                        <div className="font-semibold text-sm flex items-center gap-1.5 text-foreground group-hover:text-purple-400 transition-colors">
-                          <BookOpen className="size-3.5 text-purple-400 shrink-0" />
-                          <span className="truncate">{j.name}</span>
-                          <ArrowUpRight className="size-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-                        </div>
-                        <div className="text-[10px] text-muted-foreground mt-1 truncate">
-                          {[j.publisher, j.domain].filter(Boolean).join(" · ") || "Academic journal"}
-                        </div>
+                  <Card className="flex items-center justify-between pr-12">
+                    <div className="min-w-0">
+                      <div className="font-semibold text-sm flex items-center gap-1.5 text-foreground">
+                        <BookOpen className="size-3.5 text-purple-400 shrink-0" />
+                        <span className="truncate">{j.name}</span>
                       </div>
-                    </Card>
-                  </Link>
+                      <div className="text-[10px] text-muted-foreground mt-1 truncate">
+                        {[j.publisher, j.domain].filter(Boolean).join(" · ") || "Academic journal"}
+                      </div>
+                    </div>
+                  </Card>
                   <button
                     type="button"
                     onClick={(e) => {
