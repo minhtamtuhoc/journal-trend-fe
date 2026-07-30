@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { Sparkles } from "lucide-react";
 import { motion } from "framer-motion";
 
-export function AuthShell({ title, subtitle, children, footer }: { title: string; subtitle: string; children: React.ReactNode; footer?: React.ReactNode }) {
+export function AuthShell({ title, subtitle, children, footer }: { title: string; subtitle?: string; children: React.ReactNode; footer?: React.ReactNode }) {
   return (
     <div className="min-h-screen grid lg:grid-cols-2">
       <div className="hidden lg:flex flex-col justify-between p-12 relative overflow-hidden border-r border-border">
@@ -36,7 +36,7 @@ export function AuthShell({ title, subtitle, children, footer }: { title: string
             <span className="font-bold uppercase tracking-tight">Helix Analytics</span>
           </div>
           <h1 className="text-2xl font-bold mb-2 tracking-tight">{title}</h1>
-          <p className="text-sm text-muted-foreground mb-8">{subtitle}</p>
+          {subtitle ? <p className="text-sm text-muted-foreground mb-8">{subtitle}</p> : <div className="mb-6" />}
           {children}
           {footer && <div className="mt-6 text-sm text-muted-foreground text-center">{footer}</div>}
         </motion.div>
