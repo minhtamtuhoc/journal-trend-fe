@@ -947,7 +947,7 @@ function ReportsPage() {
         });
 
       const isHotTrend = pct >= 25 && !isTopTrend && !isTrendScoreRank;
-      const isFeatured = isTopTrend || isTrendScoreRank || isConsistentlyRising || isHotTrend;
+      const isFeatured = isTopTrend || isTrendScoreRank;
 
       return {
         term,
@@ -1260,12 +1260,12 @@ function ReportsPage() {
                             </div>
                             <div className="space-y-2 text-[11px] leading-relaxed">
                               <div className="flex items-start gap-2">
-                                <span className="shrink-0 text-brand font-bold">⚡ Solid Neon Line:</span>
-                                <span>Featured trending keyword with positive growth.</span>
+                                <span className="shrink-0 text-brand font-bold">⚡ Glowing Neon Line:</span>
+                                <span>Keywords in Top 10 Trending Keywords or TREND SCORE RANKING.</span>
                               </div>
                               <div className="flex items-start gap-2">
                                 <span className="shrink-0 text-muted-foreground font-bold">🌫️ Standard Line:</span>
-                                <span>Other followed keywords.</span>
+                                <span>Other followed keywords (not in the 2 ranking tables).</span>
                               </div>
                               <div className="border-t border-border/40 pt-1.5 space-y-1 text-[11px]">
                                 <p><strong className="text-purple-400">🏆 Top 10 Trending:</strong> In Dashboard Top 10 Trending Keywords table.</p>
@@ -1515,7 +1515,7 @@ function ReportsPage() {
                         return (
                           <Line
                             key={term}
-                            type="natural"
+                            type="monotone"
                             dataKey={term}
                             stroke={color}
                             strokeWidth={isFeaturedLine ? 3.8 : 2}

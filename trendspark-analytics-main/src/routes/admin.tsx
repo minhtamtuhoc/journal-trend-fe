@@ -89,6 +89,11 @@ function AdminPage() {
       queryClient.invalidateQueries({ queryKey: queryKeys.notifications.all }),
       queryClient.invalidateQueries({ queryKey: queryKeys.collections.all }),
       queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.summary }),
+      queryClient.invalidateQueries({ queryKey: ["trending-keywords-month"] }),
+      queryClient.invalidateQueries({ queryKey: ["trending-keywords-month-check"] }),
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] }),
+      queryClient.invalidateQueries({ queryKey: ["topics"] }),
+      queryClient.invalidateQueries({ queryKey: ["authors"] }),
     ]);
 
   const pollSyncUntilDone = async (isMountedRef?: { current: boolean }) => {
