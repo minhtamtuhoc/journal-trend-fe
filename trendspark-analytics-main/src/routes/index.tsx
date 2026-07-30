@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Link } from "@tanstack/react-router";
 import { motion } from "framer-motion";
 import { Sparkles, ArrowRight, TrendingUp, Search, Bell, Bookmark, BarChart3, ShieldCheck } from "lucide-react";
+import { useDashboardSummary } from "@/hooks/data/use-dashboard";
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -32,6 +33,22 @@ const features = [
 ];
 
 function Index() {
+  const { data: dashboardData } = useDashboardSummary();
+
+  const totalPapers = dashboardData?.kpi?.totalPapers;
+  const totalJournals = dashboardData?.kpi?.totalJournals;
+  const totalKeywords = dashboardData?.kpi?.totalKeywords;
+
+  const papersLabel = totalPapers !== undefined ? totalPapers.toLocaleString() : "...";
+  const journalsLabel = totalJournals !== undefined ? totalJournals.toLocaleString() : "...";
+  const keywordsLabel = totalKeywords !== undefined ? totalKeywords.toLocaleString() : "...";
+
+  const stats = [
+    [journalsLabel, "Indexed journals"],
+    [papersLabel, "Papers tracked"],
+    [keywordsLabel, "Keywords tracked"],
+  ];
+
   return (
     <div className="min-h-screen text-foreground">
       {/* Ticker */}
@@ -81,13 +98,9 @@ function Index() {
           </div>
 
           <div className="mt-16 grid grid-cols-3 gap-8 max-w-2xl">
-            {[
-              ["4,203", "Indexed journals"],
-              ["42.8M", "Citations tracked"],
-              ["99.9%", "Sync uptime"],
-            ].map(([v, l]) => (
+            {stats.map(([v, l]) => (
               <div key={l}>
-                <div className="text-3xl font-bold font-mono">{v}</div>
+                <div className="text-3xl font-bold font-mono text-brand">{v}</div>
                 <div className="text-xs text-muted-foreground mt-1 uppercase tracking-wider">{l}</div>
               </div>
             ))}
