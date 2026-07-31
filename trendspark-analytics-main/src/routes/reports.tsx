@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppLayout, PageHeader } from "@/components/AppLayout";
 import { Card } from "@/components/Card";
@@ -197,16 +197,56 @@ function CustomAuthorReportView({ authorId }: { authorId: string }) {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 14;
 
-  // Lấy dữ liệu tác giả và danh sách bài báo của tác giả từ API
-  const { data: author, isLoading: loadingAuthor, isError } = useAuthor(authorId);
-  const { data: papers = [], isLoading: loadingPapers } = useAuthorPapers(authorId);
+  const { data: report } = usePersonalReport();
+  const { data: authorData, isLoading: loadingAuthor } = useAuthor(authorId);
+  const { data: papersData = [], isLoading: loadingPapers } = useAuthorPapers(authorId);
   const { data: followedTopics = [] } = useFollowedTopics();
   const { data: followedAuthors = [] } = useFollowedAuthors();
   const { user } = useAuth();
 
+  // Tìm thông tin tác giả tương ứng từ báo cáo landscape
+  const authorFromReport = useMemo(() => {
+    return report?.landscape?.bubbleChart?.find(
+      (a) => String(a.authorId) === authorId || a.authorName === authorId || a.authorName.toLowerCase() === authorId.toLowerCase()
+    );
+  }, [report, authorId]);
+
+  // Nếu API tác giả trả về null/404, tổng hợp dữ liệu từ thông tin có sẵn ở thẻ ngoài
+  const author = authorData ?? (authorFromReport ? {
+    id: String(authorFromReport.authorId ?? authorId),
+    name: authorFromReport.authorName,
+    affiliation: authorFromReport.mainDomain ? `Domain: ${authorFromReport.mainDomain}` : "Research Scholar",
+    citationCount: 0,
+    papers: authorFromReport.paperCount,
+    hIndex: 0,
+    source: "System Analytics"
+  } : null);
+
+  // Nếu bài báo trả về rỗng, lọc các bài đề xuất trùng khớp tên tác giả
+  const papers = papersData.length > 0 ? papersData : (
+    report?.recommendations
+      ?.filter(p => p.authors?.some(a => a.toLowerCase().includes((authorFromReport?.authorName ?? authorId).toLowerCase())))
+      .map(p => ({
+        id: String(p.id),
+        title: p.title,
+        authors: p.authors,
+        journal: p.journal,
+        year: p.year,
+        citations: p.citations,
+        doi: p.doi,
+        category: authorFromReport?.mainDomain ?? "General",
+        impactFactor: 1.0,
+        trendScore: 0,
+        keywords: [],
+        abstract: "",
+        source: "OpenAlex" as const,
+        openAccess: true,
+      })) ?? []
+  );
+
   const followAuthorMut = useFollowAuthor();
   const unfollowAuthorMut = useUnfollowAuthor();
-  const followed = followedAuthors.some((a) => a.id === authorId);
+  const followed = followedAuthors.some((a) => a.id === authorId || (author && a.name === author.name));
 
   const [viewMode, setViewMode] = useState<"matched" | "all">("matched");
 
@@ -251,7 +291,7 @@ function CustomAuthorReportView({ authorId }: { authorId: string }) {
     ? displayPapers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
     : displayPapers;
 
-  if (loadingAuthor || loadingPapers) {
+  if (loadingAuthor && !authorFromReport) {
     return (
       <div className="p-8 text-sm text-muted-foreground animate-pulse flex items-center justify-center min-h-[300px]">
         Loading custom author analysis report...
@@ -259,11 +299,25 @@ function CustomAuthorReportView({ authorId }: { authorId: string }) {
     );
   }
 
-  if (isError || !author) {
+  if (!author) {
     return (
-      <div className="p-8 text-sm text-destructive flex items-center gap-2 justify-center min-h-[300px]">
-        <AlertTriangle className="size-4" />
-        Failed to load author report details.
+      <div className="p-12 text-center max-w-md mx-auto space-y-4 my-8">
+        <div className="size-12 rounded-full bg-warning/10 text-warning flex items-center justify-center mx-auto border border-warning/20">
+          <AlertTriangle className="size-6 text-warning" />
+        </div>
+        <h3 className="font-bold text-lg text-foreground">Author Profile Unavailable</h3>
+        <p className="text-sm text-muted-foreground">
+          Detailed profile information for this author has not been synced to the database yet.
+        </p>
+        <div className="pt-2">
+          <Link
+            to="/reports"
+            search={(prev: any) => ({})}
+            className="inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-semibold bg-brand text-brand-foreground hover:bg-brand/90 transition-colors cursor-pointer"
+          >
+            <ArrowLeft className="size-4" /> Back to Reports
+          </Link>
+        </div>
       </div>
     );
   }
@@ -360,10 +414,10 @@ function CustomAuthorReportView({ authorId }: { authorId: string }) {
         />
       </div>
 
-      {author.openAlexId ? (
+      {'openAlexId' in author && (author as any).openAlexId ? (
         <div className="mb-6 text-xs text-muted-foreground font-mono flex items-center gap-2">
           <Building2 className="size-3.5" />
-          OpenAlex ID: {author.openAlexId}
+          OpenAlex ID: {(author as any).openAlexId}
         </div>
       ) : null}
 
@@ -1281,11 +1335,10 @@ function ReportsPage() {
                             persistedUseLogScale = false;
                           }}
                           title="Linear Scale: Standard absolute paper counts with smooth organic curves"
-                          className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                            !useLogScale
+                          className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${!useLogScale
                               ? "bg-brand text-white shadow-sm font-bold"
                               : "text-muted-foreground hover:text-foreground"
-                          }`}
+                            }`}
                         >
                           Linear
                         </button>
@@ -1296,11 +1349,10 @@ function ReportsPage() {
                             persistedUseLogScale = true;
                           }}
                           title="Log Scale: Balanced logarithmic scale to visualize small keywords alongside massive outliers"
-                          className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                            useLogScale
+                          className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${useLogScale
                               ? "bg-brand text-white shadow-sm font-bold"
                               : "text-muted-foreground hover:text-foreground"
-                          }`}
+                            }`}
                         >
                           Log Scale
                         </button>
@@ -1483,9 +1535,8 @@ function ReportsPage() {
                           return (
                             <span
                               title="Click to toggle this keyword from chart"
-                              className={`transition-all select-none inline-flex items-center gap-1 font-semibold opacity-100 ${
-                                isFeaturedLine ? "animate-pulse" : ""
-                              }`}
+                              className={`transition-all select-none inline-flex items-center gap-1 font-semibold opacity-100 ${isFeaturedLine ? "animate-pulse" : ""
+                                }`}
                               style={{
                                 color: color,
                                 textShadow: isFeaturedLine ? `0 0 8px ${color}, 0 0 16px ${color}` : undefined,
@@ -1583,14 +1634,14 @@ function ReportsPage() {
                                 />
                               );
                             }}
-                              activeDot={{
-                                r: isFeaturedLine ? 8 : 5,
-                                strokeWidth: isFeaturedLine ? 3 : 1,
-                                stroke: "var(--background)",
-                              }}
-                            />
-                          );
-                        })}
+                            activeDot={{
+                              r: isFeaturedLine ? 8 : 5,
+                              strokeWidth: isFeaturedLine ? 3 : 1,
+                              stroke: "var(--background)",
+                            }}
+                          />
+                        );
+                      })}
                     </LineChart>
                   </ResponsiveContainer>
                 )}
@@ -1833,23 +1884,16 @@ function ReportsPage() {
                           </div>
                         );
 
-                        if (author.authorId) {
-                          return (
-                            <Link
-                              key={author.authorName}
-                              to="/reports"
-                              search={(prev: any) => ({ ...prev, authorId: String(author.authorId) })}
-                              className="block no-underline group"
-                            >
-                              {cardContent}
-                            </Link>
-                          );
-                        }
-
+                        const targetId = author.authorId ? String(author.authorId) : author.authorName;
                         return (
-                          <div key={author.authorName} className="block">
+                          <Link
+                            key={author.authorName}
+                            to="/reports"
+                            search={(prev: any) => ({ ...prev, authorId: targetId })}
+                            className="block no-underline group"
+                          >
                             {cardContent}
-                          </div>
+                          </Link>
                         );
                       })}
                     </div>

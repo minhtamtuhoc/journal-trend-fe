@@ -44,7 +44,56 @@ function AuthorProfilePage() {
     );
   }
 
-  if (isError || !author) throw notFound();
+  if (isError || !author) {
+    const isNameString = isNaN(Number(authorId));
+    const fallbackAuthor = isNameString
+      ? {
+          id: authorId,
+          name: decodeURIComponent(authorId),
+          affiliation: "Research Scholar",
+          citationCount: 0,
+          papers: papers.length,
+          hIndex: 0,
+          source: "System Analytics",
+        }
+      : null;
+
+    const displayAuthor = author ?? fallbackAuthor;
+
+    if (!displayAuthor) {
+      return (
+        <AppLayout>
+          <div className="p-12 text-center max-w-md mx-auto space-y-4 my-8">
+            <div className="size-12 rounded-full bg-warning/10 text-warning flex items-center justify-center mx-auto border border-warning/20 text-warning">
+              <User className="size-6 text-warning" />
+            </div>
+            <h3 className="font-bold text-lg text-foreground">Author Profile Unavailable</h3>
+            <p className="text-sm text-muted-foreground">
+              The requested author profile could not be found or has not been synced to the database yet.
+            </p>
+            <div className="pt-2 flex justify-center gap-2">
+              {fromReport && (
+                <Link
+                  to="/reports"
+                  search={(prev: any) => ({ ...prev, authorId })}
+                  className="inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-semibold border border-border hover:bg-secondary/50 transition-colors cursor-pointer"
+                >
+                  <ArrowLeft className="size-4" /> Back to Reports
+                </Link>
+              )}
+              <Link
+                to="/authors"
+                search={{ page: 1, q: undefined, sort: undefined }}
+                className="inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-semibold bg-brand text-brand-foreground hover:bg-brand/90 transition-colors cursor-pointer"
+              >
+                <ArrowLeft className="size-4" /> Back to Authors
+              </Link>
+            </div>
+          </div>
+        </AppLayout>
+      );
+    }
+  }
 
   return (
     <AppLayout>
@@ -95,11 +144,10 @@ function AuthorProfilePage() {
                   });
                 }
               }}
-              className={`inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-medium border transition-colors cursor-pointer ${
-                followed
+              className={`inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-medium border transition-colors cursor-pointer ${followed
                   ? "border-brand/40 bg-brand/10 text-brand"
                   : "border-border hover:bg-secondary/50 text-foreground"
-              }`}
+                }`}
             >
               <Bookmark className="size-4" fill={followed ? "currentColor" : "none"} />
               {followed ? "Followed" : "Follow"}
@@ -169,16 +217,15 @@ function AuthorProfilePage() {
                 >
                   Previous
                 </button>
-                
+
                 {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
                   <button
                     key={p}
                     onClick={() => setCurrentPage(p)}
-                    className={`inline-flex items-center justify-center size-8 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
-                      currentPage === p
+                    className={`inline-flex items-center justify-center size-8 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${currentPage === p
                         ? "bg-brand/10 border-brand/45 text-brand"
                         : "border-border hover:border-brand/40"
-                    }`}
+                      }`}
                   >
                     {p}
                   </button>
