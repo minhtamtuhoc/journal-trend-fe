@@ -169,6 +169,27 @@ function AdminPage() {
     );
   }
 
+  const enabledSources = sources.filter((s) => s.enabled);
+  const avgHealth =
+    enabledSources.length > 0
+      ? enabledSources.reduce((acc, s) => acc + (s.successRate ?? 100), 0) / enabledSources.length
+      : 100;
+  const syncHealthText = `${avgHealth.toFixed(1)}%`;
+  const syncHealthStatus = avgHealth >= 95 ? "ok" : "warn";
+
+  const latestSyncLog = AUDIT_LOGS[0];
+  const lastSyncText = latestSyncLog?.time
+    ? (latestSyncLog.time.includes("T")
+        ? latestSyncLog.time.split("T")[1]?.substring(0, 5) ?? latestSyncLog.time.substring(0, 5)
+        : latestSyncLog.time.substring(0, 5))
+    : "N/A";
+
+  const cronFailuresCount = AUDIT_LOGS.filter(
+    (l) => l.status === "FAILED" || l.status === "failed" || l.status === "error" || l.status === "FAILED_QUOTA_EXHAUSTED"
+  ).length;
+  const cronFailuresStatus = cronFailuresCount === 0 ? "ok" : "warn";
+  const pendingReviewStatus = PENDING_REVIEW.length === 0 ? "ok" : "warn";
+
   return (
     <AppLayout>
       {isAdminError && (
@@ -210,10 +231,10 @@ function AdminPage() {
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {[
-          ["Sync Health", "99.9%", "ok"],
-          ["Last Sync", "02:00", "ok"],
-          ["Pending Review", String(PENDING_REVIEW.length), "warn"],
-          ["Cron Failures (7d)", "1", "warn"],
+          ["Sync Health", syncHealthText, syncHealthStatus],
+          ["Last Sync", lastSyncText, "ok"],
+          ["Pending Review", String(PENDING_REVIEW.length), pendingReviewStatus],
+          ["Cron Failures (7d)", String(cronFailuresCount), cronFailuresStatus],
         ].map(([l, v, s]) => (
           <div key={l} className="glass rounded-2xl p-5">
             <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">
