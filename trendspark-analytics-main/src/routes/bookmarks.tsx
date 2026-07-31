@@ -186,9 +186,9 @@ function BookmarksPage() {
         toast.error("No followed journals to export");
         return;
       }
-      const header = "name,publisher,issn,domain";
+      const header = "name,domain";
       const rows = followedJournals.map((j) =>
-        [j.name, j.publisher ?? "", j.issn ?? "", j.domain ?? ""].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","),
+        [j.name, j.domain ?? ""].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","),
       );
       const blob = new Blob([[header, ...rows].join("\n")], { type: "text/csv" });
       const url = URL.createObjectURL(blob);
