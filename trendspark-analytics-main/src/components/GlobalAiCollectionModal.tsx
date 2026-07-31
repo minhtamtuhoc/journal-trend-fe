@@ -304,7 +304,7 @@ export function GlobalAiCollectionModal({
                     <div className="space-y-3 bg-secondary/15 p-4 rounded-xl border border-border">
                       <div className="flex items-center justify-between text-xs text-muted-foreground">
                         <span>
-                          Selected: <strong className="text-brand font-mono font-bold">{selectedPaperIds.size}</strong> / {papers.length} (Max 30)
+                          Selected: <strong className="text-brand font-mono font-bold">{selectedPaperIds.size}</strong> / {papers.length} (Max {maxPapers})
                         </span>
                         <div className="flex items-center gap-3 font-medium">
                           <button
