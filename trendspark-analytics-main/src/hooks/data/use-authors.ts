@@ -25,9 +25,12 @@ export function useAuthor(authorId: string) {
   return useQuery({
     queryKey: queryKeys.authors.detail(authorId),
     queryFn: async () => {
-      const author = await getServices().authors.getById(authorId);
-      if (!author) throw new Error("Author not found");
-      return author;
+      try {
+        const author = await getServices().authors.getById(authorId);
+        return author ?? null;
+      } catch (err) {
+        return null;
+      }
     },
     enabled: isBrowser && Boolean(authorId),
     retry: false,
@@ -38,8 +41,16 @@ export function useAuthor(authorId: string) {
 export function useAuthorPapers(authorId: string) {
   return useQuery({
     queryKey: queryKeys.authors.papers(authorId),
-    queryFn: () => getServices().authors.listPapers(authorId),
+    queryFn: async () => {
+      try {
+        const papers = await getServices().authors.listPapers(authorId);
+        return papers ?? [];
+      } catch (err) {
+        return [];
+      }
+    },
     enabled: isBrowser && Boolean(authorId),
+    retry: false,
     ...mockQueryDefaults,
   });
 }
