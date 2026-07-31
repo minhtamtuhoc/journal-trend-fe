@@ -283,7 +283,7 @@ function TrendsPage() {
     // Clean up old legacy shared key if present
     try {
       localStorage.removeItem("journal_trend_ai_analysis");
-    } catch {}
+    } catch { }
 
     if (!aiStorageKey) {
       setSavedAiAnalysis(null);
@@ -318,7 +318,7 @@ function TrendsPage() {
       if (aiStorageKey) {
         try {
           localStorage.setItem(aiStorageKey, JSON.stringify(stored));
-        } catch {}
+        } catch { }
       }
       queryClient.invalidateQueries({ queryKey: ["ai-history-list"] });
       toast.success("AI Analysis completed & saved to history!", {
@@ -405,17 +405,21 @@ function TrendsPage() {
       };
     }
 
-    // Nếu từ khóa MỚI (chưa có xếp hạng ở tháng quá khứ)
+    // Nếu từ khóa chưa lọt vào danh sách xếp hạng Top ở tháng quá khứ, ước tính số bài quá khứ từ Trend Score
+    const estimatedPrevCount = tk.trendScore === 100 && tk.count <= 1
+      ? 0
+      : Math.max(0, Math.round(tk.count / (tk.trendScore / 100 + 1)));
+
     return {
       key: tk.id,
       id: tk.id,
       term: tk.term,
-      count: 0,
-      trendScore: 0,
+      count: estimatedPrevCount,
+      trendScore: null,
       monthsTrending: 0,
-      isNew: true, // Đánh dấu từ khóa mới xuất hiện
+      isNew: true, // Đánh dấu từ khóa mới xuất hiện trong Top 8
       rankInCompare: null,
-      diffPapers: tk.count,
+      diffPapers: tk.count - estimatedPrevCount,
       diffScore: tk.trendScore,
       diffRank: null,
     };
@@ -462,855 +466,849 @@ function TrendsPage() {
           title="Trend Analytics"
         />
 
-      <div className="mb-6">
-        <Card title="Historical Trend Scores of Top 10 Keywords (%)">
-          {isLoadingChart ? (
-            <div className="h-[300px] flex items-center justify-center text-sm text-muted-foreground animate-pulse font-medium">
-              Loading trend chart data...
-            </div>
-          ) : finalChartData.length === 0 ? (
-            <div className="h-[300px] flex items-center justify-center text-sm text-muted-foreground font-medium">
-              No historical trend data available for these keywords.
-            </div>
-          ) : (
-            <>
-              <ResponsiveContainer width="100%" height={320}>
-                <LineChart data={finalChartData} margin={{ top: 10, right: 30, left: 10, bottom: 5 }}>
-                  <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="name" stroke="var(--muted-foreground)" fontSize={11} tickLine={false} axisLine={false} />
-                  <YAxis stroke="var(--muted-foreground)" fontSize={11} tickLine={false} axisLine={false} label={{ value: 'Trend Score (%)', angle: -90, position: 'insideLeft', style: { fill: 'var(--muted-foreground)', fontSize: 10 } }} />
-                  <Tooltip
-                    contentStyle={tooltipStyle}
-                    formatter={(value: any, name: any, item: any) => {
-                      const numVal = typeof value === "number" ? value : Number(value);
-                      const formattedScore = isNaN(numVal)
-                        ? `${value}%`
-                        : `${numVal > 0 ? "+" : ""}${Number.isInteger(numVal) ? numVal : numVal.toFixed(1)}%`;
-                      const papers = item?.payload?.[`${name}_papers`];
-                      const paperStr = papers !== undefined ? ` (${papers} paper${papers !== 1 ? "s" : ""})` : "";
-                      return [`${formattedScore}${paperStr}`, name];
-                    }}
-                  />
-                  <Legend wrapperStyle={{ fontSize: 11, paddingTop: 10 }} />
-                  {top10Keywords.map((kw, index) => {
-                    if (!selectedKeywordIds.includes(kw.keywordId)) return null;
-                    const color = KEYWORD_COLORS[index % KEYWORD_COLORS.length];
-                    return (
-                      <Line
-                        key={kw.keyword}
-                        type="monotone"
-                        dataKey={kw.keyword}
-                        stroke={color}
-                        strokeWidth={2}
-                        dot={{ r: 3 }}
-                        activeDot={{ r: 5 }}
-                      />
-                    );
-                  })}
-                </LineChart>
-              </ResponsiveContainer>
-              <p className="mt-4 text-[10px] text-muted-foreground text-center font-medium">
-                * Legend: Chart displays trend scores (%) of Top 10 trending keywords in the last 4 months with data.
-              </p>
-
-              {/* Checkbox Panel (Option 1) */}
-              <div className="mt-6 p-4 border border-border rounded-xl bg-secondary/10">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-3">
-                  <div>
-                    <h4 className="text-xs font-bold text-foreground">SELECT KEYWORDS TO DISPLAY & ANALYZE</h4>
-                    <p className="text-[10px] text-muted-foreground">Select keywords to display trend lines and send data to AI for deep analysis.</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setSelectedKeywordIds(top10Keywords.map(k => k.keywordId))}
-                      className="text-[10px] text-brand hover:underline cursor-pointer font-semibold"
-                    >
-                      Select All
-                    </button>
-                    <span className="text-muted-foreground text-[10px]">|</span>
-                    <button
-                      onClick={() => setSelectedKeywordIds([])}
-                      className="text-[10px] text-muted-foreground hover:text-foreground hover:underline cursor-pointer font-semibold"
-                    >
-                      Deselect All
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap gap-2">
-                  {top10Keywords.map((kw, index) => {
-                    const isChecked = selectedKeywordIds.includes(kw.keywordId);
-                    const color = KEYWORD_COLORS[index % KEYWORD_COLORS.length];
-                    return (
-                      <label
-                        key={kw.keywordId}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[11px] cursor-pointer select-none transition-all duration-200 hover:bg-secondary/40"
-                        style={{
-                          borderColor: isChecked ? color : "var(--border)",
-                          backgroundColor: isChecked ? `${color}15` : "transparent",
-                        }}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          className="rounded border-border text-brand focus:ring-brand size-3.5 cursor-pointer"
-                          onChange={() => {
-                            setSelectedKeywordIds((prev) =>
-                              prev.includes(kw.keywordId)
-                                ? prev.filter((id) => id !== kw.keywordId)
-                                : [...prev, kw.keywordId]
-                            );
-                          }}
-                        />
-                        <span
-                          className="font-semibold"
-                          style={{ color: isChecked ? "var(--foreground)" : "var(--muted-foreground)" }}
-                        >
-                          {kw.keyword}
-                        </span>
-                      </label>
-                    );
-                  })}
-                </div>
+        <div className="mb-6">
+          <Card title="Historical Trend Scores of Top 10 Keywords (%)">
+            {isLoadingChart ? (
+              <div className="h-[300px] flex items-center justify-center text-sm text-muted-foreground animate-pulse font-medium">
+                Loading trend chart data...
               </div>
+            ) : finalChartData.length === 0 ? (
+              <div className="h-[300px] flex items-center justify-center text-sm text-muted-foreground font-medium">
+                No historical trend data available for these keywords.
+              </div>
+            ) : (
+              <>
+                <ResponsiveContainer width="100%" height={320}>
+                  <LineChart data={finalChartData} margin={{ top: 10, right: 30, left: 10, bottom: 5 }}>
+                    <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="name" stroke="var(--muted-foreground)" fontSize={11} tickLine={false} axisLine={false} />
+                    <YAxis stroke="var(--muted-foreground)" fontSize={11} tickLine={false} axisLine={false} label={{ value: 'Trend Score (%)', angle: -90, position: 'insideLeft', style: { fill: 'var(--muted-foreground)', fontSize: 10 } }} />
+                    <Tooltip
+                      contentStyle={tooltipStyle}
+                      formatter={(value: any, name: any, item: any) => {
+                        const numVal = typeof value === "number" ? value : Number(value);
+                        const formattedScore = isNaN(numVal)
+                          ? `${value}%`
+                          : `${numVal > 0 ? "+" : ""}${Number.isInteger(numVal) ? numVal : numVal.toFixed(1)}%`;
+                        const papers = item?.payload?.[`${name}_papers`];
+                        const paperStr = papers !== undefined ? ` (${papers} paper${papers !== 1 ? "s" : ""})` : "";
+                        return [`${formattedScore}${paperStr}`, name];
+                      }}
+                    />
+                    <Legend wrapperStyle={{ fontSize: 11, paddingTop: 10 }} />
+                    {top10Keywords.map((kw, index) => {
+                      if (!selectedKeywordIds.includes(kw.keywordId)) return null;
+                      const color = KEYWORD_COLORS[index % KEYWORD_COLORS.length];
+                      return (
+                        <Line
+                          key={kw.keyword}
+                          type="monotone"
+                          dataKey={kw.keyword}
+                          stroke={color}
+                          strokeWidth={2}
+                          dot={{ r: 3 }}
+                          activeDot={{ r: 5 }}
+                        />
+                      );
+                    })}
+                  </LineChart>
+                </ResponsiveContainer>
+                <p className="mt-4 text-[10px] text-muted-foreground text-center font-medium">
+                  * Legend: Chart displays trend scores (%) of Top 10 trending keywords in the last 4 months with data.
+                </p>
 
-              {/* AI Trend Analyst Trigger & Results */}
-              <div className="mt-6 border-t border-border pt-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="size-4 text-brand animate-pulse" />
-                    <h4 className="text-xs font-bold text-foreground uppercase tracking-wider">AI Trend Analyst</h4>
+                {/* Checkbox Panel (Option 1) */}
+                <div className="mt-6 p-4 border border-border rounded-xl bg-secondary/10">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-3">
+                    <div>
+                      <h4 className="text-xs font-bold text-foreground">SELECT KEYWORDS TO DISPLAY & ANALYZE</h4>
+                      <p className="text-[10px] text-muted-foreground">Select keywords to display trend lines and send data to AI for deep analysis.</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setSelectedKeywordIds(top10Keywords.map(k => k.keywordId))}
+                        className="text-[10px] text-brand hover:underline cursor-pointer font-semibold"
+                      >
+                        Select All
+                      </button>
+                      <span className="text-muted-foreground text-[10px]">|</span>
+                      <button
+                        onClick={() => setSelectedKeywordIds([])}
+                        className="text-[10px] text-muted-foreground hover:text-foreground hover:underline cursor-pointer font-semibold"
+                      >
+                        Deselect All
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => {
-                        if (!user) {
-                          toast.error("Please log in to view AI analysis history");
-                          return;
-                        }
-                        setIsHistoryDrawerOpen(true);
-                      }}
-                      className="flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 bg-secondary text-secondary-foreground border border-border rounded-lg shadow-sm hover:bg-secondary/80 transition-all cursor-pointer"
-                    >
-                      <History className="size-3.5 text-brand" />
-                      History
-                    </button>
-                    <button
-                      disabled={aiMutation.isPending || selectedKeywordIds.length === 0}
-                      onClick={() => {
-                        if (!user) {
-                          toast.error("Please log in to use AI analysis features");
-                          return;
-                        }
-                        aiMutation.mutate({
-                          keywordIds: selectedKeywordIds,
-                          months: 12,
-                        });
-                      }}
-                      className="flex items-center gap-1.5 text-[11px] font-bold px-3.5 py-1.5 bg-brand text-brand-foreground rounded-lg shadow-sm hover:bg-brand/90 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed uppercase"
-                    >
-                      {aiMutation.isPending ? (
-                        <>
-                          <RefreshCw className="size-3 animate-spin" />
-                          Analyzing...
-                        </>
-                      ) : (
-                        <>
-                          <Brain className="size-3" />
-                          Analyze with AI
-                        </>
-                      )}
-                    </button>
+
+                  <div className="flex flex-wrap gap-2">
+                    {top10Keywords.map((kw, index) => {
+                      const isChecked = selectedKeywordIds.includes(kw.keywordId);
+                      const color = KEYWORD_COLORS[index % KEYWORD_COLORS.length];
+                      return (
+                        <label
+                          key={kw.keywordId}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[11px] cursor-pointer select-none transition-all duration-200 hover:bg-secondary/40"
+                          style={{
+                            borderColor: isChecked ? color : "var(--border)",
+                            backgroundColor: isChecked ? `${color}15` : "transparent",
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            className="rounded border-border text-brand focus:ring-brand size-3.5 cursor-pointer"
+                            onChange={() => {
+                              setSelectedKeywordIds((prev) =>
+                                prev.includes(kw.keywordId)
+                                  ? prev.filter((id) => id !== kw.keywordId)
+                                  : [...prev, kw.keywordId]
+                              );
+                            }}
+                          />
+                          <span
+                            className="font-semibold"
+                            style={{ color: isChecked ? "var(--foreground)" : "var(--muted-foreground)" }}
+                          >
+                            {kw.keyword}
+                          </span>
+                        </label>
+                      );
+                    })}
                   </div>
                 </div>
 
-                {aiMutation.isPending && (
-                  <div className="p-6 border border-brand/30 rounded-xl bg-card/60 space-y-5 animate-pulse shadow-sm">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-border/60">
-                      <div className="flex items-center gap-2.5">
-                        <div className="size-8 bg-brand/20 rounded-lg flex items-center justify-center text-brand">
-                          <Sparkles className="size-4 animate-spin text-brand" />
-                        </div>
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-foreground">Groq AI model is synthesizing report...</span>
-                            <span className="text-[10px] text-muted-foreground">({selectedKeywordIds.length} keywords over 12 months)</span>
+                {/* AI Trend Analyst Trigger & Results */}
+                <div className="mt-6 border-t border-border pt-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="size-4 text-brand animate-pulse" />
+                      <h4 className="text-xs font-bold text-foreground uppercase tracking-wider">AI Trend Analyst</h4>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => {
+                          if (!user) {
+                            toast.error("Please log in to view AI analysis history");
+                            return;
+                          }
+                          setIsHistoryDrawerOpen(true);
+                        }}
+                        className="flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 bg-secondary text-secondary-foreground border border-border rounded-lg shadow-sm hover:bg-secondary/80 transition-all cursor-pointer"
+                      >
+                        <History className="size-3.5 text-brand" />
+                        History
+                      </button>
+                      <button
+                        disabled={aiMutation.isPending || selectedKeywordIds.length === 0}
+                        onClick={() => {
+                          if (!user) {
+                            toast.error("Please log in to use AI analysis features");
+                            return;
+                          }
+                          aiMutation.mutate({
+                            keywordIds: selectedKeywordIds,
+                            months: 12,
+                          });
+                        }}
+                        className="flex items-center gap-1.5 text-[11px] font-bold px-3.5 py-1.5 bg-brand text-brand-foreground rounded-lg shadow-sm hover:bg-brand/90 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed uppercase"
+                      >
+                        {aiMutation.isPending ? (
+                          <>
+                            <RefreshCw className="size-3 animate-spin" />
+                            Analyzing...
+                          </>
+                        ) : (
+                          <>
+                            <Brain className="size-3" />
+                            Analyze with AI
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {aiMutation.isPending && (
+                    <div className="p-6 border border-brand/30 rounded-xl bg-card/60 space-y-5 animate-pulse shadow-sm">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-border/60">
+                        <div className="flex items-center gap-2.5">
+                          <div className="size-8 bg-brand/20 rounded-lg flex items-center justify-center text-brand">
+                            <Sparkles className="size-4 animate-spin text-brand" />
                           </div>
-                          <p className="text-[10px] text-muted-foreground">Generating comparative analysis, top growing fields, and strategic recommendations</p>
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold text-foreground">Groq AI model is synthesizing report...</span>
+                              <span className="text-[10px] text-muted-foreground">({selectedKeywordIds.length} keywords over 12 months)</span>
+                            </div>
+                            <p className="text-[10px] text-muted-foreground">Generating comparative analysis, top growing fields, and strategic recommendations</p>
+                          </div>
+                        </div>
+                        <div className="h-6 w-36 bg-brand/15 rounded-full border border-brand/20 animate-pulse" />
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="h-3 w-40 bg-secondary/80 rounded-md" />
+                        <div className="space-y-1.5 pt-1">
+                          <div className="h-3 w-full bg-secondary/50 rounded-md" />
+                          <div className="h-3 w-[92%] bg-secondary/50 rounded-md" />
+                          <div className="h-3 w-[78%] bg-secondary/50 rounded-md" />
                         </div>
                       </div>
-                      <div className="h-6 w-36 bg-brand/15 rounded-full border border-brand/20 animate-pulse" />
-                    </div>
 
-                    <div className="space-y-2">
-                      <div className="h-3 w-40 bg-secondary/80 rounded-md" />
-                      <div className="space-y-1.5 pt-1">
-                        <div className="h-3 w-full bg-secondary/50 rounded-md" />
-                        <div className="h-3 w-[92%] bg-secondary/50 rounded-md" />
-                        <div className="h-3 w-[78%] bg-secondary/50 rounded-md" />
+                      <div className="space-y-2">
+                        <div className="h-3 w-36 bg-secondary/80 rounded-md" />
+                        <div className="flex gap-2">
+                          <div className="h-6 w-28 bg-brand/10 border border-brand/20 rounded-full" />
+                          <div className="h-6 w-36 bg-brand/10 border border-brand/20 rounded-full" />
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="h-3 w-32 bg-secondary/80 rounded-md" />
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+                          <div className="h-16 bg-secondary/40 rounded-xl p-3 border border-border/40" />
+                          <div className="h-16 bg-secondary/40 rounded-xl p-3 border border-border/40" />
+                          <div className="h-16 bg-secondary/40 rounded-xl p-3 border border-border/40" />
+                        </div>
                       </div>
                     </div>
+                  )}
 
-                    <div className="space-y-2">
-                      <div className="h-3 w-36 bg-secondary/80 rounded-md" />
-                      <div className="flex gap-2">
-                        <div className="h-6 w-28 bg-brand/10 border border-brand/20 rounded-full" />
-                        <div className="h-6 w-36 bg-brand/10 border border-brand/20 rounded-full" />
-                      </div>
+                  {aiMutation.isError && (
+                    <div className="p-4 border border-destructive/20 rounded-xl bg-destructive/10 text-destructive text-xs flex items-center gap-2">
+                      <span>An error occurred during analysis: {aiMutation.error.message}</span>
                     </div>
+                  )}
 
-                    <div className="space-y-2">
-                      <div className="h-3 w-32 bg-secondary/80 rounded-md" />
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
-                        <div className="h-16 bg-secondary/40 rounded-xl p-3 border border-border/40" />
-                        <div className="h-16 bg-secondary/40 rounded-xl p-3 border border-border/40" />
-                        <div className="h-16 bg-secondary/40 rounded-xl p-3 border border-border/40" />
-                      </div>
-                    </div>
-                  </div>
-                )}
+                  {!aiMutation.isPending && (() => {
+                    if (!savedAiAnalysis) return null;
+                    const { data, timestamp } = savedAiAnalysis;
 
-                {aiMutation.isError && (
-                  <div className="p-4 border border-destructive/20 rounded-xl bg-destructive/10 text-destructive text-xs flex items-center gap-2">
-                    <span>An error occurred during analysis: {aiMutation.error.message}</span>
-                  </div>
-                )}
-
-                {!aiMutation.isPending && (() => {
-                  if (!savedAiAnalysis) return null;
-                  const { data, timestamp } = savedAiAnalysis;
-
-                  return (
-                    <div className="p-5 border border-brand/20 rounded-xl bg-gradient-to-br from-card to-brand/5 space-y-4 shadow-sm">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border">
-                        <div className="flex items-center gap-2">
-                          <div className="size-6.5 bg-brand/10 rounded-lg flex items-center justify-center text-brand">
-                            <Brain className="size-4" />
+                    return (
+                      <div className="p-5 border border-brand/20 rounded-xl bg-gradient-to-br from-card to-brand/5 space-y-4 shadow-sm">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border">
+                          <div className="flex items-center gap-2">
+                            <div className="size-6.5 bg-brand/10 rounded-lg flex items-center justify-center text-brand">
+                              <Brain className="size-4" />
+                            </div>
+                            <div>
+                              <h4 className="text-sm font-bold text-foreground">Automated Analysis Report</h4>
+                              <p className="text-[10px] text-muted-foreground flex items-center gap-1.5 flex-wrap">
+                                <span>Deep analysis by Groq AI model</span>
+                                <span>•</span>
+                                <span className="font-mono text-brand font-semibold">Analysis Time: {timestamp}</span>
+                                <span>•</span>
+                                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                                  <CheckCircle className="size-3" /> Saved to History
+                                </span>
+                              </p>
+                            </div>
                           </div>
                           <div>
-                            <h4 className="text-sm font-bold text-foreground">Automated Analysis Report</h4>
-                            <p className="text-[10px] text-muted-foreground flex items-center gap-1.5 flex-wrap">
-                              <span>Deep analysis by Groq AI model</span>
-                              <span>•</span>
-                              <span className="font-mono text-brand font-semibold">Analysis Time: {timestamp}</span>
-                              <span>•</span>
-                              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                                <CheckCircle className="size-3" /> Saved to History
-                              </span>
-                            </p>
+                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold ${data.overallVerdict === 'GROWING' ? 'bg-success/15 text-success' :
+                              data.overallVerdict === 'MIXED' ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' : 'bg-secondary text-muted-foreground'
+                              }`}>
+                              <TrendingUp className="size-3" />
+                              Overall Trend: {data.overallVerdict}
+                            </span>
                           </div>
                         </div>
-                        <div>
-                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold ${data.overallVerdict === 'GROWING' ? 'bg-success/15 text-success' :
-                              data.overallVerdict === 'MIXED' ? 'bg-amber-500/10 text-amber-500 border border-amber-500/20' : 'bg-secondary text-muted-foreground'
-                            }`}>
-                            <TrendingUp className="size-3" />
-                            Overall Trend: {data.overallVerdict}
-                          </span>
-                        </div>
-                      </div>
 
-                      <div className="space-y-1">
-                        <h5 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                          <Brain className="size-3 text-brand" /> Comparative Analysis
-                        </h5>
-                        <p className="text-sm text-foreground leading-relaxed">
-                          {data.analysis}
-                        </p>
-                      </div>
-
-                      {data.topGrowingKeywords && data.topGrowingKeywords.length > 0 && (
                         <div className="space-y-1">
                           <h5 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                            <Flame className="size-3 text-brand" /> Top Growing Keywords
+                            <Brain className="size-3 text-brand" /> Comparative Analysis
                           </h5>
-                          <div className="flex flex-wrap gap-1">
-                            {data.topGrowingKeywords.map((kw, i) => (
-                              <span key={i} className="text-xs px-2 py-0.5 rounded-md bg-brand/10 text-brand font-bold border border-brand/20">
-                                {kw}
-                              </span>
+                          <p className="text-sm text-foreground leading-relaxed">
+                            {data.analysis}
+                          </p>
+                        </div>
+
+                        {data.topGrowingKeywords && data.topGrowingKeywords.length > 0 && (
+                          <div className="space-y-1">
+                            <h5 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                              <Flame className="size-3 text-brand" /> Top Growing Keywords
+                            </h5>
+                            <div className="flex flex-wrap gap-1">
+                              {data.topGrowingKeywords.map((kw, i) => (
+                                <span key={i} className="text-xs px-2 py-0.5 rounded-md bg-brand/10 text-brand font-bold border border-brand/20">
+                                  {kw}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="space-y-2.5">
+                          <h5 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                            <CheckCircle className="size-3 text-brand" /> Core Insights
+                          </h5>
+                          <ul className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+                            {data.keyInsights.map((insight, i) => (
+                              <li key={i} className="p-3 border border-border rounded-lg bg-card/60 text-xs text-muted-foreground leading-relaxed flex items-start gap-1.5">
+                                <span className="font-bold text-brand text-xs">0{i + 1}.</span>
+                                <span>{insight}</span>
+                              </li>
                             ))}
+                          </ul>
+                        </div>
+
+                        <div className="p-3.5 bg-brand/5 border border-brand/20 rounded-lg flex gap-2.5 items-start">
+                          <div className="size-5.5 bg-brand/20 rounded-md flex items-center justify-center text-brand shrink-0">
+                            <Lightbulb className="size-3.5" />
+                          </div>
+                          <div className="space-y-0.5">
+                            <p className="text-xs font-bold text-brand uppercase tracking-wider">Research Direction Recommendations</p>
+                            <p className="text-xs text-muted-foreground leading-relaxed">{data.recommendation}</p>
                           </div>
                         </div>
-                      )}
-
-                      <div className="space-y-2.5">
-                        <h5 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                          <CheckCircle className="size-3 text-brand" /> Core Insights
-                        </h5>
-                        <ul className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
-                          {data.keyInsights.map((insight, i) => (
-                            <li key={i} className="p-3 border border-border rounded-lg bg-card/60 text-xs text-muted-foreground leading-relaxed flex items-start gap-1.5">
-                              <span className="font-bold text-brand text-xs">0{i + 1}.</span>
-                              <span>{insight}</span>
-                            </li>
-                          ))}
-                        </ul>
                       </div>
+                    );
+                  })()}
 
-                      <div className="p-3.5 bg-brand/5 border border-brand/20 rounded-lg flex gap-2.5 items-start">
-                        <div className="size-5.5 bg-brand/20 rounded-md flex items-center justify-center text-brand shrink-0">
-                          <Lightbulb className="size-3.5" />
-                        </div>
-                        <div className="space-y-0.5">
-                          <p className="text-xs font-bold text-brand uppercase tracking-wider">Research Direction Recommendations</p>
-                          <p className="text-xs text-muted-foreground leading-relaxed">{data.recommendation}</p>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })()}
-
-                <AiHistoryDrawer
-                  open={isHistoryDrawerOpen}
-                  onOpenChange={setIsHistoryDrawerOpen}
-                  defaultTab="TRENDS"
-                  onSelectHistory={(data, timestamp, type) => {
-                    if (type === "COLLECTION_ANALYSIS" || data?.collectionName) {
-                      toast.info("This is a Collection Analysis report. Go to Collections page to view collection reports.");
-                    } else {
-                      const stored = { data, timestamp };
-                      setSavedAiAnalysis(stored);
-                      if (aiStorageKey) {
-                        try {
-                          localStorage.setItem(aiStorageKey, JSON.stringify(stored));
-                        } catch {}
+                  <AiHistoryDrawer
+                    open={isHistoryDrawerOpen}
+                    onOpenChange={setIsHistoryDrawerOpen}
+                    defaultTab="TRENDS"
+                    onSelectHistory={(data, timestamp, type) => {
+                      if (type === "COLLECTION_ANALYSIS" || data?.collectionName) {
+                        toast.info("This is a Collection Analysis report. Go to Collections page to view collection reports.");
+                      } else {
+                        const stored = { data, timestamp };
+                        setSavedAiAnalysis(stored);
+                        if (aiStorageKey) {
+                          try {
+                            localStorage.setItem(aiStorageKey, JSON.stringify(stored));
+                          } catch { }
+                        }
                       }
+                    }}
+                  />
+                </div>
+              </>
+            )}
+          </Card>
+        </div>
+
+        {/* Row 1 (Top Cards) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 items-stretch">
+          <Card
+            id="trend-score-ranking"
+            className="h-full flex flex-col"
+            title={
+              <div className="flex items-center gap-2 flex-wrap">
+                <span>{`TREND SCORE RANKING - ${getPreviousMonthName()}`}</span>
+                {syncStatus?.status === "RUNNING" && (
+                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-brand/10 text-brand border border-brand/20 text-[10px] font-semibold animate-pulse">
+                    <RefreshCw className="size-3 animate-spin text-brand" />
+                    Syncing & Auto-Updating...
+                  </span>
+                )}
+              </div>
+            }
+            action={
+              <div className="w-[180px]">
+                <Select
+                  value={compareMonth ? `${compareMonth.year}-${compareMonth.month}` : "none"}
+                  onValueChange={(val) => {
+                    // Xử lý sự kiện khi chọn tháng trong Menu thả xuống (Select Dropdown)
+                    if (val === "none") {
+                      setCompareMonth(null); // Trở về chế độ "No comparison" -> Ẩn bảng so sánh
+                    } else {
+                      const [year, month] = val.split("-").map(Number);
+                      const selected = availableCompareMonths.find(m => m.year === year && m.month === month);
+                      if (selected) setCompareMonth(selected); // Lưu tháng được chọn để kích hoạt so sánh
                     }
                   }}
-                />
+                >
+                  <SelectTrigger className="h-8 text-xs bg-secondary/20 border-border hover:border-brand/40">
+                    <SelectValue placeholder="Compare with month..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No comparison</SelectItem>
+                    {/* Nạp danh sách các tháng quá khứ có dữ liệu khả dụng vào Menu */}
+                    {availableCompareMonths.map((m) => (
+                      <SelectItem key={`${m.year}-${m.month}`} value={`${m.year}-${m.month}`}>
+                        {m.name} {m.year}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-            </>
-          )}
-        </Card>
-      </div>
-
-      {/* Row 1 (Top Cards) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 items-stretch">
-        <Card
-          id="trend-score-ranking"
-          className="h-full flex flex-col"
-          title={
-            <div className="flex items-center gap-2 flex-wrap">
-              <span>{`TREND SCORE RANKING - ${getPreviousMonthName()}`}</span>
-              {syncStatus?.status === "RUNNING" && (
-                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-brand/10 text-brand border border-brand/20 text-[10px] font-semibold animate-pulse">
-                  <RefreshCw className="size-3 animate-spin text-brand" />
-                  Syncing & Auto-Updating...
-                </span>
-              )}
-            </div>
-          }
-          action={
-            <div className="w-[180px]">
-              <Select
-                value={compareMonth ? `${compareMonth.year}-${compareMonth.month}` : "none"}
-                onValueChange={(val) => {
-                  // Xử lý sự kiện khi chọn tháng trong Menu thả xuống (Select Dropdown)
-                  if (val === "none") {
-                    setCompareMonth(null); // Trở về chế độ "No comparison" -> Ẩn bảng so sánh
-                  } else {
-                    const [year, month] = val.split("-").map(Number);
-                    const selected = availableCompareMonths.find(m => m.year === year && m.month === month);
-                    if (selected) setCompareMonth(selected); // Lưu tháng được chọn để kích hoạt so sánh
-                  }
-                }}
-              >
-                <SelectTrigger className="h-8 text-xs bg-secondary/20 border-border hover:border-brand/40">
-                  <SelectValue placeholder="Compare with month..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">No comparison</SelectItem>
-                  {/* Nạp danh sách các tháng quá khứ có dữ liệu khả dụng vào Menu */}
-                  {availableCompareMonths.map((m) => (
-                    <SelectItem key={`${m.year}-${m.month}`} value={`${m.year}-${m.month}`}>
-                      {m.name} {m.year}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          }
-        >
-          {TRENDING_KEYWORDS.length === 0 ? (
-            <div className="h-[200px] flex flex-col items-center justify-center text-sm text-muted-foreground font-medium text-center px-4 space-y-2">
-              {syncStatus?.status === "RUNNING" ? (
-                <>
-                  <RefreshCw className="size-6 text-brand animate-spin" />
-                  <span>Syncing articles from OpenAlex... Data will automatically update once completed.</span>
-                </>
-              ) : (
-                <span>No trend data available for this month. Please run Manual Sync in Admin panel.</span>
-              )}
-            </div>
-          ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-[10px] uppercase tracking-widest text-muted-foreground border-b border-border">
-                  <th className="text-left font-medium pb-3 w-12">Rank</th>
-                  <th className="text-left font-medium pb-3 pr-4">Keyword</th>
-                  <th className="text-right font-medium pb-3 px-4 w-24">Papers</th>
-                  <th className="text-right font-medium pb-3 px-4 w-28">Score</th>
-                  <th className="text-right font-medium pb-3 pl-4 w-20">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {TRENDING_KEYWORDS.map((k, index) => {
-                  const followed = isTopicFollowed(k.id);
-                  return (
-                    <tr key={k.id} className="hover:bg-secondary/40 transition-colors">
-                      <td className="py-3 text-left font-mono text-muted-foreground w-12">#{index + 1}</td>
-                      <td className="py-3 text-left font-medium pr-4 max-w-[220px]">
-                        <Link
-                          to="/topics/$topicId"
-                          params={{ topicId: k.id }}
-                          className="hover:text-brand transition-colors cursor-pointer hover:underline block truncate"
-                          title={k.term}
-                        >
-                          {k.term}
-                        </Link>
-                      </td>
-                      <td className="py-3 text-right font-mono text-muted-foreground px-4 w-24">{k.count}</td>
-                      <td
-                        className={`py-3 text-right font-mono px-4 w-28 cursor-help ${k.trendScore >= 15
+            }
+          >
+            {TRENDING_KEYWORDS.length === 0 ? (
+              <div className="h-[200px] flex flex-col items-center justify-center text-sm text-muted-foreground font-medium text-center px-4 space-y-2">
+                {syncStatus?.status === "RUNNING" ? (
+                  <>
+                    <RefreshCw className="size-6 text-brand animate-spin" />
+                    <span>Syncing articles from OpenAlex... Data will automatically update once completed.</span>
+                  </>
+                ) : (
+                  <span>No trend data available for this month. Please run Manual Sync in Admin panel.</span>
+                )}
+              </div>
+            ) : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-[10px] uppercase tracking-widest text-muted-foreground border-b border-border">
+                    <th className="text-left font-medium pb-3 w-12">Rank</th>
+                    <th className="text-left font-medium pb-3 pr-4">Keyword</th>
+                    <th className="text-right font-medium pb-3 px-4 w-24">Papers</th>
+                    <th className="text-right font-medium pb-3 px-4 w-28">Score</th>
+                    <th className="text-right font-medium pb-3 pl-4 w-20">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {TRENDING_KEYWORDS.map((k, index) => {
+                    const followed = isTopicFollowed(k.id);
+                    return (
+                      <tr key={k.id} className="hover:bg-secondary/40 transition-colors">
+                        <td className="py-3 text-left font-mono text-muted-foreground w-12">#{index + 1}</td>
+                        <td className="py-3 text-left font-medium pr-4 max-w-[220px]">
+                          <Link
+                            to="/topics/$topicId"
+                            params={{ topicId: k.id }}
+                            className="hover:text-brand transition-colors cursor-pointer hover:underline block truncate"
+                            title={k.term}
+                          >
+                            {k.term}
+                          </Link>
+                        </td>
+                        <td className="py-3 text-right font-mono text-muted-foreground px-4 w-24">{k.count}</td>
+                        <td
+                          className={`py-3 text-right font-mono px-4 w-28 cursor-help ${k.trendScore >= 15
                             ? "text-success"
                             : k.trendScore < 0
                               ? "text-destructive"
                               : "text-muted-foreground"
-                          }`}
-                      >
-                        <UiTooltip>
-                          <UiTooltipTrigger asChild>
-                            <span className="hover:underline decoration-dotted underline-offset-4 hover:opacity-85 transition-opacity">
-                              {k.trendScore > 0 ? `+${k.trendScore.toFixed(1)}%` : k.trendScore < 0 ? `▼ ${Math.abs(k.trendScore).toFixed(1)}%` : "0.0%"}
-                            </span>
-                          </UiTooltipTrigger>
-                          <UiTooltipContent side="top" align="end" className="p-3 max-w-[280px] bg-popover text-popover-foreground border border-border shadow-lg rounded-xl">
-                            <div className="space-y-1.5 text-xs font-sans">
-                              <p className="font-bold text-brand uppercase tracking-wider text-[10px]">Trend Score Explanation</p>
-                              <div className="text-[11px] text-muted-foreground leading-relaxed">
-                                <p className="font-medium text-foreground mb-1">Formula:</p>
-                                <code className="block bg-secondary/40 p-1.5 rounded-md font-mono text-[10px] mb-2 text-center text-foreground">
-                                  ((Current - Previous) / Previous) * 100%
-                                </code>
-                                <p className="font-medium text-foreground mb-1">Values for this month:</p>
-                                <ul className="list-disc pl-4 space-y-0.5 font-mono text-[10px]">
-                                  <li>Current: <span className="text-foreground font-bold">{k.count}</span> papers</li>
-                                  <li>Previous: <span className="text-foreground font-bold">
-                                    {k.trendScore === 100 && k.count <= 1 ? 0 : Math.max(0, Math.round(k.count / (k.trendScore / 100 + 1)))}
-                                  </span> papers</li>
-                                </ul>
-                                <p className="mt-2 text-[10px] border-t border-border pt-1.5 leading-snug">
-                                  {k.trendScore === 100 && k.count <= 1 
-                                    ? "Growth is +100% because this topic is newly introduced (went from 0 to 1 publication)." 
-                                    : `The topic grew/declined by ${k.trendScore > 0 ? '+' : ''}${k.trendScore.toFixed(1)}% relative to its previous volume.`}
-                                </p>
-                              </div>
-                            </div>
-                          </UiTooltipContent>
-                        </UiTooltip>
-                      </td>
-                      <td className="py-3 text-right pl-4 w-20">
-                        <button
-                          onClick={() => {
-                            if (followed) {
-                              unfollowTopic.mutate(k.id, {
-                                onSuccess: () => toast.info(`Unfollowed keyword: ${k.term}`),
-                              });
-                            } else {
-                              followTopic.mutate(k.id, {
-                                onSuccess: () => toast.success(`Following keyword: ${k.term}`),
-                              });
-                            }
-                          }}
-                          className={`text-[10px] w-[68px] text-center py-0.5 rounded-md border transition-all cursor-pointer ${followed
-                            ? "border-brand/40 bg-brand/10 text-brand font-medium hover:bg-brand/20"
-                            : "border-border hover:border-brand/40 hover:text-brand"
                             }`}
                         >
-                          {followed ? "Following" : "Follow"}
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
-        </Card>
-
-        <Card className="h-full flex flex-col" title="Top Cited Authors">
-          <div className="space-y-3 pb-4 overflow-y-auto pr-1 max-h-[430px]">
-            {TRENDING_AUTHORS.map((a, i) => {
-              const followed = isAuthorFollowed(a.id);
-              return (
-                <div
-                  key={a.id}
-                  className="flex items-center gap-3 p-3 rounded-lg hover:bg-secondary/40 transition-colors"
-                >
-                  <div
-                    className="size-8 rounded-full flex items-center justify-center text-[10px] font-bold text-brand-foreground shrink-0"
-                    style={{ background: "var(--gradient-brand)" }}
-                  >
-                    {String(i + 1).padStart(2, "0")}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <Link
-                      to="/authors/$authorId"
-                      params={{ authorId: a.id }}
-                      className="text-sm font-medium text-foreground hover:text-brand transition-colors block truncate"
-                      title={a.name}
-                    >
-                      {a.name}
-                    </Link>
-                    <div 
-                      className="text-[10px] text-muted-foreground flex items-center justify-between gap-2"
-                      title={`${a.affiliation} · h-index ${a.hIndex}`}
-                    >
-                      <span className="truncate flex-1">
-                        {a.affiliation}
-                      </span>
-                      <span className="shrink-0 pr-8">
-                        h-index {a.hIndex}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4 shrink-0">
-                    <div className="text-center flex flex-col justify-center min-w-[80px]">
-                      <div className="text-xs font-bold text-foreground font-sans leading-tight">
-                        {(a.citations ?? 0).toLocaleString()}
-                      </div>
-                      <div className="text-[9px] uppercase tracking-wider text-muted-foreground leading-tight">
-                        citations
-                      </div>
-                    </div>
-                    <button
-                      disabled={followAuthorMut.isPending || unfollowAuthorMut.isPending}
-                      onClick={() => {
-                        if (!user) {
-                          toast.error("Log in to follow authors");
-                          return;
-                        }
-                        if (followed) {
-                          unfollowAuthorMut.mutate(a.id, {
-                            onSuccess: () => toast.info(`Unfollowed ${a.name}`),
-                            onError: (err) => {
-                              const msg = err instanceof ApiError ? err.message : "Unfollow failed";
-                              toast.error(msg);
-                            },
-                          });
-                        } else {
-                          followAuthorMut.mutate(a.id, {
-                            onSuccess: () => toast.success(`Following ${a.name}`),
-                            onError: (err) => {
-                              const msg = err instanceof ApiError ? err.message : "Follow failed. Max 20 authors.";
-                              toast.error(msg);
-                            },
-                          });
-                        }
-                      }}
-                      className={`text-[10px] w-[68px] text-center py-0.5 rounded-md border transition-all cursor-pointer ${followed
-                        ? "border-brand/40 bg-brand/10 text-brand"
-                        : "border-border hover:border-brand/40 hover:text-brand"
-                        }`}
-                    >
-                      {followed ? "Following" : "Follow"}
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </Card>
-      </div>
-
-      {/* Row 2 (Bottom Cards - Bảng so sánh xuất hiện khi compareMonth được chọn) */}
-      {compareMonth && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 items-stretch">
-          <Card
-            className="h-full flex flex-col"
-            title={`TREND SCORE RANKING - ${compareMonth.name.toUpperCase()} ${compareMonth.year}`}
-            action={
-              // Nút X ở góc Card để tắt chế độ so sánh
-              <button
-                onClick={() => setCompareMonth(null)}
-                className="p-1 hover:bg-secondary rounded transition-colors text-muted-foreground hover:text-foreground cursor-pointer"
-                title="Close comparison"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            }
-          >
-            {loadingCompareKeywords ? (
-              <div className="h-[200px] flex items-center justify-center text-sm text-muted-foreground animate-pulse font-medium">
-                Loading data for {compareMonth.name} {compareMonth.year}...
-              </div>
-            ) : compareKeywords.length === 0 ? (
-              <div className="h-[200px] flex items-center justify-center text-sm text-muted-foreground font-medium">
-                No trend data available for this month.
-              </div>
-            ) : (
-              <div className="max-h-[345px] overflow-y-auto pr-1 pb-4">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-[10px] uppercase tracking-widest text-muted-foreground border-b border-border">
-                      <th className="text-left font-medium pb-3 w-12">Rank</th>
-                      <th className="text-left font-medium pb-3 pr-4">Keyword</th>
-                      <th className="text-right font-medium pb-3 px-4 w-24">Papers</th>
-                      <th className="text-right font-medium pb-3 px-4 w-28">Score</th>
-                      <th className="text-right font-medium pb-3 pl-4 w-20">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {/* Lặp qua Top 8 từ khóa hiện tại để hiển thị số liệu đối sánh tương ứng */}
-                    {TRENDING_KEYWORDS.map((tk, index) => {
-                      const rowData = getCompareRowData(tk, index);
-                      const followed = isTopicFollowed(rowData.id);
-                      return (
-                        <tr key={rowData.key} className="hover:bg-secondary/40 transition-colors">
-                          {/* Cột 1: Hạng quá khứ và độ lệch thứ hạng (▲ Tăng hạng, ▼ Tụt hạng, NEW Từ khóa mới) */}
-                          <td className="py-3 text-left font-mono text-muted-foreground w-12">
-                            <div className="flex flex-col items-start justify-center">
-                              <span className="font-medium text-muted-foreground">
-                                {rowData.rankInCompare !== null ? `#${rowData.rankInCompare}` : "—"}
+                          <UiTooltip>
+                            <UiTooltipTrigger asChild>
+                              <span className="hover:underline decoration-dotted underline-offset-4 hover:opacity-85 transition-opacity">
+                                {k.trendScore > 0 ? `+${k.trendScore.toFixed(1)}%` : k.trendScore < 0 ? `▼ ${Math.abs(k.trendScore).toFixed(1)}%` : "0.0%"}
                               </span>
-                              {rowData.diffRank !== null ? (
-                                <span
-                                  className={`text-[10px] font-semibold flex items-center gap-0.5 ${
-                                    rowData.diffRank > 0
-                                      ? "text-success"
-                                      : rowData.diffRank < 0
-                                        ? "text-destructive"
-                                        : "text-muted-foreground/60"
-                                  }`}
-                                >
-                                  {rowData.diffRank > 0
-                                    ? `▲ +${rowData.diffRank}`
-                                    : rowData.diffRank < 0
-                                      ? `▼ ${Math.abs(rowData.diffRank)}`
-                                      : `▬ 0`}
-                                </span>
-                              ) : (
-                                <span className="text-[10px] text-brand font-semibold" title="New entry in Top 8">
-                                  NEW
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                          {/* Cột 2: Tên từ khóa */}
-                          <td className="py-3 text-left font-medium pr-4 max-w-[220px]">
-                            <div className="flex flex-col">
-                              <Link
-                                to="/topics/$topicId"
-                                params={{ topicId: rowData.id }}
-                                className="hover:text-brand transition-colors cursor-pointer hover:underline block truncate"
-                                title={rowData.term}
-                              >
-                                {rowData.term}
-                              </Link>
-                              {rowData.isNew && (
-                                <span className="text-[10px] text-brand/80 font-normal mt-0.5" title="New keyword not ranked in the comparison month">
-                                  ✨ New Keyword
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                          {/* Cột 3: Số lượng bài báo ở tháng quá khứ và chênh lệch bài báo */}
-                          <td className="py-3 text-right font-mono px-4 w-24">
-                            <div className="flex flex-col items-end justify-center">
-                              <span className="text-foreground font-medium">
-                                {rowData.count !== null ? rowData.count.toLocaleString() : "0"}
-                              </span>
-                              {rowData.diffPapers !== null && (
-                                <span
-                                  className={`text-[10px] font-semibold flex items-center gap-0.5 ${
-                                    rowData.diffPapers > 0
-                                      ? "text-success"
-                                      : rowData.diffPapers < 0
-                                        ? "text-destructive"
-                                        : "text-muted-foreground/60"
-                                  }`}
-                                >
-                                  {rowData.diffPapers > 0
-                                    ? `▲ +${rowData.diffPapers.toLocaleString()}`
-                                    : rowData.diffPapers < 0
-                                      ? `▼ ${Math.abs(rowData.diffPapers).toLocaleString()}`
-                                      : `▬ 0`}
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                          {/* Cột 4: Điểm Trend Score ở tháng quá khứ (kèm Tooltip giải thích công thức & độ lệch diffScore) */}
-                          <td
-                            className={`py-3 text-right font-mono px-4 w-28 ${
-                              rowData.trendScore !== null ? "cursor-help" : ""
-                            }`}
+                            </UiTooltipTrigger>
+                            <UiTooltipContent side="top" align="end" className="p-3 max-w-[280px] bg-popover text-popover-foreground border border-border shadow-lg rounded-xl">
+                              <div className="space-y-1.5 text-xs font-sans">
+                                <p className="font-bold text-brand uppercase tracking-wider text-[10px]">Trend Score Explanation</p>
+                                <div className="text-[11px] text-muted-foreground leading-relaxed">
+                                  <p className="font-medium text-foreground mb-1">Formula:</p>
+                                  <code className="block bg-secondary/40 p-1.5 rounded-md font-mono text-[10px] mb-2 text-center text-foreground">
+                                    ((Current - Previous) / Previous) * 100%
+                                  </code>
+                                  <p className="font-medium text-foreground mb-1">Values for this month:</p>
+                                  <ul className="list-disc pl-4 space-y-0.5 font-mono text-[10px]">
+                                    <li>Current: <span className="text-foreground font-bold">{k.count}</span> papers</li>
+                                    <li>Previous: <span className="text-foreground font-bold">
+                                      {k.trendScore === 100 && k.count <= 1 ? 0 : Math.max(0, Math.round(k.count / (k.trendScore / 100 + 1)))}
+                                    </span> papers</li>
+                                  </ul>
+                                  <p className="mt-2 text-[10px] border-t border-border pt-1.5 leading-snug">
+                                    {k.trendScore === 100 && k.count <= 1
+                                      ? "Growth is +100% because this topic is newly introduced (went from 0 to 1 publication)."
+                                      : `The topic grew/declined by ${k.trendScore > 0 ? '+' : ''}${k.trendScore.toFixed(1)}% relative to its previous volume.`}
+                                  </p>
+                                </div>
+                              </div>
+                            </UiTooltipContent>
+                          </UiTooltip>
+                        </td>
+                        <td className="py-3 text-right pl-4 w-20">
+                          <button
+                            onClick={() => {
+                              if (followed) {
+                                unfollowTopic.mutate(k.id, {
+                                  onSuccess: () => toast.info(`Unfollowed keyword: ${k.term}`),
+                                });
+                              } else {
+                                followTopic.mutate(k.id, {
+                                  onSuccess: () => toast.success(`Following keyword: ${k.term}`),
+                                });
+                              }
+                            }}
+                            className={`text-[10px] w-[68px] text-center py-0.5 rounded-md border transition-all cursor-pointer ${followed
+                              ? "border-brand/40 bg-brand/10 text-brand font-medium hover:bg-brand/20"
+                              : "border-border hover:border-brand/40 hover:text-brand"
+                              }`}
                           >
-                            <div className="flex flex-col items-end justify-center">
-                              {/* Tooltip hiển thị công thức tính Trend Score ở tháng quá khứ */}
-                              <UiTooltip>
-                                <UiTooltipTrigger asChild>
-                                  <span
-                                    className={`font-semibold ${
-                                      rowData.trendScore !== null
-                                        ? `hover:underline decoration-dotted underline-offset-4 hover:opacity-85 transition-opacity ${
-                                            rowData.trendScore >= 15
-                                              ? "text-success"
-                                              : rowData.trendScore < 0
-                                                ? "text-destructive"
-                                                : "text-muted-foreground"
-                                          }`
-                                        : "text-muted-foreground/40"
-                                    }`}
-                                  >
-                                    {rowData.trendScore !== null
-                                      ? rowData.trendScore > 0
-                                        ? `+${rowData.trendScore.toFixed(1)}%`
-                                        : rowData.trendScore < 0
-                                          ? `▼ ${Math.abs(rowData.trendScore).toFixed(1)}%`
-                                          : "0.0%"
-                                      : "0.0%"}
-                                  </span>
-                                </UiTooltipTrigger>
-                                <UiTooltipContent side="top" align="end" className="p-3 max-w-[280px] bg-popover text-popover-foreground border border-border shadow-lg rounded-xl">
-                                  <div className="space-y-1.5 text-xs font-sans">
-                                    <p className="font-bold text-brand uppercase tracking-wider text-[10px]">
-                                      Historical Trend Score ({compareMonth.name} {compareMonth.year})
-                                    </p>
-                                    <div className="text-[11px] text-muted-foreground leading-relaxed">
-                                      {rowData.trendScore !== null ? (
-                                        <>
-                                          <p className="font-medium text-foreground mb-1 font-sans">Formula:</p>
-                                          <code className="block bg-secondary/40 p-1.5 rounded-md font-mono text-[10px] mb-2 text-center text-foreground font-semibold">
-                                            ((Current - Previous) / Previous) * 100%
-                                          </code>
-                                          <p className="font-medium text-foreground mb-1 font-sans">Values for {compareMonth.name}:</p>
-                                          <ul className="list-disc pl-4 space-y-0.5 font-mono text-[10px]">
-                                            <li>Current: <span className="text-foreground font-bold">{rowData.count ?? 0}</span> papers</li>
-                                            <li>Previous: <span className="text-foreground font-bold">
-                                              {rowData.trendScore === 100 && (rowData.count ?? 0) <= 1 ? 0 : Math.max(0, Math.round((rowData.count ?? 0) / (rowData.trendScore / 100 + 1)))}
-                                            </span> papers</li>
-                                          </ul>
-                                          <p className="mt-2 text-[10px] border-t border-border pt-1.5 leading-snug">
-                                            {rowData.trendScore === 100 && (rowData.count ?? 0) <= 1 
-                                              ? "Growth is +100% because this topic was newly introduced in this historical month." 
-                                              : `The topic grew/declined by ${rowData.trendScore > 0 ? '+' : ''}${rowData.trendScore.toFixed(1)}% relative to its previous volume.`}
-                                          </p>
-                                        </>
-                                      ) : (
-                                        <p className="leading-snug text-muted-foreground font-sans">
-                                          This topic had no publication data in <span className="text-foreground font-semibold">{compareMonth.name} {compareMonth.year}</span> (0 papers), so its trend score was 0.0%.
-                                        </p>
-                                      )}
-                                    </div>
-                                  </div>
-                                </UiTooltipContent>
-                              </UiTooltip>
-                              {/* Hiển thị chênh lệch điểm Trend Score % giữa tháng hiện tại và tháng quá khứ */}
-                              {rowData.diffScore !== null && (
-                                <UiTooltip>
-                                  <UiTooltipTrigger asChild>
-                                    <span
-                                      className={`text-[10px] font-semibold flex items-center gap-0.5 cursor-help ${
-                                        rowData.diffScore > 0
-                                          ? "text-success"
-                                          : rowData.diffScore < 0
-                                            ? "text-destructive"
-                                            : "text-muted-foreground/60"
-                                      }`}
-                                    >
-                                      {rowData.diffScore > 0
-                                        ? `▲ +${rowData.diffScore.toFixed(1)}%`
-                                        : rowData.diffScore < 0
-                                          ? `▼ ${Math.abs(rowData.diffScore).toFixed(1)}%`
-                                          : `▬ 0.0%`}
-                                    </span>
-                                  </UiTooltipTrigger>
-                                  <UiTooltipContent side="right" className="p-2.5 max-w-[240px] bg-popover text-popover-foreground border border-border shadow-md rounded-lg">
-                                    <div className="space-y-1 text-xs font-sans">
-                                      <p className="font-bold text-foreground">Score Comparison Change</p>
-                                      <p className="text-[11px] text-muted-foreground leading-snug">
-                                        Calculated as: <span className="text-foreground font-mono text-[10px]">Current Score ({tk.trendScore > 0 ? '+' : ''}{tk.trendScore.toFixed(1)}%)</span> minus <span className="text-foreground font-mono text-[10px]">Past Score ({rowData.trendScore > 0 ? '+' : ''}{(rowData.trendScore ?? 0).toFixed(1)}%)</span> = <span className="text-foreground font-mono text-[10px]">{rowData.diffScore > 0 ? '+' : ''}{rowData.diffScore.toFixed(1)}%</span>.
-                                      </p>
-                                    </div>
-                                  </UiTooltipContent>
-                                </UiTooltip>
-                              )}
-                            </div>
-                          </td>
-                          <td className="py-3 text-right pl-4 w-20">
-                            <button
-                              onClick={() => {
-                                if (followed) {
-                                  unfollowTopic.mutate(rowData.id, {
-                                    onSuccess: () => toast.info(`Unfollowed keyword: ${rowData.term}`),
-                                  });
-                                } else {
-                                  followTopic.mutate(rowData.id, {
-                                    onSuccess: () => toast.success(`Following keyword: ${rowData.term}`),
-                                  });
-                                }
-                              }}
-                              className={`text-[10px] w-[68px] text-center py-0.5 rounded-md border transition-all cursor-pointer ${followed
-                                ? "border-brand/40 bg-brand/10 text-brand font-medium hover:bg-brand/20"
-                                : "border-border hover:border-brand/40 hover:text-brand"
-                                }`}
-                            >
-                              {followed ? "Following" : "Follow"}
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                            {followed ? "Following" : "Follow"}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             )}
           </Card>
 
-          <Card className="h-full flex flex-col" title="Comparison Guide">
-            <div className="space-y-5 text-xs flex-1 flex flex-col justify-between">
-              <p className="text-muted-foreground leading-relaxed">
-                Comparing the selected historical month's data with the current month's trends:
-              </p>
-              <div className="grid grid-cols-2 gap-4 pt-2">
-                <div className="flex items-center gap-3 p-3.5 rounded-xl bg-success/5 border border-success/10">
-                  <span className="text-success font-bold font-mono text-sm shrink-0">▲</span>
-                  <div>
-                    <div className="font-semibold text-foreground">Increased</div>
-                    <div className="text-[10px] text-muted-foreground">Metric improved</div>
+          <Card className="h-full flex flex-col" title="Top Cited Authors">
+            <div className="space-y-3 pb-4 overflow-y-auto pr-1 max-h-[430px]">
+              {TRENDING_AUTHORS.map((a, i) => {
+                const followed = isAuthorFollowed(a.id);
+                return (
+                  <div
+                    key={a.id}
+                    className="flex items-center gap-3 p-3 rounded-lg hover:bg-secondary/40 transition-colors"
+                  >
+                    <div
+                      className="size-8 rounded-full flex items-center justify-center text-[10px] font-bold text-brand-foreground shrink-0"
+                      style={{ background: "var(--gradient-brand)" }}
+                    >
+                      {String(i + 1).padStart(2, "0")}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <Link
+                        to="/authors/$authorId"
+                        params={{ authorId: a.id }}
+                        className="text-sm font-medium text-foreground hover:text-brand transition-colors block truncate"
+                        title={a.name}
+                      >
+                        {a.name}
+                      </Link>
+                      <div
+                        className="text-[10px] text-muted-foreground flex items-center justify-between gap-2"
+                        title={`${a.affiliation} · h-index ${a.hIndex}`}
+                      >
+                        <span className="truncate flex-1">
+                          {a.affiliation}
+                        </span>
+                        <span className="shrink-0 pr-8">
+                          h-index {a.hIndex}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4 shrink-0">
+                      <div className="text-center flex flex-col justify-center min-w-[80px]">
+                        <div className="text-xs font-bold text-foreground font-sans leading-tight">
+                          {(a.citations ?? 0).toLocaleString()}
+                        </div>
+                        <div className="text-[9px] uppercase tracking-wider text-muted-foreground leading-tight">
+                          citations
+                        </div>
+                      </div>
+                      <button
+                        disabled={followAuthorMut.isPending || unfollowAuthorMut.isPending}
+                        onClick={() => {
+                          if (!user) {
+                            toast.error("Log in to follow authors");
+                            return;
+                          }
+                          if (followed) {
+                            unfollowAuthorMut.mutate(a.id, {
+                              onSuccess: () => toast.info(`Unfollowed ${a.name}`),
+                              onError: (err) => {
+                                const msg = err instanceof ApiError ? err.message : "Unfollow failed";
+                                toast.error(msg);
+                              },
+                            });
+                          } else {
+                            followAuthorMut.mutate(a.id, {
+                              onSuccess: () => toast.success(`Following ${a.name}`),
+                              onError: (err) => {
+                                const msg = err instanceof ApiError ? err.message : "Follow failed. Max 20 authors.";
+                                toast.error(msg);
+                              },
+                            });
+                          }
+                        }}
+                        className={`text-[10px] w-[68px] text-center py-0.5 rounded-md border transition-all cursor-pointer ${followed
+                          ? "border-brand/40 bg-brand/10 text-brand"
+                          : "border-border hover:border-brand/40 hover:text-brand"
+                          }`}
+                      >
+                        {followed ? "Following" : "Follow"}
+                      </button>
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-center gap-3 p-3.5 rounded-xl bg-destructive/5 border border-destructive/10">
-                  <span className="text-destructive font-bold font-mono text-sm shrink-0">▼</span>
-                  <div>
-                    <div className="font-semibold text-foreground">Decreased</div>
-                    <div className="text-[10px] text-muted-foreground">Metric declined</div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3 p-3.5 rounded-xl bg-secondary/20 border border-border">
-                  <span className="text-muted-foreground font-bold font-mono text-sm shrink-0">▬</span>
-                  <div>
-                    <div className="font-semibold text-foreground">Unchanged</div>
-                    <div className="text-[10px] text-muted-foreground">No change</div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3 p-3.5 rounded-xl bg-brand/5 border border-brand/10">
-                  <span className="text-brand font-bold font-mono text-sm shrink-0">✨</span>
-                  <div>
-                    <div className="font-semibold text-foreground">New Keyword</div>
-                    <div className="text-[10px] text-muted-foreground">Not ranked historically</div>
-                  </div>
-                </div>
-              </div>
-              <div className="mt-4 p-3.5 rounded-xl bg-secondary/30 border border-border text-[11px] text-muted-foreground leading-relaxed">
-                <strong className="text-foreground">Comparison Logic:</strong> The comparison table displays the historical metrics for the current top 8 trending keywords. This allows you to track their rank, papers, and score changes over time.
-              </div>
+                );
+              })}
             </div>
           </Card>
         </div>
-      )}
-    </AppLayout>
+
+        {/* Row 2 (Bottom Cards - Bảng so sánh xuất hiện khi compareMonth được chọn) */}
+        {compareMonth && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 items-stretch">
+            <Card
+              className="h-full flex flex-col"
+              title={`HISTORICAL TREND COMPARISON - ${compareMonth.name.toUpperCase()} ${compareMonth.year}`}
+              action={
+                // Nút X ở góc Card để tắt chế độ so sánh
+                <button
+                  onClick={() => setCompareMonth(null)}
+                  className="p-1 hover:bg-secondary rounded transition-colors text-muted-foreground hover:text-foreground cursor-pointer"
+                  title="Close comparison"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              }
+            >
+              {loadingCompareKeywords ? (
+                <div className="h-[200px] flex items-center justify-center text-sm text-muted-foreground animate-pulse font-medium">
+                  Loading data for {compareMonth.name} {compareMonth.year}...
+                </div>
+              ) : compareKeywords.length === 0 ? (
+                <div className="h-[200px] flex items-center justify-center text-sm text-muted-foreground font-medium">
+                  No trend data available for this month.
+                </div>
+              ) : (
+                <div className="max-h-[345px] overflow-y-auto pr-1 pb-4">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-[10px] uppercase tracking-widest text-muted-foreground border-b border-border">
+                        <th className="text-left font-medium pb-3 w-12">Rank</th>
+                        <th className="text-left font-medium pb-3 pr-4">Keyword</th>
+                        <th className="text-right font-medium pb-3 px-4 w-24">Papers</th>
+                        <th className="text-right font-medium pb-3 px-4 w-28">Score</th>
+                        <th className="text-right font-medium pb-3 pl-4 w-20">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {/* Lặp qua Top 8 từ khóa hiện tại để hiển thị số liệu đối sánh tương ứng */}
+                      {TRENDING_KEYWORDS.map((tk, index) => {
+                        const rowData = getCompareRowData(tk, index);
+                        const followed = isTopicFollowed(rowData.id);
+                        return (
+                          <tr key={rowData.key} className="hover:bg-secondary/40 transition-colors">
+                            {/* Cột 1: Hạng quá khứ và độ lệch thứ hạng (▲ Tăng hạng, ▼ Tụt hạng, NEW Từ khóa mới) */}
+                            <td className="py-3 text-left font-mono text-muted-foreground w-12">
+                              <div className="flex flex-col items-start justify-center">
+                                <span className="font-medium text-muted-foreground">
+                                  {rowData.rankInCompare !== null ? `#${rowData.rankInCompare}` : "—"}
+                                </span>
+                                {rowData.diffRank !== null ? (
+                                  <span
+                                    className={`text-[10px] font-semibold flex items-center gap-0.5 ${rowData.diffRank > 0
+                                        ? "text-success"
+                                        : rowData.diffRank < 0
+                                          ? "text-destructive"
+                                          : "text-muted-foreground/60"
+                                      }`}
+                                  >
+                                    {rowData.diffRank > 0
+                                      ? `▲ +${rowData.diffRank}`
+                                      : rowData.diffRank < 0
+                                        ? `▼ ${Math.abs(rowData.diffRank)}`
+                                        : `▬ 0`}
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] text-brand font-semibold" title="New entry in Top 8">
+                                    NEW
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            {/* Cột 2: Tên từ khóa */}
+                            <td className="py-3 text-left font-medium pr-4 max-w-[220px]">
+                              <div className="flex flex-col">
+                                <Link
+                                  to="/topics/$topicId"
+                                  params={{ topicId: rowData.id }}
+                                  className="hover:text-brand transition-colors cursor-pointer hover:underline block truncate"
+                                  title={rowData.term}
+                                >
+                                  {rowData.term}
+                                </Link>
+                                {rowData.isNew && (
+                                  <span className="text-[10px] text-brand/80 font-normal mt-0.5" title="New keyword not ranked in the comparison month">
+                                    ✨ New Keyword
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            {/* Cột 3: Số lượng bài báo ở tháng quá khứ và chênh lệch bài báo */}
+                            <td className="py-3 text-right font-mono px-4 w-24">
+                              <div className="flex flex-col items-end justify-center">
+                                <span className="text-foreground font-medium">
+                                  {rowData.count !== null ? rowData.count.toLocaleString() : "0"}
+                                </span>
+                                {rowData.diffPapers !== null && (
+                                  <span
+                                    className={`text-[10px] font-semibold flex items-center gap-0.5 ${rowData.diffPapers > 0
+                                        ? "text-success"
+                                        : rowData.diffPapers < 0
+                                          ? "text-destructive"
+                                          : "text-muted-foreground/60"
+                                      }`}
+                                  >
+                                    {rowData.diffPapers > 0
+                                      ? `▲ +${rowData.diffPapers.toLocaleString()}`
+                                      : rowData.diffPapers < 0
+                                        ? `▼ ${Math.abs(rowData.diffPapers).toLocaleString()}`
+                                        : `▬ 0`}
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            {/* Cột 4: Điểm Trend Score ở tháng quá khứ (kèm Tooltip giải thích công thức & độ lệch diffScore) */}
+                            <td
+                              className={`py-3 text-right font-mono px-4 w-28 ${rowData.trendScore !== null ? "cursor-help" : ""
+                                }`}
+                            >
+                              <div className="flex flex-col items-end justify-center">
+                                {/* Tooltip hiển thị công thức tính Trend Score ở tháng quá khứ */}
+                                <UiTooltip>
+                                  <UiTooltipTrigger asChild>
+                                    <span
+                                      className={`font-semibold ${rowData.trendScore !== null
+                                          ? `hover:underline decoration-dotted underline-offset-4 hover:opacity-85 transition-opacity ${rowData.trendScore >= 15
+                                            ? "text-success"
+                                            : rowData.trendScore < 0
+                                              ? "text-destructive"
+                                              : "text-muted-foreground"
+                                          }`
+                                          : "text-muted-foreground/40"
+                                        }`}
+                                    >
+                                      {rowData.trendScore !== null
+                                        ? rowData.trendScore > 0
+                                          ? `+${rowData.trendScore.toFixed(1)}%`
+                                          : rowData.trendScore < 0
+                                            ? `▼ ${Math.abs(rowData.trendScore).toFixed(1)}%`
+                                            : "0.0%"
+                                        : "—"}
+                                    </span>
+                                  </UiTooltipTrigger>
+                                  <UiTooltipContent side="top" align="end" className="p-3 max-w-[280px] bg-popover text-popover-foreground border border-border shadow-lg rounded-xl">
+                                    <div className="space-y-1.5 text-xs font-sans">
+                                      <p className="font-bold text-brand uppercase tracking-wider text-[10px]">
+                                        Historical Trend Score ({compareMonth.name} {compareMonth.year})
+                                      </p>
+                                      <div className="text-[11px] text-muted-foreground leading-relaxed">
+                                        {rowData.trendScore !== null ? (
+                                          <>
+                                            <p className="font-medium text-foreground mb-1 font-sans">Formula:</p>
+                                            <code className="block bg-secondary/40 p-1.5 rounded-md font-mono text-[10px] mb-2 text-center text-foreground font-semibold">
+                                              ((Current - Previous) / Previous) * 100%
+                                            </code>
+                                            <p className="font-medium text-foreground mb-1 font-sans">Values for {compareMonth.name}:</p>
+                                            <ul className="list-disc pl-4 space-y-0.5 font-mono text-[10px]">
+                                              <li>Current: <span className="text-foreground font-bold">{rowData.count ?? 0}</span> papers</li>
+                                              <li>Previous: <span className="text-foreground font-bold">
+                                                {rowData.trendScore === 100 && (rowData.count ?? 0) <= 1 ? 0 : Math.max(0, Math.round((rowData.count ?? 0) / (rowData.trendScore / 100 + 1)))}
+                                              </span> papers</li>
+                                            </ul>
+                                            <p className="mt-2 text-[10px] border-t border-border pt-1.5 leading-snug">
+                                              {rowData.trendScore === 100 && (rowData.count ?? 0) <= 1
+                                                ? "Growth is +100% because this topic was newly introduced in this historical month."
+                                                : `The topic grew/declined by ${rowData.trendScore > 0 ? '+' : ''}${rowData.trendScore.toFixed(1)}% relative to its previous volume.`}
+                                            </p>
+                                          </>
+                                        ) : (
+                                          <p className="leading-snug text-muted-foreground font-sans">
+                                            This topic had no publication data in <span className="text-foreground font-semibold">{compareMonth.name} {compareMonth.year}</span> (0 papers), so its trend score was 0.0%.
+                                          </p>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </UiTooltipContent>
+                                </UiTooltip>
+                                {/* Hiển thị chênh lệch điểm Trend Score % giữa tháng hiện tại và tháng quá khứ */}
+                                {rowData.diffScore !== null && (
+                                  <UiTooltip>
+                                    <UiTooltipTrigger asChild>
+                                      <span
+                                        className={`text-[10px] font-semibold flex items-center gap-0.5 cursor-help ${rowData.diffScore > 0
+                                            ? "text-success"
+                                            : rowData.diffScore < 0
+                                              ? "text-destructive"
+                                              : "text-muted-foreground/60"
+                                          }`}
+                                      >
+                                        {rowData.diffScore > 0
+                                          ? `▲ +${rowData.diffScore.toFixed(1)}%`
+                                          : rowData.diffScore < 0
+                                            ? `▼ ${Math.abs(rowData.diffScore).toFixed(1)}%`
+                                            : `▬ 0.0%`}
+                                      </span>
+                                    </UiTooltipTrigger>
+                                    <UiTooltipContent side="right" className="p-2.5 max-w-[240px] bg-popover text-popover-foreground border border-border shadow-md rounded-lg">
+                                      <div className="space-y-1 text-xs font-sans">
+                                        <p className="font-bold text-foreground">Score Comparison Change</p>
+                                        <p className="text-[11px] text-muted-foreground leading-snug">
+                                          Calculated as: <span className="text-foreground font-mono text-[10px]">Current Score ({tk.trendScore > 0 ? '+' : ''}{tk.trendScore.toFixed(1)}%)</span> minus <span className="text-foreground font-mono text-[10px]">Past Score ({rowData.trendScore > 0 ? '+' : ''}{(rowData.trendScore ?? 0).toFixed(1)}%)</span> = <span className="text-foreground font-mono text-[10px]">{rowData.diffScore > 0 ? '+' : ''}{rowData.diffScore.toFixed(1)}%</span>.
+                                        </p>
+                                      </div>
+                                    </UiTooltipContent>
+                                  </UiTooltip>
+                                )}
+                              </div>
+                            </td>
+                            <td className="py-3 text-right pl-4 w-20">
+                              <button
+                                onClick={() => {
+                                  if (followed) {
+                                    unfollowTopic.mutate(rowData.id, {
+                                      onSuccess: () => toast.info(`Unfollowed keyword: ${rowData.term}`),
+                                    });
+                                  } else {
+                                    followTopic.mutate(rowData.id, {
+                                      onSuccess: () => toast.success(`Following keyword: ${rowData.term}`),
+                                    });
+                                  }
+                                }}
+                                className={`text-[10px] w-[68px] text-center py-0.5 rounded-md border transition-all cursor-pointer ${followed
+                                  ? "border-brand/40 bg-brand/10 text-brand font-medium hover:bg-brand/20"
+                                  : "border-border hover:border-brand/40 hover:text-brand"
+                                  }`}
+                              >
+                                {followed ? "Following" : "Follow"}
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </Card>
+
+            <Card className="h-full flex flex-col" title="Comparison Guide">
+              <div className="space-y-5 text-xs flex-1 flex flex-col justify-between">
+                <p className="text-muted-foreground leading-relaxed">
+                  Comparing the selected historical month's data with the current month's trends:
+                </p>
+                <div className="grid grid-cols-2 gap-4 pt-2">
+                  <div className="flex items-center gap-3 p-3.5 rounded-xl bg-success/5 border border-success/10">
+                    <span className="text-success font-bold font-mono text-sm shrink-0">▲</span>
+                    <div>
+                      <div className="font-semibold text-foreground">Increased</div>
+                      <div className="text-[10px] text-muted-foreground">Metric improved</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-3.5 rounded-xl bg-destructive/5 border border-destructive/10">
+                    <span className="text-destructive font-bold font-mono text-sm shrink-0">▼</span>
+                    <div>
+                      <div className="font-semibold text-foreground">Decreased</div>
+                      <div className="text-[10px] text-muted-foreground">Metric declined</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-3.5 rounded-xl bg-secondary/20 border border-border">
+                    <span className="text-muted-foreground font-bold font-mono text-sm shrink-0">▬</span>
+                    <div>
+                      <div className="font-semibold text-foreground">Unchanged</div>
+                      <div className="text-[10px] text-muted-foreground">No change</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 p-3.5 rounded-xl bg-brand/5 border border-brand/10">
+                    <span className="text-brand font-bold font-mono text-sm shrink-0">✨</span>
+                    <div>
+                      <div className="font-semibold text-foreground">New Keyword</div>
+                      <div className="text-[10px] text-muted-foreground">Not ranked historically</div>
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-4 p-3.5 rounded-xl bg-secondary/30 border border-border text-[11px] text-muted-foreground leading-relaxed">
+                  <strong className="text-foreground">Comparison Logic:</strong> The comparison table displays the historical metrics for the current top 8 trending keywords. This allows you to track their rank, papers, and score changes over time.
+                </div>
+              </div>
+            </Card>
+          </div>
+        )}
+      </AppLayout>
     </UiTooltipProvider>
   );
 }
