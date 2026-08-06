@@ -29,7 +29,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-export type AiHistoryTabFilter = "ALL" | "COLLECTION_ANALYSIS" | "TRENDS";
+export type AiHistoryTabFilter = "ALL" | "COLLECTION_ANALYSIS" | "TRENDS" | "LITERATURE_MATRIX";
 
 interface AiHistoryDrawerProps {
   open: boolean;
@@ -37,7 +37,7 @@ interface AiHistoryDrawerProps {
   onSelectHistory: (
     resultData: any,
     timestampStr: string,
-    type: "TOP_TRENDS" | "SINGLE_KEYWORD" | "COLLECTION_ANALYSIS"
+    type: "TOP_TRENDS" | "SINGLE_KEYWORD" | "COLLECTION_ANALYSIS" | "LITERATURE_MATRIX"
   ) => void;
   defaultTab?: AiHistoryTabFilter;
 }
@@ -100,9 +100,17 @@ function AiHistoryItemCard({
         <div className="space-y-1 min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap text-[10px] text-muted-foreground font-mono">
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-brand/10 text-brand font-bold uppercase tracking-wider">
-              {isCollection ? <FolderOpen className="size-3" /> : <Sparkles className="size-3" />}
+              {isCollection ? (
+                <FolderOpen className="size-3" />
+              ) : item.analysisType === "LITERATURE_MATRIX" ? (
+                <FileText className="size-3" />
+              ) : (
+                <Sparkles className="size-3" />
+              )}
               {isCollection
                 ? "Collection"
+                : item.analysisType === "LITERATURE_MATRIX"
+                ? "Matrix AI"
                 : item.analysisType === "TOP_TRENDS"
                 ? "Top Trends"
                 : "Single Keyword"}
@@ -116,6 +124,10 @@ function AiHistoryItemCard({
           {isCollection ? (
             <h4 className="font-bold text-sm text-foreground group-hover:text-brand transition-colors pt-1 truncate">
               {collectionTitle}
+            </h4>
+          ) : item.analysisType === "LITERATURE_MATRIX" ? (
+            <h4 className="font-bold text-sm text-foreground group-hover:text-brand transition-colors pt-1 truncate">
+              Literature Matrix ({item.overallVerdict || "Comparison"})
             </h4>
           ) : null}
         </div>
@@ -349,6 +361,9 @@ export function AiHistoryDrawer({
     if (activeTab === "COLLECTION_ANALYSIS") {
       return items.filter((i) => i.analysisType === "COLLECTION_ANALYSIS");
     }
+    if (activeTab === "LITERATURE_MATRIX") {
+      return items.filter((i) => i.analysisType === "LITERATURE_MATRIX");
+    }
     if (activeTab === "TRENDS") {
       return items.filter(
         (i) => i.analysisType === "TOP_TRENDS" || i.analysisType === "SINGLE_KEYWORD"
@@ -458,6 +473,16 @@ export function AiHistoryDrawer({
                 }`}
               >
                 Collections ({items.filter((i) => i.analysisType === "COLLECTION_ANALYSIS").length})
+              </button>
+              <button
+                onClick={() => setActiveTab("LITERATURE_MATRIX")}
+                className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                  activeTab === "LITERATURE_MATRIX"
+                    ? "bg-card text-foreground shadow-sm font-bold"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Matrices ({items.filter((i) => i.analysisType === "LITERATURE_MATRIX").length})
               </button>
               <button
                 onClick={() => setActiveTab("TRENDS")}

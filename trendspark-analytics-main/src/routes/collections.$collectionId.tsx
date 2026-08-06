@@ -4,12 +4,14 @@ import { AppLayout, PageHeader } from "@/components/AppLayout";
 import { Card } from "@/components/Card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
-import { ArrowLeft, ArrowUpRight, Trash2, FolderOpen, Quote } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, Trash2, FolderOpen, Quote, Sparkles } from "lucide-react";
 
 import { useCollection, useRemovePaperFromCollection } from "@/hooks/data/use-collections";
 import { usePapersByIds } from "@/hooks/data/use-papers";
 import { SaveToCollectionButton } from "@/components/SaveToCollectionButton";
 import { CitationExportModal } from "@/components/CitationExportModal";
+import { LiteratureMatrixModal } from "@/components/LiteratureMatrixModal";
+import { useGenerateLiteratureMatrix } from "@/hooks/data/use-literature-matrix";
 import {
   Select as UiSelect,
   SelectContent,
@@ -31,10 +33,17 @@ function CollectionDetailPage() {
   const { data: collection, isLoading: isLoadingCollection } = useCollection(collectionId);
   const { data: papers = [], isLoading: isLoadingPapers } = usePapersByIds(collection?.paperIds ?? []);
   const removeMutation = useRemovePaperFromCollection();
+  const matrixMutation = useGenerateLiteratureMatrix();
 
   const [sort, setSort] = useState<SortMode>("recent");
   const [citeModalOpen, setCiteModalOpen] = useState(false);
+  const [matrixModalOpen, setMatrixModalOpen] = useState(false);
   const [selectedPapersForCite, setSelectedPapersForCite] = useState<Paper | Paper[] | null>(null);
+
+  const handleGenerateMatrix = () => {
+    setMatrixModalOpen(true);
+    matrixMutation.mutate({ collectionId: Number(collectionId) });
+  };
 
   if (!isLoadingCollection && !collection) throw notFound();
 
@@ -82,17 +91,29 @@ function CollectionDetailPage() {
             </Link>
 
             {savedPapers.length > 0 && (
-              <button
-                onClick={() => {
-                  setSelectedPapersForCite(savedPapers);
-                  setCiteModalOpen(true);
-                }}
-                className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg text-xs font-semibold border border-brand/30 bg-brand/10 text-brand hover:bg-brand/20 transition-all cursor-pointer"
-                title="Export citations for all papers in this collection"
-              >
-                <Quote className="size-3.5" />
-                <span className="hidden sm:inline">Export Citations</span>
-              </button>
+              <>
+                <button
+                  onClick={handleGenerateMatrix}
+                  disabled={matrixMutation.isPending}
+                  className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-amber-500/20 to-brand/20 border border-amber-500/40 text-amber-300 hover:from-amber-500/30 hover:to-brand/30 transition-all cursor-pointer shadow-sm disabled:opacity-50"
+                  title="Generate AI side-by-side literature comparison matrix"
+                >
+                  <Sparkles className="size-3.5 text-amber-400 animate-pulse" />
+                  <span>Generate Matrix (AI)</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setSelectedPapersForCite(savedPapers);
+                    setCiteModalOpen(true);
+                  }}
+                  className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg text-xs font-semibold border border-brand/30 bg-brand/10 text-brand hover:bg-brand/20 transition-all cursor-pointer"
+                  title="Export citations for all papers in this collection"
+                >
+                  <Quote className="size-3.5" />
+                  <span className="hidden sm:inline">Export Citations</span>
+                </button>
+              </>
             )}
 
             <div className="hidden sm:block">
@@ -248,6 +269,15 @@ function CollectionDetailPage() {
         open={citeModalOpen}
         onOpenChange={setCiteModalOpen}
         papers={selectedPapersForCite}
+        collectionTitle={collection?.name}
+      />
+
+      {/* Literature Matrix Modal */}
+      <LiteratureMatrixModal
+        open={matrixModalOpen}
+        onOpenChange={setMatrixModalOpen}
+        data={matrixMutation.data ?? null}
+        isLoading={matrixMutation.isPending}
         collectionTitle={collection?.name}
       />
     </AppLayout>
