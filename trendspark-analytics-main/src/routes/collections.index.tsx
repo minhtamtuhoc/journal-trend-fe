@@ -8,11 +8,20 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { FolderPlus, Pencil, Trash2, FolderOpen, Sparkles, History } from "lucide-react";
+import { FolderPlus, Pencil, Trash2, FolderOpen, Sparkles, History, ChevronDown, Table } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useCollections, useCreateCollection, useDeleteCollection, useRenameCollection } from "@/hooks/data/use-collections";
 import type { Collection } from "@/types/domain";
 import type { AiCollectionAnalysisResponse } from "@/types/ai-collection-analysis";
+import type { LiteratureMatrixResponse } from "@/types/literature-matrix";
 import { GlobalAiCollectionModal } from "@/components/GlobalAiCollectionModal";
+import { GlobalLiteratureMatrixModal } from "@/components/GlobalLiteratureMatrixModal";
+import { LiteratureMatrixModal } from "@/components/LiteratureMatrixModal";
 import { AiCollectionAnalysisSheet } from "@/components/AiCollectionAnalysisSheet";
 import { AiHistoryDrawer } from "@/components/AiHistoryDrawer";
 import { formatTimeAgo } from "@/lib/time";
@@ -38,6 +47,9 @@ function CollectionsPage() {
 
   // AI Analysis states
   const [aiModalOpen, setAiModalOpen] = useState(false);
+  const [globalMatrixOpen, setGlobalMatrixOpen] = useState(false);
+  const [matrixResultOpen, setMatrixResultOpen] = useState(false);
+  const [currentMatrixData, setCurrentMatrixData] = useState<LiteratureMatrixResponse | null>(null);
   const [analysisSheetOpen, setAnalysisSheetOpen] = useState(false);
   const [historyDrawerOpen, setHistoryDrawerOpen] = useState(false);
   const [currentAiAnalysis, setCurrentAiAnalysis] = useState<AiCollectionAnalysisResponse | null>(null);
@@ -103,14 +115,39 @@ function CollectionsPage() {
               <History className="size-4" />
             </button>
 
-            <button
-              onClick={() => setAiModalOpen(true)}
-              disabled={collections.length === 0}
-              className="inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-semibold text-brand-foreground glow-brand transition-transform hover:scale-[1.02] disabled:opacity-50 disabled:pointer-events-none"
-              style={{ background: "var(--gradient-brand)" }}
-            >
-              <Sparkles className="size-4" /> Analyze with AI
-            </button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  disabled={collections.length === 0}
+                  className="inline-flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-semibold text-brand-foreground glow-brand transition-transform hover:scale-[1.02] disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
+                  style={{ background: "var(--gradient-brand)" }}
+                >
+                  <Sparkles className="size-4" /> AI Tools <ChevronDown className="size-3.5 opacity-80" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-60 bg-card border border-border shadow-2xl rounded-xl p-1.5 z-50">
+                <DropdownMenuItem
+                  onClick={() => setAiModalOpen(true)}
+                  className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg text-xs font-semibold text-foreground cursor-pointer focus:bg-brand/10 focus:text-brand transition-colors"
+                >
+                  <Sparkles className="size-4 text-brand shrink-0 mt-0.5" />
+                  <div className="flex flex-col min-w-0">
+                    <span>Analyze Collection</span>
+                    <span className="text-[10px] text-muted-foreground font-normal leading-tight">Themes, gaps & topic clusters</span>
+                  </div>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setGlobalMatrixOpen(true)}
+                  className="flex items-start gap-2.5 px-3 py-2.5 rounded-lg text-xs font-semibold text-foreground cursor-pointer focus:bg-brand/10 focus:text-brand transition-colors"
+                >
+                  <Table className="size-4 text-brand shrink-0 mt-0.5" />
+                  <div className="flex flex-col min-w-0">
+                    <span>Generate Literature Matrix</span>
+                    <span className="text-[10px] text-muted-foreground font-normal leading-tight">Compare methodology & results</span>
+                  </div>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
             <button
               onClick={() => setCreateOpen(true)}
@@ -317,6 +354,23 @@ function CollectionsPage() {
         }}
       />
 
+      <GlobalLiteratureMatrixModal
+        open={globalMatrixOpen}
+        onOpenChange={setGlobalMatrixOpen}
+        collections={collections}
+        onGenerateSuccess={(res) => {
+          setCurrentMatrixData(res);
+          setMatrixResultOpen(true);
+        }}
+      />
+
+      <LiteratureMatrixModal
+        open={matrixResultOpen}
+        onOpenChange={setMatrixResultOpen}
+        data={currentMatrixData}
+        isLoading={false}
+      />
+
       <AiCollectionAnalysisSheet
         open={analysisSheetOpen}
         onOpenChange={setAnalysisSheetOpen}
@@ -329,7 +383,10 @@ function CollectionsPage() {
         onOpenChange={setHistoryDrawerOpen}
         defaultTab="COLLECTION_ANALYSIS"
         onSelectHistory={(res, timestamp, type) => {
-          if (type === "COLLECTION_ANALYSIS" || res?.collectionName) {
+          if (type === "LITERATURE_MATRIX" || (res?.matrixRows && res?.markdownTable)) {
+            setCurrentMatrixData(res);
+            setMatrixResultOpen(true);
+          } else if (type === "COLLECTION_ANALYSIS" || res?.collectionName) {
             setCurrentAiAnalysis(res);
             setAnalysisTimestamp(timestamp);
             setAnalysisSheetOpen(true);

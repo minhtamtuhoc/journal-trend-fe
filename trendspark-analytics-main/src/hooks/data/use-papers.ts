@@ -70,6 +70,8 @@ export function useSearchPapers(params: {
     queryFn: () => getServices().papers.search(params),
     enabled: isBrowser,
     placeholderData: (prev) => prev,
+    staleTime: 60 * 1000,
+    retry: 1,
   });
 }
 

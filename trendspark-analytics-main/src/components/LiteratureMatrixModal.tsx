@@ -1,0 +1,385 @@
+import { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Sparkles, Copy, Check, Table, FileText, Loader2, Download, FileSpreadsheet, FileCheck } from "lucide-react";
+import { toast } from "sonner";
+import type { LiteratureMatrixResponse } from "@/types/literature-matrix";
+
+interface LiteratureMatrixModalProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  data: LiteratureMatrixResponse | null;
+  isLoading: boolean;
+  collectionTitle?: string;
+}
+
+export function LiteratureMatrixModal({
+  open,
+  onOpenChange,
+  data,
+  isLoading,
+  collectionTitle,
+}: LiteratureMatrixModalProps) {
+  const [copiedMarkdown, setCopiedMarkdown] = useState(false);
+  const [copiedBibtex, setCopiedBibtex] = useState(false);
+
+  const handleCopyMarkdown = async () => {
+    if (!data?.markdownTable) return;
+    try {
+      await navigator.clipboard.writeText(data.markdownTable);
+      setCopiedMarkdown(true);
+      toast.success("Copied Markdown table to clipboard!");
+      setTimeout(() => setCopiedMarkdown(false), 2000);
+    } catch {
+      toast.error("Failed to copy Markdown table");
+    }
+  };
+
+  const handleExportCSV = () => {
+    if (!data || !data.matrixRows || data.matrixRows.length === 0) return;
+    const headers = ["Title", "Authors", "Year", "Objective", "Methodology", "Dataset", "Key Results", "Limitations"];
+    const rows = data.matrixRows.map((r) => [
+      `"${(r.title || "").replace(/"/g, '""')}"`,
+      `"${(r.authors || "").replace(/"/g, '""')}"`,
+      r.year || "",
+      `"${(r.objective || "").replace(/"/g, '""')}"`,
+      `"${(r.methodology || "").replace(/"/g, '""')}"`,
+      `"${(r.dataset || "").replace(/"/g, '""')}"`,
+      `"${(r.keyResults || "").replace(/"/g, '""')}"`,
+      `"${(r.limitations || "").replace(/"/g, '""')}"`,
+    ]);
+
+    const csvContent = [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const filename = collectionTitle
+      ? `${collectionTitle.replace(/[^a-zA-Z0-9]/g, "_")}_literature_matrix.csv`
+      : "literature_matrix.csv";
+
+    link.setAttribute("href", url);
+    link.setAttribute("download", filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success("Downloaded CSV matrix file");
+  };
+
+  const handleExportWord = () => {
+    if (!data || !data.matrixRows || data.matrixRows.length === 0) return;
+    const title = collectionTitle || "Literature Review Comparison Matrix";
+    const dateStr = new Date().toLocaleDateString();
+
+    const tableRowsHtml = data.matrixRows
+      .map(
+        (r) => `
+      <tr>
+        <td style="border: 1px solid #CBD5E1; padding: 10px; font-weight: bold; background-color: #F8FAFC;">
+          ${r.title}<br/>
+          <span style="font-weight: normal; color: #64748B; font-size: 11px;">${r.authors || ""} (${r.year || ""})</span>
+        </td>
+        <td style="border: 1px solid #CBD5E1; padding: 10px; background-color: #FFFFFF;">${r.objective || "—"}</td>
+        <td style="border: 1px solid #CBD5E1; padding: 10px; background-color: #F8FAFC;">${r.methodology || "—"}</td>
+        <td style="border: 1px solid #CBD5E1; padding: 10px; background-color: #FFFFFF;">${r.dataset || "—"}</td>
+        <td style="border: 1px solid #CBD5E1; padding: 10px; background-color: #ECFDF5; color: #065F46; font-weight: 500;">${r.keyResults || "—"}</td>
+        <td style="border: 1px solid #CBD5E1; padding: 10px; background-color: #FFFBEB; color: #92400E; font-weight: 500;">${r.limitations || "—"}</td>
+      </tr>
+    `
+      )
+      .join("");
+
+    const wordContent = `
+      <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+      <head>
+        <meta charset='utf-8'>
+        <title>${title}</title>
+        <style>
+          body { font-family: 'Calibri', 'Segoe UI', sans-serif; font-size: 12px; color: #1E293B; line-height: 1.5; }
+          h2 { color: #0F172A; font-size: 18px; margin-bottom: 4px; }
+          p.subtitle { color: #64748B; font-size: 12px; margin-top: 0; margin-bottom: 16px; }
+          table { border-collapse: collapse; width: 100%; margin-top: 10px; }
+          th { background-color: #0F172A; color: #FFFFFF; font-weight: bold; padding: 10px; border: 1px solid #0F172A; text-align: left; }
+        </style>
+      </head>
+      <body>
+        <h2>${title}</h2>
+        <p class="subtitle">Auto Literature Matrix generated by TrendSpark AI on ${dateStr}</p>
+        <table>
+          <thead>
+            <tr>
+              <th>Paper Title & Metadata</th>
+              <th>Objective</th>
+              <th>Methodology</th>
+              <th>Dataset</th>
+              <th>Key Results</th>
+              <th>Limitations</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${tableRowsHtml}
+          </tbody>
+        </table>
+      </body>
+      </html>
+    `;
+
+    const blob = new Blob(["\ufeff", wordContent], { type: "application/msword;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const filename = collectionTitle
+      ? `${collectionTitle.replace(/[^a-zA-Z0-9]/g, "_")}_matrix.doc`
+      : "literature_matrix.doc";
+
+    link.setAttribute("href", url);
+    link.setAttribute("download", filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success("Downloaded Word (.doc) matrix document!");
+  };
+
+  const generateBibtexString = (): string => {
+    if (!data || !data.matrixRows) return "";
+    return data.matrixRows
+      .map((r, i) => {
+        const firstAuthor = (r.authors || "author").split(",")[0].trim().replace(/[^a-zA-Z]/g, "").toLowerCase() || "paper";
+        const year = r.year || "2026";
+        const citeKey = `${firstAuthor}${year}matrix${i + 1}`;
+        return `@article{${citeKey},\n  title     = {${r.title || "Untitled"}},\n  author    = {${r.authors || "Unknown"}},\n  year      = {${year}},\n  note      = {Literature Matrix Objective: ${r.objective || "N/A"}}\n}`;
+      })
+      .join("\n\n");
+  };
+
+  const handleCopyBibtex = async () => {
+    const bib = generateBibtexString();
+    if (!bib) return;
+    try {
+      await navigator.clipboard.writeText(bib);
+      setCopiedBibtex(true);
+      toast.success("Copied BibTeX citations to clipboard!");
+      setTimeout(() => setCopiedBibtex(false), 2000);
+    } catch {
+      toast.error("Failed to copy BibTeX");
+    }
+  };
+
+  const handleExportBibtex = () => {
+    const bib = generateBibtexString();
+    if (!bib) return;
+    const blob = new Blob([bib], { type: "text/plain;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const filename = collectionTitle
+      ? `${collectionTitle.replace(/[^a-zA-Z0-9]/g, "_")}_citations.bib`
+      : "literature_matrix.bib";
+
+    link.setAttribute("href", url);
+    link.setAttribute("download", filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success("Downloaded BibTeX (.bib) citation file");
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-6xl max-h-[88vh] flex flex-col p-6 shadow-2xl rounded-2xl bg-card border border-border overflow-hidden">
+        <DialogHeader className="flex flex-row items-center justify-between pb-3 border-b border-border">
+          <div className="space-y-1 text-left">
+            <div className="flex items-center gap-2 text-brand">
+              <Sparkles className="size-5 text-amber-400 animate-pulse" />
+              <DialogTitle className="text-xl font-bold text-foreground">
+                Auto Literature Matrix Generator
+              </DialogTitle>
+            </div>
+            <DialogDescription className="text-xs text-muted-foreground">
+              AI-generated side-by-side comparison matrix powered by Groq LLaMA-3.3-70B
+            </DialogDescription>
+          </div>
+
+          {data && (
+            <div className="flex items-center gap-2">
+              {data.quotaRemainingToday !== -1 ? (
+                <Badge variant="outline" className="text-xs border-amber-500/30 bg-amber-500/10 text-amber-400 font-semibold px-2.5 py-1">
+                  Quota: {data.quotaRemainingToday} / 10 left today
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="text-xs border-emerald-500/30 bg-emerald-500/10 text-emerald-400 font-semibold px-2.5 py-1">
+                  Admin (Unlimited Quota)
+                </Badge>
+              )}
+            </div>
+          )}
+        </DialogHeader>
+
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-20 gap-4">
+            <div className="relative flex items-center justify-center">
+              <div className="absolute size-16 rounded-full border-4 border-brand/20 animate-ping" />
+              <Loader2 className="size-10 text-brand animate-spin" />
+            </div>
+            <div className="text-center space-y-1">
+              <p className="text-sm font-semibold text-foreground">Reading abstracts & constructing matrix…</p>
+              <p className="text-xs text-muted-foreground">
+                Extracting Objectives, Methodologies, Datasets, Key Results & Limitations using Groq AI
+              </p>
+            </div>
+          </div>
+        ) : data ? (
+          <div className="flex-1 flex flex-col overflow-hidden space-y-4">
+            {data.executiveSynthesis && (
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-brand/15 via-purple-500/10 to-indigo-500/10 border border-brand/30 shadow-md flex items-start gap-3.5 shrink-0">
+                <div className="p-2 rounded-xl bg-brand/20 border border-brand/30 text-amber-400 shrink-0 mt-0.5">
+                  <Sparkles className="size-4 animate-pulse" />
+                </div>
+                <div className="space-y-1 text-xs">
+                  <div className="font-bold text-foreground text-xs flex items-center gap-2">
+                    <span>AI Executive Synthesis</span>
+                    <Badge variant="outline" className="text-[10px] px-2 py-0 border-brand/40 bg-brand/10 text-brand font-mono font-semibold">
+                      5-Second Summary
+                    </Badge>
+                  </div>
+                  <p className="text-muted-foreground leading-relaxed">
+                    {data.executiveSynthesis}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <Tabs defaultValue="table" className="flex-1 flex flex-col overflow-hidden">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+              <TabsList className="bg-secondary/40 border border-border p-1 rounded-xl">
+                <TabsTrigger value="table" className="gap-1.5 text-xs font-medium rounded-lg">
+                  <Table className="size-3.5" /> Smart Color Table
+                </TabsTrigger>
+                <TabsTrigger value="markdown" className="gap-1.5 text-xs font-medium rounded-lg">
+                  <FileText className="size-3.5" /> Markdown Preview
+                </TabsTrigger>
+                <TabsTrigger value="bibtex" className="gap-1.5 text-xs font-medium rounded-lg">
+                  <FileCheck className="size-3.5" /> BibTeX (LaTeX)
+                </TabsTrigger>
+              </TabsList>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <Button size="sm" variant="outline" onClick={handleExportWord} className="gap-1.5 text-xs font-semibold h-8 rounded-lg border-blue-500/30 text-blue-400 hover:bg-blue-500/10">
+                  <FileSpreadsheet className="size-3.5 text-blue-400" /> Export Word (.doc)
+                </Button>
+                <Button size="sm" variant="outline" onClick={handleExportBibtex} className="gap-1.5 text-xs font-semibold h-8 rounded-lg border-purple-500/30 text-purple-400 hover:bg-purple-500/10">
+                  <Download className="size-3.5 text-purple-400" /> Export BibTeX
+                </Button>
+                <Button size="sm" variant="outline" onClick={handleExportCSV} className="gap-1.5 text-xs font-semibold h-8 rounded-lg">
+                  <Download className="size-3.5" /> Export CSV
+                </Button>
+                <Button size="sm" variant="outline" onClick={handleCopyMarkdown} className="gap-1.5 text-xs font-semibold h-8 rounded-lg">
+                  {copiedMarkdown ? <Check className="size-3.5 text-emerald-400" /> : <Copy className="size-3.5" />}
+                  {copiedMarkdown ? "Copied" : "Copy Markdown"}
+                </Button>
+              </div>
+            </div>
+
+            {/* TAB 1: INTERACTIVE SMART COLOR TABLE */}
+            <TabsContent value="table" className="flex-1 overflow-auto border border-border rounded-xl bg-background/50">
+              <table className="w-full text-left text-xs border-collapse min-w-[950px]">
+                <thead className="sticky top-0 bg-secondary/90 backdrop-blur text-foreground font-semibold border-b border-border z-10">
+                  <tr>
+                    <th className="p-3 w-56 min-w-[210px] bg-secondary/90">Paper & Metadata</th>
+                    <th className="p-3 min-w-[180px]">Objective</th>
+                    <th className="p-3 min-w-[180px]">Methodology</th>
+                    <th className="p-3 min-w-[150px]">Dataset</th>
+                    <th className="p-3 min-w-[200px] text-emerald-400 font-bold bg-emerald-950/20">
+                      <div className="flex items-center gap-1.5">
+                        <span className="size-2 rounded-full bg-emerald-400 animate-pulse" />
+                        <span>Key Results</span>
+                      </div>
+                    </th>
+                    <th className="p-3 min-w-[200px] text-amber-400 font-bold bg-amber-950/20">
+                      <div className="flex items-center gap-1.5">
+                        <span className="size-2 rounded-full bg-amber-400 animate-pulse" />
+                        <span>Limitations</span>
+                      </div>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/60">
+                  {data.matrixRows.map((row) => (
+                    <tr key={row.paperId} className="hover:bg-muted/30 transition-colors">
+                      <td className="p-3 font-medium align-top bg-secondary/10">
+                        <div className="font-semibold text-foreground text-sm leading-snug">{row.title}</div>
+                        <div className="text-[11px] text-muted-foreground mt-1.5 font-medium flex flex-wrap items-center gap-1.5">
+                          <span className="px-1.5 py-0.5 rounded bg-secondary text-secondary-foreground text-[10px] font-mono font-bold">
+                            {row.year || "n/a"}
+                          </span>
+                          <span>{row.authors}</span>
+                        </div>
+                      </td>
+                      <td className="p-3 align-top leading-relaxed text-foreground/90">
+                        <div className="p-2.5 rounded-xl bg-sky-500/5 border border-sky-500/10 text-sky-200/90 text-xs">
+                          {row.objective || "—"}
+                        </div>
+                      </td>
+                      <td className="p-3 align-top leading-relaxed text-foreground/90">
+                        <div className="p-2.5 rounded-xl bg-indigo-500/5 border border-indigo-500/10 text-indigo-200/90 text-xs">
+                          {row.methodology || "—"}
+                        </div>
+                      </td>
+                      <td className="p-3 align-top leading-relaxed text-foreground/90">
+                        <div className="p-2.5 rounded-xl bg-violet-500/5 border border-violet-500/10 text-violet-200/90 text-xs">
+                          {row.dataset || "—"}
+                        </div>
+                      </td>
+                      {/* SMART HIGHLIGHT: KEY RESULTS (EMERALD GREEN) */}
+                      <td className="p-3 align-top leading-relaxed">
+                        <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-xs font-medium shadow-sm">
+                          {row.keyResults || "—"}
+                        </div>
+                      </td>
+                      {/* SMART HIGHLIGHT: LIMITATIONS (AMBER ORANGE) */}
+                      <td className="p-3 align-top leading-relaxed">
+                        <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs font-medium shadow-sm">
+                          {row.limitations || "—"}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </TabsContent>
+
+            {/* TAB 2: MARKDOWN PREVIEW */}
+            <TabsContent value="markdown" className="flex-1 overflow-auto border border-border rounded-xl bg-secondary/20 p-4">
+              <pre className="text-xs font-mono whitespace-pre-wrap text-foreground/90 leading-relaxed select-all">
+                {data.markdownTable}
+              </pre>
+            </TabsContent>
+
+            {/* TAB 3: BIBTEX PREVIEW */}
+            <TabsContent value="bibtex" className="flex-1 overflow-auto border border-border rounded-xl bg-secondary/20 p-4 relative">
+              <div className="absolute top-6 right-6 flex items-center gap-2">
+                <Button size="sm" variant="secondary" onClick={handleCopyBibtex} className="gap-1.5 text-xs font-semibold h-8 rounded-lg">
+                  {copiedBibtex ? <Check className="size-3.5 text-emerald-400" /> : <Copy className="size-3.5" />}
+                  {copiedBibtex ? "Copied" : "Copy BibTeX"}
+                </Button>
+              </div>
+              <pre className="text-xs font-mono whitespace-pre-wrap text-purple-300/90 leading-relaxed select-all">
+                {generateBibtexString()}
+              </pre>
+            </TabsContent>
+          </Tabs>
+          </div>
+        ) : (
+          <div className="py-12 text-center text-xs text-muted-foreground">
+            No literature matrix data generated.
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}

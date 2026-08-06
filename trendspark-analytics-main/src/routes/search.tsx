@@ -7,7 +7,7 @@ import type { Paper } from "@/types/domain";
 import { useAuth } from "@/auth";
 import { useRecentSearches, useRecordSearch } from "@/hooks/data/use-search-history";
 import { useEffect, useState, useRef, useMemo } from "react";
-import { Search as SearchIcon, Download, SlidersHorizontal, ArrowUpRight, Check, ChevronDown } from "lucide-react";
+import { Search as SearchIcon, Download, SlidersHorizontal, ArrowUpRight, Check, ChevronDown, AlertTriangle } from "lucide-react";
 import { useSearchSuggestions } from "@/hooks/data/use-search-suggestions";
 import { z } from "zod";
 import { toast } from "sonner";
@@ -144,7 +144,7 @@ function SearchPage() {
       : "citationCount,desc";
 
   // === 6. HOOK GỌI API TÌM KIẾM BÀI BÁO (SEARCH PAPERS HOOK) ===
-  const { data, isLoading } = useSearchPapers({
+  const { data, isLoading, isError, refetch } = useSearchPapers({
     ...(initialTopicId != null
       ? { topicId: initialTopicId }
       : { q: q || initial || undefined }),
@@ -452,6 +452,22 @@ function SearchPage() {
               {Array.from({ length: 5 }).map((_, i) => (
                 <div key={i} className="h-32 rounded-xl bg-secondary/10 border border-border" />
               ))}
+            </div>
+          ) : isError ? (
+            /* Trạng thái báo lỗi kết nối / API Error */
+            <div className="py-12 flex flex-col items-center justify-center text-center space-y-3 border border-destructive/20 rounded-xl bg-destructive/5 p-6">
+              <AlertTriangle className="size-8 text-destructive" />
+              <div className="text-sm font-semibold text-foreground">Không thể kết nối hoặc nạp dữ liệu từ máy chủ</div>
+              <p className="text-xs text-muted-foreground max-w-md">
+                Quá trình kết nối bị trễ hoặc gặp sự cố mạng. Vui lòng kiểm tra kết nối và thử lại.
+              </p>
+              <button
+                type="button"
+                onClick={() => refetch()}
+                className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold bg-brand text-brand-foreground hover:bg-brand/90 transition-colors cursor-pointer"
+              >
+                Thử lại
+              </button>
             </div>
           ) : paginatedResults.length === 0 ? (
             /* Trạng thái không tìm thấy kết quả phù hợp */
