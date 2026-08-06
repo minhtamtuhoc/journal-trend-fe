@@ -98,7 +98,7 @@ export class HttpPapersService implements PapersService {
         q: params.q || undefined,
         searchType: params.searchType || undefined,
         topicId: params.topicId,
-        page: params.page,
+        page: Math.max(0, params.page - 1),
         size: params.size,
         sort: params.sort,
         fromYear: params.fromYear,
@@ -111,7 +111,7 @@ export class HttpPapersService implements PapersService {
     const pageData = res.data;
     return {
       content: pageData.content.map(toPaperDomainModel),
-      page: pageData.page,
+      page: pageData.page + 1,
       size: pageData.size,
       totalElements: pageData.totalElements,
       totalPages: pageData.totalPages,
