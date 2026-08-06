@@ -55,24 +55,16 @@ function SearchPage() {
   const navigate = useNavigate();
 
   // === 1. LẤY DANH SÁCH LINH VỰC (CATEGORIES / DOMAINS) ===
-  // Query gọi API /v1/keywords để lấy tất cả các domain thuộc tính của keyword
-  const { data: keywordsData = [] } = useQuery({
+  // Query gọi API /v1/keywords/domains để lấy danh sách domain nhẹ hơn rất nhiều so với full keyword list
+  const { data: categories = [] } = useQuery({
     queryKey: ["all-keywords-domains"],
     queryFn: async () => {
-      const res = await apiClient.get<{ data: Array<{ domain: string }> }>("/v1/keywords");
+      const res = await apiClient.get<{ data: string[] }>("/v1/keywords/domains");
       return res.data ?? [];
     },
     staleTime: 30 * 60 * 1000,
     gcTime: 60 * 60 * 1000,
   });
-
-  // Lọc ra danh sách domain độc nhất và sắp xếp theo thứ tự bảng chữ cái
-  const categories = useMemo(() => {
-    const domains = keywordsData
-      .map((k) => k.domain)
-      .filter((d): d is string => typeof d === "string" && d.trim() !== "");
-    return Array.from(new Set(domains)).sort();
-  }, [keywordsData]);
 
   // === 2. KHỞI TẠO CÁC STATE BỘ LỌC VÀ TRUY VẤN ===
   const [q, setQ] = useState(initial ?? ""); // Từ khóa tìm kiếm
